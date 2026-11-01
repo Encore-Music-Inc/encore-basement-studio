@@ -32,6 +32,7 @@ using namespace tracktion::literals;
 #include "MainComponent.h"
 #include "SelfTest.h"
 #include "AudioTest.h"
+#include "InterfaceTest.h"
 #include "PluginTest.h"
 
 class StudioApplication : public juce::JUCEApplication
@@ -89,6 +90,14 @@ public:
         {
             auto dir = juce::File (args.fromFirstOccurrenceOf ("--audiotest", false, false).trim().unquoted());
             setApplicationReturnValue (audiotest::run (dir));
+            quit();
+            return;
+        }
+        if (args.contains ("--interfacetest"))   // a real interface: "--interfacetest Volt <dir>"
+        {
+            auto rest = args.fromFirstOccurrenceOf ("--interfacetest", false, false).trim();
+            auto word = rest.upToFirstOccurrenceOf (" ", false, false);
+            setApplicationReturnValue (interfacetest::run (word, juce::File (rest.fromFirstOccurrenceOf (" ", false, false).trim().unquoted())));
             quit();
             return;
         }

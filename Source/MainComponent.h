@@ -258,6 +258,13 @@ public:
     {
         juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Encore Basement Studio", message);
     }
+
+    /** Record then Space within a block or two leaves nothing to keep: that's no reason for a dialog */
+    void showWarningAlert (const juce::String& title, const juce::String& message) override
+    {
+        if (message.contains ("zero-length")) { studioLog ("recording: stopped before any audio arrived, no take"); return; }
+        te::UIBehaviour::showWarningAlert (title, message);
+    }
 };
 
 
@@ -2025,13 +2032,13 @@ private:
 
     /** Windows' shared audio path adds latency and its own input level in the
         way. When the interface you're using has its own ASIO driver (most do:
-        Volt, Scarlett, Audient, MOTU...), switch to it, once. Generic
+        Volt, Scarlett, Audient, MOTU...), switch to it, once for each driver
+        (so a later Audio Setup choice stays, and a laptop that started on its
+        own speakers still gets checked when the interface arrives). Generic
         wrappers (ASIO4ALL and friends) are never picked automatically, and if
         the driver won't open (another app using it) nothing changes. */
     void preferInterfaceAsio()
     {
-        if (props().getBoolValue ("asioChecked", false)) return;
-        props().setValue ("asioChecked", true);
         auto& dm = engine.getDeviceManager().deviceManager;
         if (dm.getCurrentAudioDeviceType() == "ASIO") return;
 
@@ -2058,7 +2065,10 @@ private:
                 continue;
             bool match = false;
             for (auto& w : words) match = match || lower.contains (w);
-            if (! match) continue;
+            auto tried = juce::StringArray::fromTokens (props().getValue ("asioTried"), "|", {});
+            if (! match || tried.contains (name)) continue;
+            tried.add (name);
+            props().setValue ("asioTried", tried.joinIntoString ("|"));
 
             // try exactly this driver (no falling back to some other ASIO device), and go back if it won't open
             const auto beforeType = dm.getCurrentAudioDeviceType();
@@ -2071,11 +2081,13 @@ private:
             if (err.isEmpty() && dm.getCurrentAudioDevice() != nullptr && dm.getCurrentAudioDevice()->getName() == name)
             {
                 studioLog ("switched to the interface's ASIO driver: " + name);
+                rememberChosenAudio();   // or the watcher would put it back (see checkAudioDevice)
                 status ("Now using " + name + "'s own driver (ASIO) for low latency. Studio > Audio Setup to change.");
                 return;
             }
             studioLog ("ASIO driver " + name + " didn't open (" + err + "), staying on " + beforeType);
-            props().setValue ("asioChecked", false); // try again next time (another app may have had it)
+            tried.removeString (name);
+            props().setValue ("asioTried", tried.joinIntoString ("|")); // try again next time (another app may have had it)
             if (before != nullptr) dm.initialise (512, 512, before.get(), true);
             else { dm.setCurrentAudioDeviceType (beforeType, true); dm.setAudioDeviceSetup (setup, true); }
             return;
@@ -2126,6 +2138,16 @@ private:
                 anyHere = true;
                 wantedHere = wantedHere || instance->getInputDevice().getName() == wanted;
             }
+        // the same interface through another driver calls its inputs something else ("Input channel 2", "INPUT 2"): keep the number
+        if (pick == nullptr && anyHere && ! wantedHere && wanted.getTrailingIntValue() > 0)
+        {
+            auto& dm = engine.getDeviceManager();
+            int number = 0;
+            for (int i = 0; i < dm.getNumWaveInDevices(); ++i)
+                if (auto w = dm.getWaveInDevice (i); w != nullptr && ! w->isTrackDevice() && ++number == wanted.getTrailingIntValue())
+                    for (auto instance : edit->getAllInputDevices())
+                        if (&instance->getInputDevice() == w) pick = instance;
+        }
         if (pick == nullptr && wanted.isNotEmpty() && ((anyHere && ! wantedHere) || juce::Time::getMillisecondCounter() > assignUntil))
             for (auto instance : edit->getAllInputDevices()) // that input isn't here (another interface): use the next free one
                 if (instance->getInputDevice().getDeviceType() == te::InputDevice::waveDevice && instance->getTargets().isEmpty()) { pick = instance; break; }
@@ -3867,9 +3889,9 @@ private:
             audioNoticeShowing = true;
             studioLog ("audio: " + name + " isn't open; using " + (d ? d->getName() : juce::String ("nothing")));
             noticeAction = [this] { showPreferences ("Audio"); };
-            notice.show (name + " isn't connected, so nothing is recording or playing through it. "
+            notice.show (name + " isn't available (unplugged, or another app like Cubase has it), so nothing is recording or playing through it. "
                            + (d != nullptr ? "Studio is using " + d->getName() + " for now. " : juce::String ("There's no sound right now. "))
-                           + "Plug it back in and Studio switches back on its own.",
+                           + "Free it up and Studio switches back on its own.",
                          "Audio Setup...", theme::record);
             resized();
         }

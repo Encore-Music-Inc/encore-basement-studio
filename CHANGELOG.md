@@ -45,6 +45,11 @@ still open as they are.
   its input to the speakers by itself.
 - Activation prompts that run as their own program stay hidden during the plugin
   search too, and nothing is left running afterwards.
+- An interface's own ASIO driver is now picked up the first time Studio sees that
+  interface, even if Studio first started without it, and it stays picked. Tracks
+  keep their input numbers when the driver names inputs differently.
+- The notice about a missing interface also covers another app holding it.
+- Space a moment after Record no longer brings up a box about a zero-length file.
 - Plugins that open a window while being checked (an activation prompt) no
   longer flash it on screen.
 - Who you're making music as: the first screen asks for an artist or band, or
