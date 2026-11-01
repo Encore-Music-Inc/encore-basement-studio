@@ -6,10 +6,13 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <tlhelp32.h>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace bridgeos
 {
@@ -109,28 +112,57 @@ namespace bridgeos
 
     unsigned long currentProcessId() { return GetCurrentProcessId(); }
 
+    /** This process and everything it started (activation prompts run in a process of their own, a child of the plugin) */
+    static std::vector<DWORD> processTree()
+    {
+        std::vector<DWORD> tree { GetCurrentProcessId() };
+        auto snapshot = CreateToolhelp32Snapshot (TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) return tree;
+        std::vector<PROCESSENTRY32W> all;
+        PROCESSENTRY32W entry {};
+        entry.dwSize = sizeof (entry);
+        for (auto more = Process32FirstW (snapshot, &entry); more; more = Process32NextW (snapshot, &entry))
+            all.push_back (entry);
+        CloseHandle (snapshot);
+        for (size_t i = 0; i < tree.size(); ++i)
+            for (auto& p : all)
+                if (p.th32ParentProcessID == tree[i] && p.th32ProcessID != tree[i]
+                     && std::find (tree.begin(), tree.end(), p.th32ProcessID) == tree.end())
+                    tree.push_back (p.th32ProcessID);
+        return tree;
+    }
+
     void hideWindowsWhileScanning (int giveUpMs, const wchar_t* flagFile)
     {
         std::thread ([giveUpMs, flag = std::wstring (flagFile != nullptr ? flagFile : L"")]
         {
-            struct Search { DWORD pid; int hidden; };
+            struct Search { const std::vector<DWORD>* tree; int hidden; };
             DWORD firstSeen = 0;
-            for (;;)
+            std::vector<DWORD> tree;
+            for (int tick = 0;; ++tick)
             {
                 Sleep (25);
-                Search s { GetCurrentProcessId(), 0 };
+                if (tick % 4 == 0) tree = processTree();
+                Search s { &tree, 0 };
                 EnumWindows ([] (HWND h, LPARAM p) -> BOOL
                 {
                     auto* s = reinterpret_cast<Search*> (p);
                     DWORD owner = 0;
                     GetWindowThreadProcessId (h, &owner);
-                    if (owner == s->pid && IsWindowVisible (h)) { ShowWindowAsync (h, SW_HIDE); ++s->hidden; }
+                    if (IsWindowVisible (h) && std::find (s->tree->begin(), s->tree->end(), owner) != s->tree->end())
+                    {
+                        ShowWindowAsync (h, SW_HIDE);
+                        ++s->hidden;
+                    }
                     return TRUE;
                 }, (LPARAM) &s);
                 if (s.hidden > 0 && firstSeen == 0) firstSeen = GetTickCount();
                 if (firstSeen != 0 && GetTickCount() - firstSeen > (DWORD) giveUpMs)
                 {
                     if (! flag.empty()) if (FILE* f = _wfopen (flag.c_str(), L"w")) std::fclose (f);
+                    // nothing left behind: a prompt's own process would outlive this one
+                    for (auto pid : processTree())
+                        if (pid != GetCurrentProcessId()) killProcess (pid);
                     TerminateProcess (GetCurrentProcess(), 3);
                 }
             }

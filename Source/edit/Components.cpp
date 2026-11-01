@@ -972,14 +972,8 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
         };
         monitorButton.onClick = [this, at]
         {
-            // explicit on/off for the input feeding this track
             const bool on = ! EngineHelpers::isInputMonitoringEnabled (*at);
-            for (auto instance : at->edit.getAllInputDevices())
-                if (instance->getTargets().contains (at->itemID))
-                    instance->getInputDevice().setMonitorMode (on ? te::InputDevice::MonitorMode::on : te::InputDevice::MonitorMode::off);
-            // the engine builds live inputs into what it plays: make sure that's running, and rebuilt with this input in it
-            at->edit.getTransport().ensureContextAllocated();
-            at->edit.restartPlayback();
+            EngineHelpers::setInputMonitoring (*at, on);
             logMonitoring (*at, on);
             updateMonitor();
             updateMeterSource();

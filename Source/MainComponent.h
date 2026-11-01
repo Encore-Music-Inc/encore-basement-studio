@@ -2008,6 +2008,9 @@ private:
             if (auto wip = dm.getWaveInDevice (i))
             {
                 wip->setEnabled (true);
+                // monitoring is the track's button and nothing else: arming a track doesn't open a mic to the speakers
+                if (wip->getMonitorMode() == te::InputDevice::MonitorMode::automatic)
+                    wip->setMonitorMode (te::InputDevice::MonitorMode::off);
                 wip->setRecordAdjustmentMs (props().getDoubleValue ("recordOffsetMs", 0.0));
                 if (edit) wip->setBitDepth (SongInfo::readFrom (*edit, songFile).bitDepth);
             }
@@ -3283,23 +3286,16 @@ private:
     void togglePlay()
     {
         auto& tr = edit->getTransport();
+        ++transportPresses;
         const bool wasRecording = tr.isRecording(), wasPlaying = tr.isPlaying();
         studioLog ("play/stop: was " + juce::String (wasRecording ? "recording" : wasPlaying ? "playing" : "stopped"));
         if (wasRecording || wasPlaying)
         {
             // stopping a recording stops everything: the playhead, the click and the count-in
-            tr.stop (false, false);
+            EngineHelpers::stopTransport (tr, recordFrom);
             countIn.setVisible (false);
+            settleStop();
             if (wasRecording) save();
-            // and if something started it again straight away (a second key event), stop it again
-            juce::Timer::callAfterDelay (150, [safe = juce::Component::SafePointer<MainComponent> (this)]
-            {
-                if (safe && safe->edit && safe->edit->getTransport().isPlaying() && ! safe->edit->getTransport().isRecording())
-                {
-                    studioLog ("play/stop: was still playing after a stop, stopping again");
-                    safe->edit->getTransport().stop (false, false);
-                }
-            });
             lastStop = juce::Time::getMillisecondCounter();
             return;
         }
@@ -3308,9 +3304,21 @@ private:
         tr.play (false);
     }
     juce::uint32 lastStop = 0;
+    te::TimePosition recordFrom;
+    int transportPresses = 0;
+    void settleStop (int checksLeft = 200, int atLeast = 6)
+    {
+        juce::Timer::callAfterDelay (50, [safe = juce::Component::SafePointer<MainComponent> (this), press = transportPresses, checksLeft, atLeast]
+        {
+            if (! safe || ! safe->edit || safe->transportPresses != press) return;   // play or record was pressed since
+            const bool settled = EngineHelpers::settleStop (safe->edit->getTransport());
+            if ((! settled || atLeast > 1) && checksLeft > 0) safe->settleStop (checksLeft - 1, atLeast - 1);
+        });
+    }
     void toggleRecord()
     {
         auto& tr = edit->getTransport();
+        if (! tr.isRecording()) ++transportPresses;
         if (tr.isRecording()) { togglePlay(); return; }
         bool anyArmed = false;
         for (auto t : te::getAudioTracks (*edit)) anyArmed = anyArmed || EngineHelpers::isTrackArmed (*t);
@@ -3325,6 +3333,7 @@ private:
             dev->quantisation.setType (drums && props().getBoolValue ("drumRecordSnap", true) ? "1/4 beat" : "(none)");
         }
         const int beats = tr.isPlaying() ? 0 : edit->getNumCountInBeats();
+        recordFrom = tr.getPosition();
         tr.record (false);
         if (beats > 0)
         {

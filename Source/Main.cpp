@@ -31,6 +31,7 @@ using namespace tracktion::literals;
 #include "LiveImport.h"
 #include "MainComponent.h"
 #include "SelfTest.h"
+#include "AudioTest.h"
 #include "PluginTest.h"
 
 class StudioApplication : public juce::JUCEApplication
@@ -71,6 +72,23 @@ public:
             auto rest = juce::StringArray::fromTokens (args.fromFirstOccurrenceOf ("--bridgetest", false, false), true);
             rest.removeEmptyStrings();
             setApplicationReturnValue (selftest::bridge (juce::File (rest[0].unquoted()), juce::File (rest[1].unquoted())));
+            quit();
+            return;
+        }
+       #if JUCE_WINDOWS
+        if (args.contains ("--windowtest"))   // stands in for a plugin checker whose child process puts up a prompt (tools/window-test.ps1 watches)
+        {
+            bridgeos::hideWindowsWhileScanning (2000, nullptr);
+            static juce::ChildProcess prompt;
+            prompt.start (juce::StringArray { "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File",
+                                              args.fromFirstOccurrenceOf ("--windowtest", false, false).trim().unquoted() });
+            return;
+        }
+       #endif
+        if (args.contains ("--audiotest"))
+        {
+            auto dir = juce::File (args.fromFirstOccurrenceOf ("--audiotest", false, false).trim().unquoted());
+            setApplicationReturnValue (audiotest::run (dir));
             quit();
             return;
         }

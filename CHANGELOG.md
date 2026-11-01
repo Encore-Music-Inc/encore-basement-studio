@@ -38,6 +38,13 @@ still open as they are.
 - Your profile: several genres from Apple Music's list (what Encore uses),
   hometown, members, website, who owns the recordings, and the songwriter's
   PRO and IPI, which go into what's sent to Encore.
+- Stopping is stopping: pressing Space just after Record or Play, while the
+  song was still getting ready, could leave the playhead running. Stopping
+  during a count-in puts the playhead back where the take would have started.
+- Monitoring is only the track's monitor button. Arming a track no longer opens
+  its input to the speakers by itself.
+- Activation prompts that run as their own program stay hidden during the plugin
+  search too, and nothing is left running afterwards.
 - Plugins that open a window while being checked (an activation prompt) no
   longer flash it on screen.
 - Who you're making music as: the first screen asks for an artist or band, or

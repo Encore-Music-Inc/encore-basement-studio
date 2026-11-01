@@ -236,6 +236,39 @@ namespace EngineHelpers
         return false;
     }
 
+    /** Stops the transport. Stopped during a count-in, the playhead goes back to where the take would have started */
+    inline void stopTransport (te::TransportControl& tr, te::TimePosition returnTo)
+    {
+        tr.stop (false, false);
+        if (tr.getPosition() < te::TimePosition())
+            tr.setPosition (returnTo);
+    }
+
+    /** A start the audio thread hasn't picked up yet survives a stop: the playhead starts anyway, and the transport's
+        timer then sees a moving playhead and turns it back into real playback. That window can be seconds while a big
+        song's playback is being built. Call this until it returns true after a stop, unless the user presses play again. */
+    inline bool settleStop (te::TransportControl& tr)
+    {
+        auto context = tr.getCurrentPlaybackContext();
+        if (context == nullptr) return true;
+        auto playhead = context->getNodePlayHead();
+        const bool moving = tr.isPlaying() || (playhead != nullptr && playhead->isPlaying());
+        if (tr.isPlaying()) tr.stop (false, false);
+        else if (moving) playhead->stop();
+        return ! moving && ! context->isPlayPending();
+    }
+
+    /** The track's monitor button: explicit on or off for the inputs feeding it */
+    inline void setInputMonitoring (te::AudioTrack& t, bool on)
+    {
+        for (auto instance : t.edit.getAllInputDevices())
+            if (instance->getTargets().contains (t.itemID))
+                instance->getInputDevice().setMonitorMode (on ? te::InputDevice::MonitorMode::on : te::InputDevice::MonitorMode::off);
+        // the engine builds live inputs into what it plays: make sure that's running, and rebuilt with this input in it
+        t.edit.getTransport().ensureContextAllocated();
+        t.edit.restartPlayback();
+    }
+
     inline void enableInputMonitoring (te::AudioTrack& t, bool im, int position = 0)
     {
         if (isInputMonitoringEnabled (t, position) != im)
