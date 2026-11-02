@@ -384,7 +384,7 @@ public:
     MasterStrip (te::Edit& e) : edit (e), fader (true)
     {
         addFx.onClick = [this] { showMasterEffectsMenu(); };
-        addFx.setTooltip ("Add an effect to the whole mix (Encore Master goes here)");
+        addFx.setTooltip ("Add an effect to the whole mix (ENCORE. Master goes here)");
         addAndMakeVisible (addFx);
         fader.onDb = [this] (float v) { if (auto vp = edit.getMasterVolumePlugin()) vp->setVolumeDb (v); };
         addAndMakeVisible (fader);

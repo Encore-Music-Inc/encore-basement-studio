@@ -1,4 +1,4 @@
-; Encore: Basement Studio installer for Windows (Inno Setup 6)
+; ENCORE. Basement Studio installer for Windows (Inno Setup 6)
 ;
 ;   ISCC.exe /DAppVersion=0.4.0 /DBuildDir=..\build\EncoreStudio_artefacts\Release installer\EncoreStudio.iss
 ;
@@ -19,10 +19,10 @@
 
 [Setup]
 AppId={{85CBF2F3-407D-4790-8345-BA701885E638}
-AppName=Encore: Basement Studio
+AppName=ENCORE. Basement Studio
 AppVersion={#AppVersion}
-AppVerName=Encore: Basement Studio {#AppVersion}
-AppPublisher=Encore Music
+AppVerName=ENCORE. Basement Studio {#AppVersion}
+AppPublisher=ENCORE. Music
 AppPublisherURL=https://encoremusic.studio
 AppSupportURL=https://github.com/jimmyrlondo/encore-studio/issues
 AppUpdatesURL=https://github.com/jimmyrlondo/encore-studio/releases
@@ -39,7 +39,7 @@ CloseApplications=yes
 WizardStyle=modern
 SetupIconFile=encore.ico
 UninstallDisplayIcon={app}\Encore Studio.exe
-UninstallDisplayName=Encore: Basement Studio
+UninstallDisplayName=ENCORE. Basement Studio
 OutputDir=..\dist
 OutputBaseFilename=Encore-Studio-{#AppVersion}-windows-setup
 Compression=lzma2/max
@@ -47,8 +47,8 @@ SolidCompression=yes
 InfoBeforeFile=welcome.txt
 
 [Tasks]
-Name: "desktopicon"; Description: "Put Encore: Basement Studio on the desktop"; GroupDescription: "Shortcuts:"
-Name: "associate"; Description: "Open .encore songs with Encore: Basement Studio"; GroupDescription: "Songs:"
+Name: "desktopicon"; Description: "Put ENCORE. Basement Studio on the desktop"; GroupDescription: "Shortcuts:"
+Name: "associate"; Description: "Open .encore songs with ENCORE. Basement Studio"; GroupDescription: "Songs:"
 
 [Files]
 Source: "{#BuildDir}\Encore Studio.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -59,23 +59,25 @@ Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\README.md"; DestDir: "{app}"
 
 [InstallDelete]
-; shortcuts from before the rename (Encore Studio, Encore Basement)
+; shortcuts from before the renames (Encore Studio, Encore Basement, Encore Basement Studio)
 Type: files; Name: "{autoprograms}\Encore Studio.lnk"
 Type: files; Name: "{autodesktop}\Encore Studio.lnk"
 Type: files; Name: "{autoprograms}\Encore Basement.lnk"
 Type: files; Name: "{autodesktop}\Encore Basement.lnk"
+Type: files; Name: "{autoprograms}\Encore Basement Studio.lnk"
+Type: files; Name: "{autodesktop}\Encore Basement Studio.lnk"
 
 [Icons]
-Name: "{autoprograms}\Encore Basement Studio"; Filename: "{app}\Encore Studio.exe"
-Name: "{autodesktop}\Encore Basement Studio"; Filename: "{app}\Encore Studio.exe"; Tasks: desktopicon
+Name: "{autoprograms}\ENCORE. Basement Studio"; Filename: "{app}\Encore Studio.exe"
+Name: "{autodesktop}\ENCORE. Basement Studio"; Filename: "{app}\Encore Studio.exe"; Tasks: desktopicon
 
 [Registry]
-; .encore and .basement songs open in Encore: Basement Studio (per user or machine, whichever this install is)
+; .encore and .basement songs open in ENCORE. Basement Studio (per user or machine, whichever this install is)
 Root: HKA; Subkey: "Software\Classes\.encore"; ValueType: string; ValueName: ""; ValueData: "EncoreStudio.Song"; Flags: uninsdeletevalue; Tasks: associate
 Root: HKA; Subkey: "Software\Classes\.basement"; ValueType: string; ValueName: ""; ValueData: "EncoreStudio.Song"; Flags: uninsdeletevalue; Tasks: associate
-Root: HKA; Subkey: "Software\Classes\EncoreStudio.Song"; ValueType: string; ValueName: ""; ValueData: "Encore: Basement Studio song"; Flags: uninsdeletekey; Tasks: associate
+Root: HKA; Subkey: "Software\Classes\EncoreStudio.Song"; ValueType: string; ValueName: ""; ValueData: "ENCORE. Basement Studio song"; Flags: uninsdeletekey; Tasks: associate
 Root: HKA; Subkey: "Software\Classes\EncoreStudio.Song\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Encore Studio.exe,0"; Tasks: associate
 Root: HKA; Subkey: "Software\Classes\EncoreStudio.Song\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Encore Studio.exe"" ""%1"""; Tasks: associate
 
 [Run]
-Filename: "{app}\Encore Studio.exe"; Description: "Open Encore: Basement Studio now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Encore Studio.exe"; Description: "Open ENCORE. Basement Studio now"; Flags: nowait postinstall skipifsilent

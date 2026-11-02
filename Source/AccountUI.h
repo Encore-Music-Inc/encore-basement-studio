@@ -80,18 +80,18 @@ public:
         addAndMakeVisible (problem);
         note.setJustificationType (juce::Justification::topLeft);
         moreNote.setJustificationType (juce::Justification::topLeft);
-        note.setText ("Encore accounts are coming soon. Until then this profile lives on this computer, "
-                      "and it links to your Encore account when sign-in arrives.", juce::dontSendNotification);
+        note.setText ("ENCORE. accounts are coming soon. Until then this profile lives on this computer, "
+                      "and it links to your ENCORE. account when sign-in arrives.", juce::dontSendNotification);
         moreNote.setText ("Optional. These go into your songs' details and the notes that go out with a release.", juce::dontSendNotification);
 
         hubui::styleEditor (name, "Your name");
-        hubui::styleEditor (email, "Optional, for linking your Encore account later");
+        hubui::styleEditor (email, "Optional, for linking your ENCORE. account later");
         hubui::styleEditor (artistName, "Your artist or band name");
         hubui::styleEditor (labelName, "Your label's name");
         hubui::styleEditor (genre.getEditor());
         hubui::styleEditor (hometown, "City, state or country");
         hubui::styleEditor (members, "One per line: name and what they play (Jimmy: guitar, vocals)");
-        hubui::styleEditor (website, "Your site, Encore page or socials");
+        hubui::styleEditor (website, "Your site, ENCORE. page or socials");
         hubui::styleEditor (copyright, "Who owns the recordings (you, your band or your label)");
         hubui::styleEditor (ipi, "The songwriter's IPI/CAE number, if you have one");
         members.setMultiLine (true, true);
@@ -173,7 +173,7 @@ public:
         mark.removeFromLeft (14);
         g.setColour (theme::paper);
         g.setFont (hubui::font (24.0f, true));
-        g.drawText (firstRun ? "Welcome to Encore: Basement Studio" : "Your profile", mark.removeFromTop (32), juce::Justification::bottomLeft);
+        g.drawText (firstRun ? "Welcome to ENCORE. Basement Studio" : "Your profile", mark.removeFromTop (32), juce::Justification::bottomLeft);
         g.setColour (theme::text2);
         g.setFont (hubui::font (14.0f));
         g.drawText ("Who are you making music as?", mark, juce::Justification::topLeft);
@@ -303,7 +303,7 @@ private:
 
     void chooseLibrary()
     {
-        auto chooser = std::make_shared<juce::FileChooser> ("Where should Encore Basement Studio keep your music? (Pick a roomy drive)", library);
+        auto chooser = std::make_shared<juce::FileChooser> ("Where should ENCORE. Basement Studio keep your music? (Pick a roomy drive)", library);
         juce::Component::SafePointer<AccountComponent> safe (this);
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [safe, chooser] (const juce::FileChooser&)
         {

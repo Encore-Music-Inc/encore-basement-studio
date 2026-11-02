@@ -324,7 +324,7 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
             byMaker[maker].addItem (d.name, item);
     }
 
-    if (encore.getNumItems() > 0) { m.addSectionHeader ("Encore"); for (PopupMenu::MenuItemIterator it (encore); it.next();) m.addItem (PopupMenu::Item (it.getItem())); }
+    if (encore.getNumItems() > 0) { m.addSectionHeader ("ENCORE."); for (PopupMenu::MenuItemIterator it (encore); it.next();) m.addItem (PopupMenu::Item (it.getItem())); }
     m.addSectionHeader ("Your plugins");
     if (byMaker.empty()) m.addItem ("None found yet", false, false, nullptr);
     for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);

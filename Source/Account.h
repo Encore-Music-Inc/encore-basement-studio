@@ -169,13 +169,13 @@ namespace library
         dir.getChildFile ("artist.json").replaceWithText (juce::JSON::toString (juce::var (o)));
         auto readme = dir.getChildFile ("What goes where.txt");
         if (! readme.existsAsFile())
-            readme.replaceWithText (a.name + "'s music, kept by Encore: Basement Studio\r\n\r\n"
+            readme.replaceWithText (a.name + "'s music, kept by ENCORE. Basement Studio\r\n\r\n"
                                     "Songs     Every song's session: the song file, its recordings and imported audio.\r\n"
                                     "          Back up or move a song by copying its folder.\r\n"
-                                    "Releases  Singles, EPs and albums, as they go to Encore.\r\n"
+                                    "Releases  Singles, EPs and albums, as they go to ENCORE.\r\n"
                                     "Masters   Every finished master. When a song is mastered again, the earlier\r\n"
                                     "          one moves to \"Earlier masters\" so nothing is ever lost.\r\n"
-                                    "Live      Live shows brought in from Encore Live or a multitrack recorder.\r\n");
+                                    "Live      Live shows brought in from ENCORE. Live or a multitrack recorder.\r\n");
         return dir;
     }
 

@@ -68,7 +68,7 @@ juce_add_gui_app(EncoreStudio
     BUNDLE_ID com.encoremusic.studio
     VERSION ${PROJECT_VERSION}
     MICROPHONE_PERMISSION_ENABLED TRUE
-    MICROPHONE_PERMISSION_TEXT "Encore Basement Studio records from your audio inputs."
+    MICROPHONE_PERMISSION_TEXT "ENCORE. Basement Studio records from your audio inputs."
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Assets/encore-icon.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/Assets/encore-icon.png"
     NEEDS_CURL FALSE

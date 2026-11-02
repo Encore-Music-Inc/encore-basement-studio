@@ -924,7 +924,7 @@ private:
 
     void chooseWhere()
     {
-        auto chooser = std::make_shared<juce::FileChooser> ("Where should Encore Basement Studio keep your songs? (Pick a roomy drive)", projectsFolder());
+        auto chooser = std::make_shared<juce::FileChooser> ("Where should ENCORE. Basement Studio keep your songs? (Pick a roomy drive)", projectsFolder());
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
                               [this, chooser] (const juce::FileChooser&)
                               {
@@ -1148,7 +1148,7 @@ public:
         }
 
         // links heading + version
-        hubui::drawHeading (g, "Encore", linksArea().removeFromTop (16));
+        hubui::drawHeading (g, "ENCORE.", linksArea().removeFromTop (16));
         g.setColour (theme::muted);
         g.setFont (hubui::font (12.0f));
         g.drawText ("Version " + juce::String (ProjectInfo::versionString) + "  ·  Free software (AGPLv3)",
@@ -1198,7 +1198,7 @@ private:
     juce::ComboBox artistBox;
     juce::TextButton accountButton { "Account" }, signInButton { "Set up your profile" };
     static constexpr int accountH = 70, addArtistId = 9000;
-    juce::HyperlinkButton studioLink { "Encore", {} }, guideLink { "User guide", {} }, issueLink { "Report a problem", {} }, updatesLink { "What's new / updates", {} };
+    juce::HyperlinkButton studioLink { "ENCORE.", {} }, guideLink { "User guide", {} }, issueLink { "Report a problem", {} }, updatesLink { "What's new / updates", {} };
 
     juce::Rectangle<int> leftArea() const { return getLocalBounds().removeFromLeft (juce::jlimit (300, 380, getWidth() * 3 / 10)); }
     juce::Rectangle<int> audioCard() const

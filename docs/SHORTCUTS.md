@@ -1,4 +1,4 @@
-# Encore: Basement Studio keyboard shortcuts (0.4.0 defaults)
+# ENCORE. Basement Studio keyboard shortcuts (0.4.0 defaults)
 
 Every action Studio has, with its shortcut today. Change any of them in Preferences > Keyboard Shortcuts
 (Help > Keyboard Shortcuts, or Ctrl+Alt+K). A dash means no shortcut yet.
@@ -19,12 +19,12 @@ Every action Studio has, with its shortcut today. Change any of them in Preferen
 | Revert | - |
 | Audio File... | Ctrl+I |
 | MIDI File... | - |
-| Live Recording (Encore Live or multitrack WAV)... | - |
+| Live Recording (ENCORE. Live or multitrack WAV)... | - |
 | Audio Mixdown or Stems... | Ctrl+E |
 | Song Folder as Zip... | - |
 | Preferences... | Ctrl+, |
 | Quit | Ctrl+Q |
-| Send to Encore... | - |
+| Send to ENCORE... | - |
 
 ## Edit
 
@@ -168,4 +168,4 @@ Every action Studio has, with its shortcut today. Change any of them in Preferen
 | Check for Updates... | - |
 | Check for Updates Once a Day | - |
 | Open Log Folder | - |
-| About Encore: Basement Studio | - |
+| About ENCORE. Basement Studio | - |

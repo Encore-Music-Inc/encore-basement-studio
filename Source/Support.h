@@ -99,10 +99,10 @@ namespace support
     {
         const auto now = juce::Time::getCurrentTime();
         auto zip = juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
-                       .getNonexistentChildFile ("Encore Basement Studio problem report " + now.formatted ("%Y-%m-%d %H%M"), ".zip", false);
+                       .getNonexistentChildFile ("ENCORE. Basement Studio problem report " + now.formatted ("%Y-%m-%d %H%M"), ".zip", false);
         juce::ZipFile::Builder b;
         juce::String readme;
-        readme << "Encore: Basement Studio problem report" << juce::newLine
+        readme << "ENCORE. Basement Studio problem report" << juce::newLine
                << "Made " << now.toString (true, true) << juce::newLine << juce::newLine
                << "What happened:" << juce::newLine << (whatHappened.isNotEmpty() ? whatHappened : juce::String ("(not filled in)")) << juce::newLine << juce::newLine
                << systemInfo;
@@ -135,8 +135,8 @@ namespace support
         ReportComponent (bool hasSong, bool crashedLastTime)
         {
             hubui::styleLabel (intro, 14.0f, theme::paper);
-            intro.setText (juce::String (crashedLastTime ? "Encore Basement Studio didn't close properly last time. Sorry about that.\n" : "")
-                             + "Tell us what happened. Encore Basement Studio makes a zip on your Desktop with this, its log and your audio setup "
+            intro.setText (juce::String (crashedLastTime ? "ENCORE. Basement Studio didn't close properly last time. Sorry about that.\n" : "")
+                             + "Tell us what happened. ENCORE. Basement Studio makes a zip on your Desktop with this, its log and your audio setup "
                                "(no recordings), then opens a new GitHub issue to attach it to.",
                            juce::dontSendNotification);
             intro.setJustificationType (juce::Justification::topLeft);

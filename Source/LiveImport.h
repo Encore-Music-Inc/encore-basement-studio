@@ -32,7 +32,7 @@ namespace liveimport
         if (file.hasFileExtension ("json"))
         {
             const auto json = juce::JSON::parse (file);
-            if (json["kind"].toString() != "encore-live-session") { s.problem = file.getFileName() + " isn't an Encore Live session."; return s; }
+            if (json["kind"].toString() != "encore-live-session") { s.problem = file.getFileName() + " isn't an ENCORE. Live session."; return s; }
             const auto rec = json["recording"];
             s.recording = file.getSiblingFile (rec["file"].toString());
             if (auto* names = rec["channelNames"].getArray()) for (auto& n : *names) s.names.add (n.toString());

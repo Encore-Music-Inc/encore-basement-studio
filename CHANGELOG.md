@@ -2,9 +2,13 @@
 
 ## 0.4.0 (not released yet)
 
-**Encore: Basement is now Encore: Basement Studio.** Your settings and songs carry
+**Encore: Basement is now ENCORE. Basement Studio.** Your settings and songs carry
 over by themselves. New songs are saved as .encore files, and .basement songs
 still open as they are.
+
+The name is written ENCORE. Basement Studio everywhere you see it: the window
+title, menus, dialogs, the installer and its shortcuts. The program file,
+install folder and settings keep their old names, so updating keeps everything.
 
 - Tabs under the toolbar for the parts you jump between: Tracks, Mixer, Piano
   Roll, Drum Grid and Tuner (Alt+1 to Alt+5). Add Track, Import and Export
@@ -35,9 +39,9 @@ still open as they are.
 - New Song: the song's details first, then where it starts from, with its
   tracks right under it. Blank really is blank; the band sizes and Live
   multitrack starting points are gone (Full band stays).
-- Your profile: several genres from Apple Music's list (what Encore uses),
+- Your profile: several genres from Apple Music's list (what ENCORE. uses),
   hometown, members, website, who owns the recordings, and the songwriter's
-  PRO and IPI, which go into what's sent to Encore.
+  PRO and IPI, which go into what's sent to ENCORE.
 - Stopping is stopping: pressing Space just after Record or Play, while the
   song was still getting ready, could leave the playhead running. Stopping
   during a count-in puts the playhead back where the take would have started.
@@ -55,13 +59,13 @@ still open as they are.
 - Plugins that open a window while being checked (an activation prompt) no
   longer flash it on screen.
 - Who you're making music as: the first screen asks for an artist or band, or
-  a record label and its artists (a profile on this computer until Encore
+  a record label and its artists (a profile on this computer until ENCORE.
   sign-in arrives). Pick the artist on the start page or in the Account menu,
   and new songs get their name and genre filled in.
 - A folder for each artist, in a music library you choose: Songs, Releases,
   Masters and Live. Every finished export of a whole song is also kept in
   Masters, and when it's mastered again the earlier one moves to "Earlier
-  masters", so nothing is lost. Send to Encore packages go in Releases, and
+  masters", so nothing is lost. Send to ENCORE. packages go in Releases, and
   live shows go in Live.
 - An installer for Windows (Start menu and desktop shortcuts, opens .encore
   songs on double-click, and an uninstaller that leaves your music alone) and
@@ -96,11 +100,11 @@ still open as they are.
 - Templates for real setups: bands on 2, 4 and 8-input interfaces (drums on
   every input, then overdubs), and a full band live, already grouped. Tiles
   say whether a template fits your interface.
-- Send to Encore (File > Export): a release package with the master, stems,
-  cover art and release.json, then Encore opens to upload it.
+- Send to ENCORE. (File > Export): a release package with the master, stems,
+  cover art and release.json, then ENCORE. opens to upload it.
 - Master it on export: pick a style (Balanced, Heavy, Bright, Warm), a
   loudness (Streaming -14, Balanced -11, Loud -9) and how hard, and the mix
-  goes out through Encore Master. It learns the song on its loudest 30
+  goes out through ENCORE. Master. It learns the song on its loudest 30
   seconds first, so the whole song is mastered evenly. Your song doesn't
   change. Listen plays 30 seconds mastered; flip to the original, or match
   their loudness for a fair comparison.
@@ -113,7 +117,7 @@ still open as they are.
   File > Versions (Ctrl+Alt+V) lists every version with its note, opens any
   of them, and compares one with the open song by ear (the same 30 seconds of
   each, switching between them).
-- Import a live recording (File > Import > Live Recording): an Encore Live
+- Import a live recording (File > Import > Live Recording): an ENCORE. Live
   session or any multichannel WAV becomes a track per input, grouped by name
   (drums, vocals, guitars), with a marker at each song, or a Studio song for
   each song in the show. Inputs with nothing on them are left out.

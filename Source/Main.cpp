@@ -38,7 +38,7 @@ using namespace tracktion::literals;
 class StudioApplication : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override    { return "Encore Basement Studio"; }
+    const juce::String getApplicationName() override    { return "ENCORE. Basement Studio"; }
     const juce::String getApplicationVersion() override { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override          { return true; }
 
@@ -158,7 +158,7 @@ private:
     {
     public:
         explicit MainWindow (juce::JUCEApplication& a)
-            : DocumentWindow ("Encore: Basement Studio", theme::base, DocumentWindow::allButtons), app (a)
+            : DocumentWindow ("ENCORE. Basement Studio", theme::base, DocumentWindow::allButtons), app (a)
         {
             setUsingNativeTitleBar (true);
             setIcon (encoreIconImage (256)); // title bar and taskbar (the .exe itself carries it too)

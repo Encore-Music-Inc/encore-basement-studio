@@ -119,7 +119,7 @@ namespace genres
             editor.setJustification (juce::Justification::centredLeft);
             editor.onTextChange = [this] { if (onChange) onChange(); };
             pick.setButtonText (several ? "Add..." : "List...");
-            pick.setTooltip ("Apple Music's genres (what Encore uses)");
+            pick.setTooltip ("Apple Music's genres (what ENCORE. uses)");
             pick.onClick = [this]
             {
                 juce::Component::SafePointer<Field> safe (this);

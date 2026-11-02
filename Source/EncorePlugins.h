@@ -87,7 +87,7 @@ protected:
                 callback (std::move (p), {});
                 return;
             }
-        callback (nullptr, "Not one of Encore's plugins: " + d.fileOrIdentifier);
+        callback (nullptr, "Not one of the ENCORE. plugins: " + d.fileOrIdentifier);
     }
 };
 
