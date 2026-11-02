@@ -258,12 +258,22 @@ namespace EngineHelpers
         return ! moving && ! context->isPlayPending();
     }
 
-    /** The track's monitor button: explicit on or off for the inputs feeding it */
+    /** The track's monitor button, for this track alone: tracks sharing an input (overdubs on input 2) each have
+        their own, through a "monitor" flag on each of the input's destinations (patches/tracktion-per-track-monitor.patch).
+        The input itself is on while any track on it is monitoring. */
     inline void setInputMonitoring (te::AudioTrack& t, bool on)
     {
         for (auto instance : t.edit.getAllInputDevices())
-            if (instance->getTargets().contains (t.itemID))
-                instance->getInputDevice().setMonitorMode (on ? te::InputDevice::MonitorMode::on : te::InputDevice::MonitorMode::off);
+        {
+            if (! instance->getTargets().contains (t.itemID)) continue;
+            bool any = false;
+            for (auto dest : instance->destinations)
+            {
+                if (dest->targetID == t.itemID) dest->state.setProperty ("monitor", on, nullptr);
+                any = any || (bool) dest->state.getProperty ("monitor");
+            }
+            instance->getInputDevice().setMonitorMode (any ? te::InputDevice::MonitorMode::on : te::InputDevice::MonitorMode::off);
+        }
         // the engine builds live inputs into what it plays: make sure that's running, and rebuilt with this input in it
         t.edit.getTransport().ensureContextAllocated();
         t.edit.restartPlayback();

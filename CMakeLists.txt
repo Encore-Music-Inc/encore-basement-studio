@@ -46,6 +46,20 @@ if (STUDIO_BRIDGE_ONLY)
     return()
 endif()
 
+# Encore's few changes to Tracktion (patches/*.patch), applied to the submodule if they aren't already
+file(GLOB TRACKTION_PATCHES ${CMAKE_SOURCE_DIR}/patches/tracktion-*.patch)
+foreach(patch ${TRACKTION_PATCHES})
+    execute_process(COMMAND git apply --reverse --check --ignore-whitespace ${patch}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/tracktion_engine RESULT_VARIABLE patch_present OUTPUT_QUIET ERROR_QUIET)
+    if(NOT patch_present EQUAL 0)
+        execute_process(COMMAND git apply --ignore-whitespace ${patch}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/tracktion_engine RESULT_VARIABLE patch_failed)
+        if(NOT patch_failed EQUAL 0)
+            message(FATAL_ERROR "Couldn't apply ${patch} to external/tracktion_engine")
+        endif()
+        message(STATUS "Applied ${patch}")
+    endif()
+endforeach()
 add_subdirectory(external/tracktion_engine/modules ${CMAKE_BINARY_DIR}/tracktion)
 
 juce_add_gui_app(EncoreStudio

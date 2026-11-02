@@ -189,6 +189,46 @@ namespace audiotest
         EngineHelpers::setInputMonitoring (two, false);
         pump (0.5);
 
+        // 2b. two tracks on the same input (overdubs): each one's monitor button is its own
+        {
+            edit->ensureNumberOfAudioTracks (4);
+            auto all = te::getAudioTracks (*edit);
+            auto& shared = *all[2];
+            device.toneOn = 0;
+            expect ("track 3 also takes input 1", assign (shared, inputs[0]));
+            tr.ensureContextAllocated();
+            pump (0.5);
+            Meter oneLevel (one.getLevelMeterPlugin()->measurer), sharedLevel (shared.getLevelMeterPlugin()->measurer);
+            EngineHelpers::setInputMonitoring (one, true);
+            pump (0.5);
+            auto a1 = oneLevel.read (0.6), a3 = sharedLevel.read (0.6);
+            expect ("shared input: monitoring track 1 leaves track 3 off", EngineHelpers::isInputMonitoringEnabled (one) && ! EngineHelpers::isInputMonitoringEnabled (shared));
+            expect ("shared input: only track 1 plays the input", a1 > -40.0f && a3 < -90.0f, "track 1 " + String (a1, 1) + " dB, track 3 " + String (a3, 1) + " dB");
+            // a track that joins the input while another is monitoring doesn't monitor
+            auto& late = *all[3];
+            expect ("track 4 also takes input 1", assign (late, inputs[0]));
+            tr.ensureContextAllocated();
+            pump (0.5);
+            Meter lateLevel (late.getLevelMeterPlugin()->measurer);
+            auto a4 = lateLevel.read (0.6);
+            expect ("shared input: a track added later isn't monitoring", ! EngineHelpers::isInputMonitoringEnabled (late) && a4 < -90.0f, String (a4, 1) + " dB");
+            EngineHelpers::setInputMonitoring (shared, true);
+            EngineHelpers::setInputMonitoring (one, false);
+            pump (0.5);
+            a1 = oneLevel.read (0.6); a3 = sharedLevel.read (0.6);
+            expect ("shared input: switched over to track 3", ! EngineHelpers::isInputMonitoringEnabled (one) && EngineHelpers::isInputMonitoringEnabled (shared)
+                     && a1 < -90.0f && a3 > -40.0f, "track 1 " + String (a1, 1) + " dB, track 3 " + String (a3, 1) + " dB");
+            expect ("shared input: still heard", listen (0.8) > 0.05f);
+            EngineHelpers::setInputMonitoring (shared, false);
+            pump (0.5);
+            expect ("shared input: both off is silent", listen (0.6) < 0.001f);
+            for (auto* t : { &shared, &late })
+                for (auto instance : edit->getAllInputDevices())
+                    if (instance->getTargets().contains (t->itemID)) [[maybe_unused]] auto r = instance->removeTarget (t->itemID, nullptr);
+            tr.ensureContextAllocated();
+            pump (0.5);
+        }
+
         // 3. monitoring while the song plays
         device.toneOn = 0;
         tr.play (false);

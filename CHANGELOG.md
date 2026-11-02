@@ -50,6 +50,8 @@ still open as they are.
   keep their input numbers when the driver names inputs differently.
 - The notice about a missing interface also covers another app holding it.
 - Space a moment after Record no longer brings up a box about a zero-length file.
+- Tracks that share an input (overdubs on input 2) each have their own monitor
+  button: turning one on no longer turns them all on.
 - Plugins that open a window while being checked (an activation prompt) no
   longer flash it on screen.
 - Who you're making music as: the first screen asks for an artist or band, or
