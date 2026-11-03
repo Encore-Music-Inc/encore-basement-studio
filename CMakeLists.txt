@@ -82,10 +82,10 @@ juce_generate_juce_header(EncoreStudio)
 target_sources(EncoreStudio PRIVATE Source/Main.cpp $<$<PLATFORM_ID:Windows>:Source/bridge/Shm.cpp>)
 target_include_directories(EncoreStudio PRIVATE Source)
 
-# Encore's own plugins (Vox, Verb, Equalize, Master), built in: Encore Studio hosts
+# Encore's own plugins (Vox, Verb, Equalize, Master, Strum), built in: Encore Studio hosts
 # their processors directly. The sources in encore/ come from the plugin repo
 # (tools/sync-encore-plugins.ps1); each plugin's files get its product name.
-foreach (entry "Vox|Encore Vox" "Verb|Encore Verb" "EQ|Encore Equalize" "Master|Encore Master")
+foreach (entry "Vox|Encore Vox" "Verb|Encore Verb" "EQ|Encore Equalize" "Master|Encore Master" "Strum|Encore Strum")
     string (REPLACE "|" ";" parts "${entry}")
     list (GET parts 0 dir)
     list (GET parts 1 product)
@@ -95,6 +95,8 @@ foreach (entry "Vox|Encore Vox" "Verb|Encore Verb" "EQ|Encore Equalize" "Master|
     set_source_files_properties(${plugin_sources} PROPERTIES COMPILE_DEFINITIONS "JucePlugin_Name=\"${product}\"")
 endforeach()
 target_include_directories(EncoreStudio PRIVATE encore/shared)
+# the app keeps its own default look and fonts; the plugins don't take them over
+target_compile_definitions(EncoreStudio PRIVATE ENCORE_PLUGIN_OWNS_DEFAULT_LOOK=0)
 
 # older VST2 plugins: FST, an open (GPLv3+) stand-in for the VST2 headers
 target_include_directories(EncoreStudio PRIVATE external/fst)

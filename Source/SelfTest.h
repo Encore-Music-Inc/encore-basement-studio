@@ -375,7 +375,7 @@ namespace selftest
                         MessageManager::getInstance()->runDispatchLoopUntil (20);
                     if (ext->getAudioPluginInstance() != nullptr) ++loaded;
                 }
-            expect ("Encore plugins saved with the song and load again", encoreOnTrack == 4 && loaded == 4,
+            expect ("Encore plugins saved with the song and load again", encoreOnTrack == (int) EncorePluginFormat::entries().size() && loaded == encoreOnTrack,
                     String (loaded) + " of " + String (encoreOnTrack) + " loaded: " + ids.joinIntoString (", "));
         }
 

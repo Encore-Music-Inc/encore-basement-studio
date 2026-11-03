@@ -1074,9 +1074,12 @@ public:
     MainComponent()
     {
         studioLog ("startup: engine ready in " + juce::String (juce::Time::getMillisecondCounterHiRes() - constructionStarted, 0) + " ms");
+        lastStartupStep = juce::Time::getMillisecondCounterHiRes();
         registerEncorePlugins (engine);
         registerBridgedPlugins (engine);   // 32-bit plugins, through the bridge
+        startupStep ("plugin formats");
         if (props().containsKey ("clickSound")) clicks::apply (engine, props().getIntValue ("clickSound", 0), props().getIntValue ("clickAccent", 0));
+        startupStep ("click sound");
         behaviour->songFolder = [this] { return songFile.getParentDirectory(); };
 
         commandManager.registerAllCommandsForTarget (this);
@@ -1102,6 +1105,7 @@ public:
                                          [safe = juce::Component::SafePointer<MainComponent> (this)] (int r) { if (safe && r > 0) safe->accountItem (r); });
         };
         addChildComponent (*hub);
+        startupStep ("menus and home screen");
 
         for (auto* b : { &homeButton, &playButton, &recordButton, &loopButton, &clickButton })
         {
@@ -1193,9 +1197,12 @@ public:
 
         // the interface opens a moment after startup; then see if it has its own ASIO driver
         juce::Timer::callAfterDelay (1200, [safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe) safe->preferInterfaceAsio(); });
+        startupStep ("toolbar and views");
         setupInputs();
+        startupStep ("inputs");
         engine.getDeviceManager().addChangeListener (this);
         setSize (1400, 860);
+        startupStep ("layout");
         juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)]
         {
             // set after the first song has opened (and checked for a crash), cleared on a clean exit
@@ -1219,6 +1226,7 @@ public:
             hub->showTab (hub->recentCount() > 0 ? 0 : 1);
         }
         if (account::neverAsked()) showFirstScreen();   // the very first screen: who you're making music as
+        startupStep ("recent songs and account");
         // the window shows first; then the audio interface opens, then the last song (if that's the setting)
         juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this), openLast, last]
         {
@@ -1308,7 +1316,7 @@ public:
         mark.removeFromLeft (10);
         g.setColour (theme::text2);
         g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-        g.drawText ("ENCORE: BASEMENT", mark.withTrimmedBottom (mark.getHeight() / 2 - 2), juce::Justification::bottomLeft);
+        g.drawText ("ENCORE. BASEMENT", mark.withTrimmedBottom (mark.getHeight() / 2 - 2), juce::Justification::bottomLeft);
         g.setColour (theme::paper);
         g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
         g.drawText ("STUDIO", mark.withTrimmedTop (mark.getHeight() / 2 - 2), juce::Justification::topLeft);
@@ -1914,6 +1922,15 @@ private:
     //==============================================================================
     static constexpr int menuH = 26, toolbarH = 56, recentBaseId = 0x5000, comingSoonId = 0x5fff;
     double constructionStarted = juce::Time::getMillisecondCounterHiRes();
+    double lastStartupStep = constructionStarted;
+    /** Logs a startup step that took long enough to notice, so a slow start says where its time went */
+    void startupStep (const char* what)
+    {
+        const auto now = juce::Time::getMillisecondCounterHiRes();
+        if (now - lastStartupStep > 150.0)
+            studioLog ("startup: " + juce::String (what) + " took " + juce::String (now - lastStartupStep, 0) + " ms");
+        lastStartupStep = now;
+    }
     StudioBehaviour* behaviour = new StudioBehaviour (true); // owned by the engine
     te::Engine engine { studioProfile(), std::make_unique<StudioUIBehaviour>(), std::unique_ptr<te::EngineBehaviour> (behaviour) };
     te::SelectionManager selectionManager { engine };

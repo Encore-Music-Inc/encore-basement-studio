@@ -299,7 +299,7 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
         for (int i = 0; i < list.size(); ++i)
             if (dynamic_cast<te::VolumeAndPanPlugin*> (list[i].get()) != nullptr || dynamic_cast<te::LevelMeterPlugin*> (list[i].get()) != nullptr) { index = i; break; }
         track->pluginList.insertPlugin (p, index, sm);
-        p->showWindowExplicitly();
+        openPluginWindow (*p);
     };
 
     PopupMenu m, encore, instruments;
@@ -1411,7 +1411,7 @@ PluginComponent::PluginComponent (EditViewState& evs, te::Plugin::Ptr p)
     : editViewState (evs), plugin (p)
 {
     setButtonText (plugin->getName().substring (0, 18));
-    setTooltip (plugin->getName() + ": click to open, right-click for more");
+    setTooltip (plugin->getName() + ": click to open, x to remove, right-click for more");
 }
 
 void PluginComponent::paintButton (Graphics& g, bool over, bool down)
@@ -1425,9 +1425,23 @@ void PluginComponent::paintButton (Graphics& g, bool over, bool down)
     const bool on = plugin->isEnabled();
     g.setColour (on ? theme::accent : theme::muted);
     g.fillEllipse (r.removeFromLeft (r.getHeight()).reduced (r.getHeight() * 0.36f));
-    g.setColour (on ? theme::paper : theme::muted);
     g.setFont (FontOptions (13.0f));
+    // the remove x, shown while the mouse is over the chip (Edit > Undo brings the plugin back)
+    if (over)
+    {
+        auto x = r.removeFromRight (r.getHeight()).reduced (r.getHeight() * 0.3f);
+        const bool hot = isOverRemove();
+        g.setColour (hot ? theme::paper : theme::muted);
+        g.drawLine (x.getX(), x.getY(), x.getRight(), x.getBottom(), hot ? 1.6f : 1.2f);
+        g.drawLine (x.getX(), x.getBottom(), x.getRight(), x.getY(), hot ? 1.6f : 1.2f);
+    }
+    g.setColour (on ? theme::paper : theme::muted);
     g.drawText (plugin->getName() + (on ? String() : String (" (bypassed)")), r.withTrimmedRight (6).toNearestInt(), Justification::centredLeft, true);
+}
+
+bool PluginComponent::isOverRemove() const
+{
+    return isMouseOver() && getMouseXYRelative().x >= getWidth() - getHeight();
 }
 
 PluginComponent::~PluginComponent()
@@ -1441,7 +1455,7 @@ void PluginComponent::clicked (const ModifierKeys& modifiers)
     {
         PopupMenu m;
         te::Plugin::Ptr p (plugin);
-        m.addItem ("Open " + p->getName(), [p] { p->showWindowExplicitly(); });
+        m.addItem ("Open " + p->getName(), [p] { openPluginWindow (*p); });
         m.addItem ("Bypass", true, ! p->isEnabled(), [p] { p->setEnabled (! p->isEnabled()); });
         m.addSeparator();
         auto* list = p->getOwnerList();
@@ -1462,13 +1476,19 @@ void PluginComponent::clicked (const ModifierKeys& modifiers)
         m.addItem ("Remove " + p->getName(), [p] { p->deleteFromParent(); });
         m.showMenuAsync (PopupMenu::Options().withTargetComponent (this));
     }
+    else if (isOverRemove())
+    {
+        studioLog ("remove plugin " + plugin->getName());
+        te::Plugin::Ptr p (plugin);
+        MessageManager::callAsync ([p] { p->deleteFromParent(); });   // after this button is done with its click
+    }
     else
     {
         auto* ext = dynamic_cast<te::ExternalPlugin*> (plugin.get());
         studioLog ("open plugin " + plugin->getName() + ": modal=" + String (ModalComponentManager::getInstance()->getNumModalComponents())
                      + " instance=" + String ((int) (ext == nullptr || ext->getAudioPluginInstance() != nullptr))
                      + (ext ? " error=" + ext->getLoadError() : String()));
-        plugin->showWindowExplicitly();
+        openPluginWindow (*plugin);
         studioLog ("  window showing=" + String ((int) plugin->windowState->isWindowShowing()));
     }
 }

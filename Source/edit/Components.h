@@ -12,6 +12,25 @@
 
 #pragma once
 
+/** Opens a plugin's window and brings it to the front. Tracktion hands keyboard
+    focus back to the main window right after it makes a plugin window, and on
+    Windows that raises the main window over the new one, so the plugin seemed
+    not to open at all (the window was there, behind). */
+inline void openPluginWindow (te::Plugin& p)
+{
+    p.showWindowExplicitly();
+    const auto raise = [w = juce::Component::SafePointer<juce::Component> (p.windowState->pluginWindow.get())]
+    {
+        if (w != nullptr && w->isOnDesktop())
+        {
+            if (auto* peer = w->getPeer()) peer->setMinimised (false);
+            w->toFront (true);
+        }
+    };
+    raise();
+    juce::MessageManager::callAsync (raise);   // again once the focus hand-back has happened
+}
+
 namespace IDs
 {
     #define DECLARE_ID(name)  const juce::Identifier name (#name);
@@ -114,7 +133,7 @@ namespace instruments
             if (te::isOnTargetTrack (*instance, t, 0)) [[maybe_unused]] auto r = instance->removeTarget (t.itemID, &e.getUndoManager());
         if (auto midi = midiInput (e)) [[maybe_unused]] auto r = midi->setTarget (t.itemID, true, &e.getUndoManager(), 0);
         t.state.setProperty ("basementInput", "midi", nullptr);
-        if (openWindow) instrument->showWindowExplicitly();
+        if (openWindow) openPluginWindow (*instrument);
     }
 }
 
@@ -623,6 +642,8 @@ public:
     using TextButton::clicked;
     void clicked (const ModifierKeys& modifiers) override;
     void paintButton (Graphics&, bool over, bool down) override;
+    void mouseMove (const MouseEvent& e) override { TextButton::mouseMove (e); repaint(); }
+    bool isOverRemove() const;
 
 private:
     EditViewState& editViewState;

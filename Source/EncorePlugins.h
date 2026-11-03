@@ -1,7 +1,7 @@
 // Encore: Basement Studio
 // Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
 //
-// Encore's own plugins (Vox, Verb, Equalize, Master) built into Studio.
+// Encore's own plugins (Vox, Verb, Equalize, Master, Strum) built into Studio.
 // They're offered as their own plugin format, "Encore", so the engine treats
 // them exactly like any other plugin (parameters, automation, saved state)
 // while they load instantly: there's nothing to scan and no file to find.
@@ -11,6 +11,7 @@ juce::AudioPluginInstance* makeEncoreVox();
 juce::AudioPluginInstance* makeEncoreVerb();
 juce::AudioPluginInstance* makeEncoreEQ();
 juce::AudioPluginInstance* makeEncoreMaster();
+juce::AudioPluginInstance* makeEncoreStrum();
 
 class EncorePluginFormat : public juce::AudioPluginFormat
 {
@@ -25,13 +26,14 @@ public:
         return nullptr;
     }
 
-    static const std::array<Entry, 4>& entries()
+    static const std::array<Entry, 5>& entries()
     {
-        static const std::array<Entry, 4> list { {
+        static const std::array<Entry, 5> list { {
             { "encore:vox",      "Encore Vox",      &makeEncoreVox,    "Vocal chain" },
             { "encore:verb",     "Encore Verb",     &makeEncoreVerb,   "Reverb" },
             { "encore:equalize", "Encore Equalize", &makeEncoreEQ,     "EQ" },
             { "encore:master",   "Encore Master",   &makeEncoreMaster, "Mastering" },
+            { "encore:strum",    "Encore Strum",    &makeEncoreStrum,  "Acoustic guitar" },
         } };
         return list;
     }

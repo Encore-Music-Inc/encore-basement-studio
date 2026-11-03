@@ -270,7 +270,7 @@ private:
             b->onClick = [plugin, b]
             {
                 if (ModifierKeys::currentModifiers.isPopupMenu()) return;
-                plugin->showWindowExplicitly();
+                openPluginWindow (*plugin);
                 juce::ignoreUnused (b);
             };
             b->addMouseListener (this, false);
@@ -320,7 +320,7 @@ private:
             if (p->itemID.toString() == b->getProperties()["pluginID"].toString()) plugin = p;
         if (plugin == nullptr) return;
         PopupMenu m;
-        m.addItem ("Open", [plugin] { plugin->showWindowExplicitly(); });
+        m.addItem ("Open", [plugin] { openPluginWindow (*plugin); });
         m.addItem (plugin->isEnabled() ? "Bypass" : "Turn on", [plugin] { plugin->setEnabled (! plugin->isEnabled()); });
         m.addSeparator();
         m.addItem ("Remove", [plugin] { plugin->deleteFromParent(); });
@@ -448,7 +448,7 @@ private:
             b->onClick = [plugin]
             {
                 if (ModifierKeys::currentModifiers.isPopupMenu()) return;
-                plugin->showWindowExplicitly();
+                openPluginWindow (*plugin);
             };
             b->addMouseListener (this, false);
             b->getProperties().set ("pluginID", p->itemID.toString());
@@ -468,7 +468,7 @@ private:
             if (p->itemID.toString() == b->getProperties()["pluginID"].toString()) plugin = p;
         if (plugin == nullptr) return;
         PopupMenu m;
-        m.addItem ("Open", [plugin] { plugin->showWindowExplicitly(); });
+        m.addItem ("Open", [plugin] { openPluginWindow (*plugin); });
         m.addItem (plugin->isEnabled() ? "Bypass" : "Turn on", [plugin] { plugin->setEnabled (! plugin->isEnabled()); });
         m.addSeparator();
         m.addItem ("Remove", [plugin] { plugin->deleteFromParent(); });
@@ -483,7 +483,7 @@ private:
         {
             if (p == nullptr) return;
             edit.getMasterPluginList().insertPlugin (p, -1, nullptr);
-            p->showWindowExplicitly();
+            openPluginWindow (*p);
         };
         for (auto& d : edit.engine.getPluginManager().knownPluginList.getTypes())
             if (d.pluginFormatName == "Encore")

@@ -1,5 +1,21 @@
 # Changes
 
+## Next
+
+**Plugins open when you click them.** Clicking a plugin in a track's Plug-ins
+column (or the mixer) opened its window behind the main window, so it looked
+like nothing happened. Now it comes to the front.
+
+**Remove a plugin from the track.** Hover a plugin and click the x at its
+right (Edit > Undo brings it back). Right-click still has Remove, Bypass and
+Move Up/Down.
+
+**ENCORE. Strum is built in**, the acoustic guitar fixer, next to Vox, Verb,
+Equalize and Master. The built-in plugins also have the new ENCORE. look.
+
+**A slow start says why.** If starting up ever takes a while, the log names
+the step that took the time (Help > Open Log Folder).
+
 ## 0.4.0 (2026-11-03)
 
 **Encore: Basement is now ENCORE. Basement Studio.** Your settings and songs carry
