@@ -51,6 +51,19 @@ jobs:
           Copy-Item "build/EncoreStudio_artefacts/Release/Encore Studio.exe", "build/EncoreStudio_artefacts/Release/Encore Studio Bridge32.exe", LICENSE, README.md dist/
           Compress-Archive dist/* Encore-Studio-windows.zip
 
+      # ENCORE. VST's installer, offered in Basement's installer as an extra (skipped if it can't be fetched)
+      - name: Fetch the ENCORE. VST installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          try {
+            $tag = gh api repos/jimmyrlondo/encore-vst/releases --jq '[.[] | select(.draft | not) | select(.assets | length > 0)][0].tag_name'
+            gh release download $tag --repo jimmyrlondo/encore-vst --pattern "*windows-setup.exe" --dir build/vst
+            Get-ChildItem build/vst/*.exe | Select-Object -First 1 | Rename-Item -NewName "ENCORE-VST-setup.exe"
+            Get-ChildItem build/vst
+          } catch { Write-Warning "No ENCORE. VST installer: the option is left out ($_)" }
+
       # The installer (Inno Setup): Start menu + desktop shortcuts, opens .encore songs, uninstaller
       - name: Installer
         shell: pwsh

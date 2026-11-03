@@ -1,6 +1,6 @@
 # Changes
 
-## Next
+## 0.4.1 (2026-11-03)
 
 **Plugins open when you click them.** Clicking a plugin in a track's Plug-ins
 column (or the mixer) opened its window behind the main window, so it looked
@@ -12,6 +12,10 @@ Move Up/Down.
 
 **ENCORE. Strum is built in**, the acoustic guitar fixer, next to Vox, Verb,
 Equalize and Master. The built-in plugins also have the new ENCORE. look.
+
+**ENCORE. VST in the installer.** The installer can also put the ENCORE.
+plugins in your other DAWs (Cubase, Reaper, FL Studio and more): tick "Also
+install ENCORE. VST" and pick the plugins in its own window.
 
 **A slow start says why.** If starting up ever takes a while, the log names
 the step that took the time (Help > Open Log Folder).
