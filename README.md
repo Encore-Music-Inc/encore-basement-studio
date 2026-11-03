@@ -111,6 +111,18 @@ cmake --build build --config Release
 a submodule with an SSH address; ENCORE. Basement Studio uses `external/JUCE`, pinned to the
 same commit, instead.)
 
+On Linux (x64 or arm64, including 64-bit Raspberry Pi OS), install the
+libraries first, then build Release (the 32-bit plugin bridge is Windows only):
+
+```
+sudo apt install build-essential cmake ninja-build pkg-config \
+  libasound2-dev libjack-jackd2-dev ladspa-sdk libfreetype-dev libfontconfig1-dev \
+  libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+  libxrandr-dev libxrender-dev libxi-dev
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
 The app ends up in `build/EncoreStudio_artefacts/Release/`. Checks you can run:
 
 - `--selftest <folder>`: makes songs, imports, mixes, exports, reopens, and
