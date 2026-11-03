@@ -143,3 +143,8 @@ target_link_libraries(EncoreStudio PRIVATE
 if (MSVC)
     target_compile_options(EncoreStudio PRIVATE /bigobj /MP)
 endif()
+
+# Linux (GCC): Tracktion keeps some atomics too big for one instruction, which need libatomic
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(EncoreStudio PRIVATE atomic)
+endif()
