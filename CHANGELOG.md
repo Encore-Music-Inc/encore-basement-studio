@@ -1,5 +1,10 @@
 # Changes
 
+## 0.4.2 (2026-11-03)
+
+**The ENCORE. VST option really is in the installer now.** 0.4.1 meant to
+offer it, but a typo in the installer script left it out.
+
 ## 0.4.1 (2026-11-03)
 
 **Plugins open when you click them.** Clicking a plugin in a track's Plug-ins

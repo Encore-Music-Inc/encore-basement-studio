@@ -16,7 +16,7 @@
 ; ENCORE. VST's own installer, offered as an extra (CI downloads the newest one
 ; from github.com/jimmyrlondo/encore-vst; without it the option isn't shown)
 #ifndef VstSetup
-  #define VstSetup "..uildst\ENCORE-VST-setup.exe"
+  #define VstSetup "..\build\vst\ENCORE-VST-setup.exe"
 #endif
 #ifndef BridgeDir
   #define BridgeDir "..\build32\EncoreStudioBridge32_artefacts\Release"
