@@ -1,6 +1,6 @@
 # Changes
 
-## 0.4.0 (not released yet)
+## 0.4.0 (2026-11-03)
 
 **Encore: Basement is now ENCORE. Basement Studio.** Your settings and songs carry
 over by themselves. New songs are saved as .encore files, and .basement songs
