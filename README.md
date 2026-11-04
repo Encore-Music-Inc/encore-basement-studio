@@ -132,6 +132,19 @@ Help > Keyboard Shortcuts has the full list.
 - Sign in with ENCORE. and upload a song to your catalog as a draft
 - A drum editor, and more MIDI tools
 
+## ENCORE. Green Room (web tools)
+
+`web/` holds ENCORE. Green Room, the browser tools (Master, Live, Songbook, Compose, Tune,
+Metronome, Convert and the rest) served at londo.tech/encore-studio. It moved here from
+jimmyrlondo/sick-and-sad with its full history. Start with:
+
+- `web/master/README.md`: how to run it and the tests
+- `web/docs/GREEN-ROOM-TOOLS-INVENTORY.md`: every tool, what it uses, what needs a backend
+- `web/docs/NEXTJS-CONVERSION-GUIDE.md`: the plan for moving it to Next.js and TypeScript
+- `web/docs/UX-REVIEW-2026-11.md`: the UX review
+
+The code in `web/` is not under the AGPLv3; see `web/LICENSE.md`.
+
 ## Build
 
 Needs CMake and a C++20 compiler: Visual Studio 2022 (or its Build Tools) with
