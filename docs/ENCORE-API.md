@@ -10,7 +10,7 @@ the ENCORE. side.
 
 ## 1. Sign in from a desktop app
 
-ENCORE. Basement Studio is open source, so it can't hold a client secret. Use the standard
+ENCORE. Basement Studio is a desktop app, so it can't hold a client secret. Use the standard
 flow for desktop apps: **OAuth 2.0 authorization code with PKCE and a loopback
 redirect** (RFC 8252).
 

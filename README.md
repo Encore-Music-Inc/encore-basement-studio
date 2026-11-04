@@ -1,15 +1,19 @@
 # ENCORE. Basement Studio
 
-A free, open-source DAW for bands and home studios, from [ENCORE.](https://encoremusic.studio)
+A DAW for bands and home studios, from [ENCORE.](https://encoremusic.studio)
 Record, edit and mix on your own computer, with the ENCORE. plugins built in,
 and (soon) send finished songs straight to your ENCORE. account.
 
-ENCORE. Basement Studio is built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine)
-and [JUCE](https://juce.com).
+ENCORE. Basement Studio is powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine)
+and made with [JUCE](https://juce.com).
+
+**This repository is private and the code is proprietary** (see `LICENSE`). Read
+`CLAUDE.md` before changing anything: it has the licence rules every change has to keep.
 
 ## Download
 
-From [Releases](https://github.com/jimmyrlondo/encore-studio/releases):
+Downloads are paused while the first proprietary version is prepared (the older AGPLv3
+releases were taken down on 2026-11-04). When they're back, the files will be:
 
 - **Windows**: `Encore-Studio-<version>-windows-setup.exe`, the installer
   (Start menu, desktop shortcut, opens .encore songs). Or
@@ -143,7 +147,7 @@ jimmyrlondo/sick-and-sad with its full history. Start with:
 - `web/docs/NEXTJS-CONVERSION-GUIDE.md`: the plan for moving it to Next.js and TypeScript
 - `web/docs/UX-REVIEW-2026-11.md`: the UX review
 
-The code in `web/` is not under the AGPLv3; see `web/LICENSE.md`.
+The code in `web/` is proprietary like the rest of the repository; see `web/LICENSE.md`.
 
 ## Build
 
@@ -190,15 +194,7 @@ The code for the ENCORE. plugins is in `encore/` (copied from the plugin repo wi
 
 ## License
 
-ENCORE. Basement Studio is free software under the GNU Affero General Public License v3 (see
-`LICENSE`). It uses JUCE under the AGPLv3 and Tracktion Engine under the GPLv3. VST2 plugins are hosted through
-[FST](https://git.iem.at/zmoelnig/FST) (GPLv3 or later, in `external/fst`),
-an independent reimplementation of the VST2 interface. MP3 export uses
-[LAME](https://lame.sourceforge.io) 3.100 (LGPL, in `external/lame`).
-The arrange view in `Source/edit/` started from Tracktion Engine's example
-code (GPLv3) and is marked where it was changed. The ENCORE. plugins in
-`encore/` are part of ENCORE. Basement Studio under the same license.
-
-Copyright (C) 2026 Encore Studio. The ENCORE. name and logo (including
-`Assets/encore-icon.*`) belong to Encore Studio; forks are welcome under the
-license but should use their own name.
+Copyright (C) 2026 Encore Studio. All rights reserved. ENCORE. Basement Studio and
+ENCORE. Green Room are proprietary; see `LICENSE`. Third-party software and the terms
+ENCORE. uses it under are in `THIRD-PARTY-NOTICES.md`. The ENCORE. name and logo
+(including `Assets/encore-icon.*`) belong to Encore Studio.
