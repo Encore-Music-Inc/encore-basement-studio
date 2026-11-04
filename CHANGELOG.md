@@ -1,5 +1,12 @@
 # Changes
 
+## 0.4.3 (2026-11-04)
+
+**Linux and Raspberry Pi.** ENCORE. Basement Studio now comes as a .deb to install and an
+AppImage to just run, for 64-bit PCs and for Raspberry Pi 4, 400, 5 and 500 on 64-bit
+Raspberry Pi OS (Bookworm or newer). Also Debian 12+ and Ubuntu 22.04+. Songs open
+with a double-click, and it shows up in your menu under Sound & Video.
+
 ## 0.4.2 (2026-11-03)
 
 **The ENCORE. VST option really is in the installer now.** 0.4.1 meant to

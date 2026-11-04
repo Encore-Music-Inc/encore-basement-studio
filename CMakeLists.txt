@@ -6,7 +6,7 @@
 #   cmake -B build -G "Visual Studio 17 2022" -A x64
 #   cmake --build build --config Release
 cmake_minimum_required(VERSION 3.22)
-project(EncoreStudio VERSION 0.4.2)
+project(EncoreStudio VERSION 0.4.3)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
