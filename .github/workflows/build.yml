@@ -92,6 +92,61 @@ jobs:
           prerelease: true
           generate_release_notes: true
 
+  # Linux on x64 and on arm64 (the arm64 runner stands in for 64-bit Raspberry Pi OS)
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch JUCE and Tracktion Engine
+        run: git submodule update --init --depth 1 external/JUCE external/tracktion_engine
+
+      # JUCE and Tracktion's Linux libraries (no curl, web browser or OpenGL: Studio leaves those out), plus a virtual display for the self-test
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libasound2-dev libjack-jackd2-dev ladspa-sdk \
+            libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libxi-dev \
+            xvfb xauth
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel 4
+
+      - name: Self-test
+        run: |
+          exe="build/EncoreStudio_artefacts/Release/Encore Studio"
+          dir="$RUNNER_TEMP/selftest"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          if [ $code -eq 124 ]; then echo "self-test timed out"; fi
+          exit $code
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp "build/EncoreStudio_artefacts/Release/Encore Studio" LICENSE README.md dist/
+          cd dist && zip -r ../Encore-Studio-linux-${{ matrix.arch }}.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Encore-Studio-linux-${{ matrix.arch }}
+          path: Encore-Studio-linux-${{ matrix.arch }}.zip
+
   macos:
     runs-on: macos-latest
     steps:
