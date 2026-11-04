@@ -124,6 +124,9 @@ EOF
     # Debian 13 / Ubuntu 24.04 renamed some libraries for 64-bit time (libasound2t64); older
     # releases (Debian 12, Ubuntu 22.04) still call them by the old name, so accept either
     linked=$(echo "$linked" | sed -E 's/(^|, )([a-z0-9.+-]+)t64( \([^)]*\))?/\1\2t64\3 | \2\3/g')
+    # and the other way round, built on Debian 12: its libasound2 is libasound2t64 on newer systems
+    # (which also "provide" the old name, but saying both keeps apt's choice obvious)
+    linked=$(echo "$linked" | sed -E 's/(^|, )(libasound2)( \([^)]*\))?(,|$)/\1\2\3 | \2t64\3\4/g')
     local x11="libx11-6, libxext6, libxcursor1, libxinerama1, libxrender1, libxrandr2, libxi6"
     say "deb: Depends (linked): $linked"
 

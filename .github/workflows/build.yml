@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, linux-packages]   # TEMP: CI on this branch while the Linux packages are tested; drop before merging
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -92,7 +92,9 @@ jobs:
           prerelease: true
           generate_release_notes: true
 
-  # Linux on x64 and on arm64 (the arm64 runner stands in for 64-bit Raspberry Pi OS)
+  # Linux on x64 and on arm64 (the arm64 runner stands in for 64-bit Raspberry Pi OS).
+  # Built inside Debian 12 (bookworm, glibc 2.36) so the packages also run on Bookworm-based
+  # Raspberry Pi OS and other older systems, not just on the newest ones.
   linux:
     strategy:
       fail-fast: false
@@ -103,22 +105,37 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    container: debian:bookworm
+    defaults:
+      run:
+        shell: bash
     steps:
+      # git first, so checkout makes a real clone (the submodules need it)
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
 
       - name: Fetch JUCE and Tracktion Engine
-        run: git submodule update --init --depth 1 external/JUCE external/tracktion_engine
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git submodule update --init --depth 1 external/JUCE external/tracktion_engine
 
-      # JUCE and Tracktion's Linux libraries (no curl, web browser or OpenGL: Studio leaves those out), plus a virtual display for the self-test
+      # JUCE and Tracktion's Linux libraries (no curl, web browser or OpenGL: Studio leaves those out),
+      # a virtual display for the self-test, and the packaging tools
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ninja-build pkg-config \
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get install -y --no-install-recommends \
+            build-essential g++ cmake ninja-build pkg-config curl zip file \
             libasound2-dev libjack-jackd2-dev ladspa-sdk \
             libfreetype-dev libfontconfig1-dev \
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libxi-dev \
-            xvfb xauth             dpkg-dev librsvg2-bin file desktop-file-utils shared-mime-info
+            xvfb xauth \
+            dpkg-dev librsvg2-bin
+          echo "::notice title=build system ${{ matrix.arch }}::$(. /etc/os-release; echo $PRETTY_NAME), $(ldd --version | head -n 1), $(g++ --version | head -n 1), $(cmake --version | head -n 1)"
 
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -142,44 +159,9 @@ jobs:
           cp "build/EncoreStudio_artefacts/Release/Encore Studio" LICENSE README.md dist/
           cd dist && zip -r ../Encore-Studio-linux-${{ matrix.arch }}.zip .
 
-      # The .deb (Ubuntu, Debian, Mint, Raspberry Pi OS) and the AppImage (most other distributions)
+      # The .deb (Debian, Ubuntu, Mint, Raspberry Pi OS) and the AppImage (most other distributions)
       - name: Linux packages
         run: bash installer/linux/package.sh "build/EncoreStudio_artefacts/Release/Encore Studio" dist-linux all
-
-      # Install the .deb the way a user would, check what it put in place, then self-test the installed app
-      - name: Test the .deb
-        run: |
-          deb=$(ls dist-linux/*.deb)
-          sudo apt-get install -y --no-install-recommends "./$deb"
-          dpkg -L encore-basement-studio
-          launcher=$(command -v encore-basement-studio) || { echo "::error::encore-basement-studio is not on the PATH"; exit 1; }
-          echo "launcher: $launcher"
-          desktop-file-validate /usr/share/applications/encore-basement-studio.desktop || { echo "::error::the .desktop entry does not validate"; exit 1; }
-          grep -q "x-encore-song" /usr/share/mime/globs2 || { echo "::error::application/x-encore-song is not registered"; exit 1; }
-          grep -E "x-encore-song" /usr/share/mime/globs2
-          grep -q "x-encore-song" /usr/share/applications/mimeinfo.cache || { echo "::error::.encore songs are not linked to the app"; exit 1; }
-          dir="$RUNNER_TEMP/selftest-deb"
-          code=0
-          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" encore-basement-studio --selftest "$dir" || code=$?
-          cat "$dir/selftest.log" || true
-          echo "::notice title=deb self-test ${{ matrix.arch }}::exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
-          if [ $code -eq 124 ]; then echo "::error::the installed app's self-test timed out"; fi
-          if [ $code -ne 0 ]; then echo "::error::the installed app's self-test failed ($code)"; fi
-          exit $code
-
-      # Runners have no FUSE, so the AppImage unpacks itself to run
-      - name: Test the AppImage
-        run: |
-          img=$(ls dist-linux/*.AppImage)
-          chmod +x "$img"
-          dir="$RUNNER_TEMP/selftest-appimage"
-          code=0
-          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "./$img" --appimage-extract-and-run --selftest "$dir" || code=$?
-          cat "$dir/selftest.log" || true
-          echo "::notice title=appimage self-test ${{ matrix.arch }}::exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
-          if [ $code -eq 124 ]; then echo "::error::the AppImage self-test timed out"; fi
-          if [ $code -ne 0 ]; then echo "::error::the AppImage self-test failed ($code)"; fi
-          exit $code
 
       - name: Package sizes
         run: ls -l Encore-Studio-linux-*.zip dist-linux/
@@ -192,8 +174,74 @@ jobs:
             dist-linux/*.deb
             dist-linux/*.AppImage
 
+  # The packages on the oldest and newest systems they're for: a bare Debian 12 (Bookworm, the
+  # base of Raspberry Pi OS Bookworm), Ubuntu 22.04 and Ubuntu 24.04. Each one installs the .deb
+  # the way a user would, checks what it put in place, then self-tests the installed app and the AppImage.
+  linux-test:
+    needs: linux
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, system: debian-12, runner: ubuntu-24.04, image: "debian:bookworm" }
+          - { arch: x64, system: ubuntu-22.04, runner: ubuntu-22.04, image: "" }
+          - { arch: x64, system: ubuntu-24.04, runner: ubuntu-24.04, image: "" }
+          - { arch: arm64, system: debian-12, runner: ubuntu-24.04-arm, image: "debian:bookworm" }
+          - { arch: arm64, system: ubuntu-22.04, runner: ubuntu-22.04-arm, image: "" }
+          - { arch: arm64, system: ubuntu-24.04, runner: ubuntu-24.04-arm, image: "" }
+    name: linux-test (${{ matrix.arch }}, ${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Encore-Studio-linux-${{ matrix.arch }}
+
+      - name: Test the .deb
+        run: |
+          SUDO=sudo; [ "$(id -u)" = 0 ] && SUDO=
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends xvfb xauth desktop-file-utils shared-mime-info
+          deb=$(ls dist-linux/*.deb)
+          $SUDO apt-get install -y --no-install-recommends "./$deb" \
+            || { echo "::error title=${{ matrix.system }} ${{ matrix.arch }}::apt could not install $deb"; exit 1; }
+          dpkg -L encore-basement-studio
+          launcher=$(command -v encore-basement-studio) || { echo "::error::encore-basement-studio is not on the PATH"; exit 1; }
+          echo "launcher: $launcher"
+          desktop-file-validate /usr/share/applications/encore-basement-studio.desktop || { echo "::error::the .desktop entry does not validate"; exit 1; }
+          grep -q "x-encore-song" /usr/share/mime/globs2 || { echo "::error::application/x-encore-song is not registered"; exit 1; }
+          grep -E "x-encore-song" /usr/share/mime/globs2
+          grep -q "x-encore-song" /usr/share/applications/mimeinfo.cache || { echo "::error::.encore songs are not linked to the app"; exit 1; }
+          dir="$RUNNER_TEMP/selftest-deb"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" encore-basement-studio --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          echo "::notice title=deb self-test ${{ matrix.system }} ${{ matrix.arch }}::$(. /etc/os-release; echo $PRETTY_NAME), $(ldd --version | head -n 1): exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
+          if [ $code -eq 124 ]; then echo "::error::the installed app's self-test timed out"; fi
+          if [ $code -ne 0 ]; then echo "::error::the installed app's self-test failed ($code)"; fi
+          exit $code
+
+      # Runners have no FUSE, so the AppImage unpacks itself to run (its system libraries came with the .deb above)
+      - name: Test the AppImage
+        run: |
+          img=$(ls dist-linux/*.AppImage)
+          chmod +x "$img"
+          dir="$RUNNER_TEMP/selftest-appimage"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "./$img" --appimage-extract-and-run --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          echo "::notice title=AppImage self-test ${{ matrix.system }} ${{ matrix.arch }}::exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
+          if [ $code -eq 124 ]; then echo "::error::the AppImage self-test timed out"; fi
+          if [ $code -ne 0 ]; then echo "::error::the AppImage self-test failed ($code)"; fi
+          exit $code
+
+      # Tagged builds: attach the packages once they've passed on Debian 12 (one leg per arch uploads)
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.system == 'debian-12'
         uses: softprops/action-gh-release@v2
         with:
           files: |
