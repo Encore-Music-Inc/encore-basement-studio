@@ -1,5 +1,5 @@
 # Encore: Basement Studio
-# Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+# Copyright (C) 2026 Encore Studio. All rights reserved (see LICENSE).
 #
 # The tuner's instruments and tunings, in one place. Running this writes
 # Source/edit/Tunings.h (Studio's tuner) and tools/tunings.json (the web tuner),

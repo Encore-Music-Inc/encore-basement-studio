@@ -1,10 +1,11 @@
 name: Build
 
+# Private repo: Actions minutes are limited (Mac minutes count 10x, Windows 2x; one full
+# build is about 100 billed minutes), so builds run only for a release tag or by hand
+# (gh workflow run build.yml --ref <branch>), not on every push.
 on:
   push:
-    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -58,7 +59,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           try {
+            # published releases only (the hidden 0.4.0 one is the old AGPL build)
             $tag = gh api repos/jimmyrlondo/encore-vst/releases --jq '[.[] | select(.draft | not) | select(.assets | length > 0)][0].tag_name'
+            if (-not $tag) { throw "no published ENCORE. VST release" }
             gh release download $tag --repo jimmyrlondo/encore-vst --pattern "*windows-setup.exe" --dir build/vst
             Get-ChildItem build/vst/*.exe | Select-Object -First 1 | Rename-Item -NewName "ENCORE-VST-setup.exe"
             Get-ChildItem build/vst
