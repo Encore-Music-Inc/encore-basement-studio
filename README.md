@@ -23,9 +23,11 @@ From [Releases](https://github.com/jimmyrlondo/encore-studio/releases):
 
 ### Install on Linux / Raspberry Pi
 
-Pick the file for your machine: **amd64** / **x86_64** for regular PCs and
-laptops, **arm64** / **aarch64** for a Raspberry Pi 4 or 5 running 64-bit
-Raspberry Pi OS.
+Runs on 64-bit Raspberry Pi OS Bookworm or newer, Debian 12 or newer, and
+Ubuntu 22.04 or newer (plus Mint, Pop!_OS and others built on them). Pick the
+file for your machine: **amd64** / **x86_64** for regular PCs and laptops,
+**arm64** / **aarch64** for a Raspberry Pi 4 or 5 running 64-bit Raspberry
+Pi OS (the 32-bit version isn't supported).
 
 - **The .deb** (Ubuntu, Debian, Mint, Pop!_OS, Raspberry Pi OS):
   download `encore-basement-studio_<version>_amd64.deb` (or `_arm64.deb`),
