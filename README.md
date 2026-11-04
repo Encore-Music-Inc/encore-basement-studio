@@ -19,6 +19,42 @@ From [Releases](https://github.com/jimmyrlondo/encore-studio/releases):
 - **Mac** (Apple Silicon and Intel): `Encore-Studio-<version>-macos.dmg`. Open
   it and drag `Encore Studio` to Applications. It isn't notarized yet, so the
   first time right-click it, choose **Open**, then **Open** again.
+- **Linux and Raspberry Pi**: see below.
+
+### Install on Linux / Raspberry Pi
+
+Pick the file for your machine: **amd64** / **x86_64** for regular PCs and
+laptops, **arm64** / **aarch64** for a Raspberry Pi 4 or 5 running 64-bit
+Raspberry Pi OS.
+
+- **The .deb** (Ubuntu, Debian, Mint, Pop!_OS, Raspberry Pi OS):
+  download `encore-basement-studio_<version>_amd64.deb` (or `_arm64.deb`),
+  then in a terminal, from the folder you downloaded it to:
+
+  ```
+  sudo apt install ./encore-basement-studio_<version>_arm64.deb
+  ```
+
+  ENCORE. Basement Studio is then in your applications menu (under Sound &
+  Video), `encore-basement-studio` starts it from a terminal, and .encore
+  songs open in it with a double-click. Remove it with
+  `sudo apt remove encore-basement-studio`.
+- **The AppImage** (almost any distribution, nothing to install):
+  download `Encore-Basement-Studio-<version>-x86_64.AppImage` (or
+  `-aarch64.AppImage`), make it runnable and start it:
+
+  ```
+  chmod +x Encore-Basement-Studio-*.AppImage
+  ./Encore-Basement-Studio-*.AppImage
+  ```
+
+  If it says FUSE is missing, install `libfuse2` (`libfuse2t64` on Ubuntu
+  24.04 and later), or run it with `--appimage-extract-and-run`.
+
+Audio works through ALSA out of the box. JACK is supported too, and so is
+PipeWire (the standard on current Ubuntu, Fedora and Raspberry Pi OS) through
+its JACK support. For low latency, add yourself to the `audio` group
+(`sudo usermod -aG audio $USER`, then log out and back in).
 
 ## What it does
 

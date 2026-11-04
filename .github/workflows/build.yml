@@ -118,7 +118,7 @@ jobs:
             libasound2-dev libjack-jackd2-dev ladspa-sdk \
             libfreetype-dev libfontconfig1-dev \
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libxi-dev \
-            xvfb xauth
+            xvfb xauth             dpkg-dev librsvg2-bin file desktop-file-utils shared-mime-info
 
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -142,10 +142,63 @@ jobs:
           cp "build/EncoreStudio_artefacts/Release/Encore Studio" LICENSE README.md dist/
           cd dist && zip -r ../Encore-Studio-linux-${{ matrix.arch }}.zip .
 
+      # The .deb (Ubuntu, Debian, Mint, Raspberry Pi OS) and the AppImage (most other distributions)
+      - name: Linux packages
+        run: bash installer/linux/package.sh "build/EncoreStudio_artefacts/Release/Encore Studio" dist-linux all
+
+      # Install the .deb the way a user would, check what it put in place, then self-test the installed app
+      - name: Test the .deb
+        run: |
+          deb=$(ls dist-linux/*.deb)
+          sudo apt-get install -y --no-install-recommends "./$deb"
+          dpkg -L encore-basement-studio
+          launcher=$(command -v encore-basement-studio) || { echo "::error::encore-basement-studio is not on the PATH"; exit 1; }
+          echo "launcher: $launcher"
+          desktop-file-validate /usr/share/applications/encore-basement-studio.desktop || { echo "::error::the .desktop entry does not validate"; exit 1; }
+          grep -q "x-encore-song" /usr/share/mime/globs2 || { echo "::error::application/x-encore-song is not registered"; exit 1; }
+          grep -E "x-encore-song" /usr/share/mime/globs2
+          grep -q "x-encore-song" /usr/share/applications/mimeinfo.cache || { echo "::error::.encore songs are not linked to the app"; exit 1; }
+          dir="$RUNNER_TEMP/selftest-deb"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" encore-basement-studio --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          if [ $code -eq 124 ]; then echo "::error::the installed app's self-test timed out"; fi
+          if [ $code -ne 0 ]; then echo "::error::the installed app's self-test failed ($code)"; fi
+          exit $code
+
+      # Runners have no FUSE, so the AppImage unpacks itself to run
+      - name: Test the AppImage
+        run: |
+          img=$(ls dist-linux/*.AppImage)
+          chmod +x "$img"
+          dir="$RUNNER_TEMP/selftest-appimage"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "./$img" --appimage-extract-and-run --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          if [ $code -eq 124 ]; then echo "::error::the AppImage self-test timed out"; fi
+          if [ $code -ne 0 ]; then echo "::error::the AppImage self-test failed ($code)"; fi
+          exit $code
+
+      - name: Package sizes
+        run: ls -l Encore-Studio-linux-*.zip dist-linux/
+
       - uses: actions/upload-artifact@v4
         with:
           name: Encore-Studio-linux-${{ matrix.arch }}
-          path: Encore-Studio-linux-${{ matrix.arch }}.zip
+          path: |
+            Encore-Studio-linux-${{ matrix.arch }}.zip
+            dist-linux/*.deb
+            dist-linux/*.AppImage
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Encore-Studio-linux-${{ matrix.arch }}.zip
+            dist-linux/*.deb
+            dist-linux/*.AppImage
+          prerelease: true
 
   macos:
     runs-on: macos-latest
