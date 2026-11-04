@@ -162,6 +162,7 @@ jobs:
           code=0
           timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" encore-basement-studio --selftest "$dir" || code=$?
           cat "$dir/selftest.log" || true
+          echo "::notice title=deb self-test ${{ matrix.arch }}::exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
           if [ $code -eq 124 ]; then echo "::error::the installed app's self-test timed out"; fi
           if [ $code -ne 0 ]; then echo "::error::the installed app's self-test failed ($code)"; fi
           exit $code
@@ -175,6 +176,7 @@ jobs:
           code=0
           timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "./$img" --appimage-extract-and-run --selftest "$dir" || code=$?
           cat "$dir/selftest.log" || true
+          echo "::notice title=appimage self-test ${{ matrix.arch }}::exit $code, $(grep -c '^PASS' "$dir/selftest.log" 2>/dev/null) checks passed, $(tail -n 1 "$dir/selftest.log" 2>/dev/null)"
           if [ $code -eq 124 ]; then echo "::error::the AppImage self-test timed out"; fi
           if [ $code -ne 0 ]; then echo "::error::the AppImage self-test failed ($code)"; fi
           exit $code

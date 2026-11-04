@@ -148,6 +148,9 @@ EOF
     find "$root" -type d -exec chmod 755 {} +
     dpkg-deb --build --root-owner-group -Zxz "$root" "$deb" >/dev/null || fail "dpkg-deb failed"
     say "deb: built $(basename "$deb") ($(du -h "$deb" | cut -f1))"
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        echo "::notice title=deb $debarch::$(basename "$deb") $(stat -c %s "$deb") bytes. Depends: $linked, $x11"
+    fi
     dpkg-deb --info "$deb" | sed 's/^/[package]   /'
 }
 
@@ -186,10 +189,18 @@ make_appimage() {
             --output appimage ) > "$work/linuxdeploy.log" 2>&1 \
         || { tail -n 60 "$work/linuxdeploy.log"; fail "linuxdeploy failed"; }
     grep -iE "warn|error" "$work/linuxdeploy.log" | sed 's/^/[package]   linuxdeploy: /' || true
-    [ -f "$work/$img" ] || { tail -n 30 "$work/linuxdeploy.log"; fail "linuxdeploy made no $img"; }
+    if [ ! -f "$work/$img" ]; then   # older appimage plugins name it themselves
+        local made
+        made=$(ls "$work"/*.AppImage 2>/dev/null | grep -v "/linuxdeploy-" | head -n 1 || true)
+        [ -n "$made" ] || { tail -n 30 "$work/linuxdeploy.log"; fail "linuxdeploy made no AppImage"; }
+        mv "$made" "$work/$img"
+    fi
     mv "$work/$img" "$out/$img"
     say "appimage: bundled libraries: $(ls "$app/usr/lib" 2>/dev/null | tr '\n' ' ')"
     say "appimage: built $img ($(du -h "$out/$img" | cut -f1))"
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        echo "::notice title=AppImage $imgarch::$img $(stat -c %s "$out/$img") bytes. Bundled: $(ls "$app/usr/lib" 2>/dev/null | tr '\n' ' ')"
+    fi
 }
 
 case "$what" in
