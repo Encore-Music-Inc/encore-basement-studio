@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The Hub: the first thing you see. Jump back into a recent song, or set up a
 // new one properly (title, artist, tempo, key, which interface you're recording
@@ -1037,9 +1037,9 @@ public:
         refreshAccount();
 
         link (studioLink, "https://encoremusic.studio");
-        link (guideLink, "https://github.com/jimmyrlondo/encore-studio#readme");
-        link (issueLink, "https://github.com/jimmyrlondo/encore-studio/issues/new");
-        link (updatesLink, "https://github.com/jimmyrlondo/encore-studio/releases");
+        link (guideLink, "https://github.com/Encore-Music-Inc/encore-basement-studio#readme");
+        link (issueLink, "https://github.com/Encore-Music-Inc/encore-basement-studio/issues/new");
+        link (updatesLink, "https://github.com/Encore-Music-Inc/encore-basement-studio/releases");
 
         engine.getDeviceManager().addChangeListener (this);
     }

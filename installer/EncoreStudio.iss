@@ -1,20 +1,26 @@
 ; ENCORE. Basement Studio installer for Windows (Inno Setup 6)
+; Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 ;
-;   ISCC.exe /DAppVersion=0.4.0 /DBuildDir=..\build\EncoreStudio_artefacts\Release installer\EncoreStudio.iss
+;   ISCC.exe installer\EncoreStudio.iss
 ;
-; Makes dist\Encore-Studio-<version>-windows-setup.exe: Start menu and (optional)
+; after building Release into build\ (and, for 32-bit plugins, the bridge into
+; build32\). The version comes from project(EncoreStudio VERSION ...) in
+; CMakeLists.txt: configuring writes it to build\version.iss, included below.
+;
+; Makes dist\ENCORE-Basement-Studio-<version>-windows-setup.exe: Start menu and (optional)
 ; desktop shortcuts, opens .encore songs (and .basement ones from before the
 ; rename) on double-click, and a normal uninstaller. Songs and settings are
 ; never installed or removed by it: they live in the user's own folders.
 
 #ifndef AppVersion
-  #define AppVersion "0.0.0"
+  #include "..\build\version.iss"
 #endif
 #ifndef BuildDir
   #define BuildDir "..\build\EncoreStudio_artefacts\Release"
 #endif
-; ENCORE. VST's own installer, offered as an extra (CI downloads the newest one
-; from github.com/jimmyrlondo/encore-vst; without it the option isn't shown)
+; ENCORE. VST's own installer, offered as an extra (CI downloads the newest
+; published one from github.com/Encore-Music-Inc/encore-vst releases; without
+; it the option isn't shown)
 #ifndef VstSetup
   #define VstSetup "..\build\vst\ENCORE-VST-setup.exe"
 #endif
@@ -27,10 +33,11 @@ AppId={{85CBF2F3-407D-4790-8345-BA701885E638}
 AppName=ENCORE. Basement Studio
 AppVersion={#AppVersion}
 AppVerName=ENCORE. Basement Studio {#AppVersion}
-AppPublisher=ENCORE. Music
+AppPublisher=Encore Music, Inc.
 AppPublisherURL=https://encoremusic.studio
-AppSupportURL=https://github.com/jimmyrlondo/encore-studio/issues
-AppUpdatesURL=https://github.com/jimmyrlondo/encore-studio/releases
+AppSupportURL=https://github.com/Encore-Music-Inc/encore-basement-studio/issues
+AppUpdatesURL=https://github.com/Encore-Music-Inc/encore-basement-studio/releases
+AppCopyright=Copyright (C) 2026 Encore Music, Inc.
 DefaultDirName={autopf}\Encore Studio
 DefaultGroupName=Encore Studio
 DisableProgramGroupPage=yes
@@ -46,7 +53,7 @@ SetupIconFile=encore.ico
 UninstallDisplayIcon={app}\Encore Studio.exe
 UninstallDisplayName=ENCORE. Basement Studio
 OutputDir=..\dist
-OutputBaseFilename=Encore-Studio-{#AppVersion}-windows-setup
+OutputBaseFilename=ENCORE-Basement-Studio-{#AppVersion}-windows-setup
 Compression=lzma2/max
 SolidCompression=yes
 InfoBeforeFile=welcome.txt
@@ -65,6 +72,8 @@ Source: "{#BridgeDir}\Encore Studio Bridge32.exe"; DestDir: "{app}"; Flags: igno
 #endif
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\README.md"; DestDir: "{app}"
+Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"
+Source: "..\TRADEMARKS.md"; DestDir: "{app}"
 #if FileExists(VstSetup)
 Source: "{#VstSetup}"; DestDir: "{tmp}"; DestName: "ENCORE VST Setup.exe"; Flags: deleteafterinstall; Tasks: vst
 #endif

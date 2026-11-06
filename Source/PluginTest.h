@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // "Encore Studio.exe --plugintest <report file> [folder]" loads every VST3
 // and VST2 in a folder (default: the system plugin folders) the way the Effects button

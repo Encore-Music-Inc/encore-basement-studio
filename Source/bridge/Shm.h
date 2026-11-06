@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The few Windows calls the 32-bit plugin bridge needs (shared memory and
 // events), behind plain functions so <windows.h> stays in Shm.cpp only.

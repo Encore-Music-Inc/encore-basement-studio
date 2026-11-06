@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // Level meters: one on every track header (the input while the track is armed
 // or monitoring, what the track plays otherwise) and a stereo one for the whole

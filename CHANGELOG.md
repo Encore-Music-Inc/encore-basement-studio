@@ -1,5 +1,20 @@
 # Changes
 
+## 0.5.0 (not released yet)
+
+**A new home.** ENCORE. Basement Studio now lives in its own repository,
+Encore-Music-Inc/encore-basement-studio, and is published by Encore Music, Inc.
+under the GNU AGPLv3. Help > Check for Updates, Report a Problem and the user
+guide point there.
+
+**The same plugins as ENCORE. VST.** The built-in Vox, Verb, Equalize, Master
+and Strum are now built from the ENCORE. VST and ENCORE. audio processing code
+itself, so they sound and behave exactly like the plugins in your other DAWs.
+
+**New file names.** Downloads are named `ENCORE-Basement-Studio-<version>-...`
+(the Linux .deb keeps `encore-basement-studio_<version>_<arch>.deb`), each with a
+`.sha256` file.
+
 ## 0.4.3 (2026-11-04)
 
 **Linux and Raspberry Pi.** ENCORE. Basement Studio now comes as a .deb to install and an

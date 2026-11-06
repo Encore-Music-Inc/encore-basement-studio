@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The piano roll: edit the notes of a MIDI clip in a pane under the arrange
 // view (double-click a MIDI clip, or MIDI > Open Piano Roll, Ctrl+E).

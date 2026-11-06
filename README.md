@@ -1,43 +1,52 @@
 # ENCORE. Basement Studio
 
-A DAW for bands and home studios, from [ENCORE.](https://encoremusic.studio)
+A DAW for bands and home studios, from [ENCORE.](https://encoremusic.studio).
 Record, edit and mix on your own computer, with the ENCORE. plugins built in,
-and (soon) send finished songs straight to your ENCORE. account.
+and (soon) send finished songs straight to your ENCORE. account. Runs on
+Windows, macOS, Linux and Raspberry Pi (ENCORE. OS, or 64-bit Raspberry Pi OS).
 
-ENCORE. Basement Studio is powered by [Tracktion Engine](https://github.com/Tracktion/tracktion_engine)
-and made with [JUCE](https://juce.com).
+Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU Affero General
+Public License v3 (see `LICENSE`). The ENCORE. name and logo are not licensed
+(see `TRADEMARKS.md`). Third-party code: `THIRD-PARTY-NOTICES.md`. Outside
+contributions are not accepted yet (see `CONTRIBUTING.md`).
+Contact: support@encoremusic.studio
 
-**This repository is private and the code is proprietary** (see `LICENSE`). Read
-`CLAUDE.md` before changing anything: it has the licence rules every change has to keep.
+Built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine)
+(GPLv3) and [JUCE](https://juce.com) (AGPLv3).
 
-## Download
+## Downloads
 
-Downloads are paused while the first proprietary version is prepared (the older AGPLv3
-releases were taken down on 2026-11-04). When they're back, the files will be:
+Each release (under Releases on this repo) has, with a `.sha256` file next to
+each download:
 
-- **Windows**: `Encore-Studio-<version>-windows-setup.exe`, the installer
-  (Start menu, desktop shortcut, opens .encore songs). Or
-  `Encore-Studio-windows.zip` to run it from any folder without installing.
-  It isn't code-signed yet, so SmartScreen warns the first time: click
-  **More info**, then **Run anyway**.
-- **Mac** (Apple Silicon and Intel): `Encore-Studio-<version>-macos.dmg`. Open
-  it and drag `Encore Studio` to Applications. It isn't notarized yet, so the
-  first time right-click it, choose **Open**, then **Open** again.
-- **Linux and Raspberry Pi**: see below.
+- **Windows 10 and 11 (64-bit)**: `ENCORE-Basement-Studio-<version>-windows-setup.exe`,
+  the installer (Start menu, desktop shortcut, opens .encore songs, and it can
+  also install ENCORE. VST for your other DAWs). Or
+  `ENCORE-Basement-Studio-<version>-windows-x64.zip` to run it from any folder
+  without installing. It isn't code-signed yet, so SmartScreen warns the
+  first time: click **More info**, then **Run anyway**.
+- **Mac** (Apple Silicon and Intel, macOS 11 or newer):
+  `ENCORE-Basement-Studio-<version>-macos.dmg`. Open it and drag
+  `Encore Studio` to Applications. It isn't notarized yet, so the first time
+  right-click it, choose **Open**, then **Open** again.
+- **Linux and Raspberry Pi**: `encore-basement-studio_<version>_amd64.deb` and
+  `_arm64.deb`, and `ENCORE-Basement-Studio-<version>-x86_64.AppImage` and
+  `-aarch64.AppImage`. See below.
+
+Versions 0.4.3 and earlier were published from a different repository.
 
 ### Install on Linux / Raspberry Pi
 
-Runs on 64-bit Raspberry Pi OS Bookworm or newer, Debian 12 or newer, and
-Ubuntu 22.04 or newer (plus Mint, Pop!_OS and others built on them). Pick the
-file for your machine: **amd64** / **x86_64** for regular PCs and laptops,
-**arm64** / **aarch64** for a Raspberry Pi 4 or 5 running 64-bit Raspberry
-Pi OS (the 32-bit version isn't supported).
+Runs on 64-bit Raspberry Pi OS Bookworm or newer (and ENCORE. OS), Debian 12
+or newer, and Ubuntu 22.04 or newer (plus Mint, Pop!_OS and others built on
+them). Pick the file for your machine: **amd64** / **x86_64** for regular PCs
+and laptops, **arm64** / **aarch64** for a Raspberry Pi 4 or 5 running a
+64-bit system (32-bit isn't supported).
 
-- **The .deb** (Ubuntu, Debian, Mint, Pop!_OS, Raspberry Pi OS):
-  download `encore-basement-studio_<version>_amd64.deb` (or `_arm64.deb`),
-  then in a terminal, from the folder you downloaded it to:
+- **The .deb** (Ubuntu, Debian, Mint, Pop!_OS, Raspberry Pi OS): from the
+  folder you downloaded it to:
 
-  ```
+  ```bash
   sudo apt install ./encore-basement-studio_<version>_arm64.deb
   ```
 
@@ -45,13 +54,12 @@ Pi OS (the 32-bit version isn't supported).
   Video), `encore-basement-studio` starts it from a terminal, and .encore
   songs open in it with a double-click. Remove it with
   `sudo apt remove encore-basement-studio`.
-- **The AppImage** (almost any distribution, nothing to install):
-  download `Encore-Basement-Studio-<version>-x86_64.AppImage` (or
-  `-aarch64.AppImage`), make it runnable and start it:
+- **The AppImage** (almost any distribution, nothing to install): make it
+  runnable and start it:
 
-  ```
-  chmod +x Encore-Basement-Studio-*.AppImage
-  ./Encore-Basement-Studio-*.AppImage
+  ```bash
+  chmod +x ENCORE-Basement-Studio-*.AppImage
+  ./ENCORE-Basement-Studio-*.AppImage
   ```
 
   If it says FUSE is missing, install `libfuse2` (`libfuse2t64` on Ubuntu
@@ -136,40 +144,103 @@ Help > Keyboard Shortcuts has the full list.
 - Sign in with ENCORE. and upload a song to your catalog as a draft
 - A drum editor, and more MIDI tools
 
-## ENCORE. Green Room (web tools)
+## What is here
 
-`web/` holds ENCORE. Green Room, the browser tools (Master, Live, Songbook, Compose, Tune,
-Metronome, Convert and the rest) served at londo.tech/encore-studio. It moved here from
-jimmyrlondo/sick-and-sad with its full history. Start with:
+```
+Source/                             the app (Main.cpp, MainComponent.h, Hub.h, ...)
+Source/edit/                        the arrange view, mixer, piano roll, tuner
+Source/encore/                      creates the built-in ENCORE. plugins (Make<Name>.cpp)
+Source/bridge/                      the 32-bit plugin bridge (Windows)
+Assets/                             the ENCORE. icon
+docs/                               ENCORE-API.md (Send to ENCORE.), SHORTCUTS.md
+installer/                          Windows installer (Inno Setup), Linux .deb and AppImage
+patches/                            ENCORE.'s change to Tracktion Engine, applied by CMake
+tools/                              tuner data generator, Windows plugin window test
+external/JUCE                       JUCE 9 (submodule)
+external/tracktion_engine           Tracktion Engine (submodule)
+external/encore-vst                 the ENCORE. plugins (submodule)
+external/encore-audio-processing    ENCORE.'s audio processing headers (submodule)
+external/fst                        FST, the VST2 interface headers (GPLv3)
+external/lame                       LAME's MP3 encoder library (LGPL)
+```
 
-- `web/master/README.md`: how to run it and the tests
-- `web/docs/GREEN-ROOM-TOOLS-INVENTORY.md`: every tool, what it uses, what needs a backend
-- `web/docs/NEXTJS-CONVERSION-GUIDE.md`: the plan for moving it to Next.js and TypeScript
-- `web/docs/UX-REVIEW-2026-11.md`: the UX review
+## Submodules
 
-The code in `web/` is proprietary like the rest of the repository; see `web/LICENSE.md`.
+Four submodules, all pinned:
+
+| Path | What | Pinned to |
+|---|---|---|
+| `external/JUCE` | JUCE 9 | `7ff644f` |
+| `external/tracktion_engine` | Tracktion Engine | `a5e4499` |
+| `external/encore-vst` | the ENCORE. plugins: `plugins/<Name>/Source/*.cpp` and `shared/` | `21eccbb` (moves to tag `v0.5.0` once it is published) |
+| `external/encore-audio-processing` | the audio processing headers (`dsp/...`) | tag `v1.0.0` |
+
+Basement Studio builds the five plugins from encore-vst's own sources, with
+`external/encore-vst/shared` and `external/encore-audio-processing` on the
+include path (so `#include "ui/Theme.h"` and `#include "dsp/MasterChain.h"`
+resolve), so it runs exactly the plugin and audio processing code the
+products ship.
+
+Initialise the submodules without `--recursive`: Tracktion Engine, encore-vst
+and encore-audio-processing have their own submodules (another JUCE, with an
+SSH address in Tracktion's case, and the audio processing again), which are
+not used here.
+
+```bash
+git clone https://github.com/Encore-Music-Inc/encore-basement-studio.git
+cd encore-basement-studio
+git submodule update --init --depth 1 external/JUCE external/tracktion_engine external/encore-vst external/encore-audio-processing
+```
+
+To move to a new encore-vst or encore-audio-processing release, check out its
+tag in the submodule and commit the change in a pull request:
+
+```bash
+git -C external/encore-vst fetch --depth 1 origin tag vX.Y.Z
+git -C external/encore-vst checkout vX.Y.Z
+git add external/encore-vst
+```
 
 ## Build
 
-Needs CMake and a C++20 compiler: Visual Studio 2022 (or its Build Tools) with
-the C++ workload on Windows, Xcode on a Mac.
+Needs CMake 3.22 or newer, Ninja and a C++20 compiler.
 
+### Windows
+
+Visual Studio 2022 (or its Build Tools) with the C++ workload. From a
+"x64 Native Tools Command Prompt":
+
+```bat
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
-git clone https://github.com/jimmyrlondo/encore-studio.git
-cd encore-studio
-git submodule update --init --depth 1 external/JUCE external/tracktion_engine
-cmake -B build                       # Windows: add -A x64; Mac: add -G Xcode
-cmake --build build --config Release
+
+The 32-bit plugin bridge is its own 32-bit build (from an "x86 Native Tools
+Command Prompt"); it goes beside `Encore Studio.exe`:
+
+```bat
+cmake -B build32 -G Ninja -DCMAKE_BUILD_TYPE=Release -DSTUDIO_BRIDGE_ONLY=ON
+cmake --build build32
 ```
 
-(Don't use `--recurse-submodules`: Tracktion Engine has its own copy of JUCE as
-a submodule with an SSH address; ENCORE. Basement Studio uses `external/JUCE`, pinned to the
-same commit, instead.)
+The installer, `dist\ENCORE-Basement-Studio-<version>-windows-setup.exe`, needs
+Inno Setup 6 and both builds: `ISCC.exe installer\EncoreStudio.iss`. To offer
+ENCORE. VST in it, put an ENCORE. VST Setup at `build\vst\ENCORE-VST-setup.exe`
+first (CI downloads the newest one from the encore-vst releases).
 
-On Linux (x64 or arm64, including 64-bit Raspberry Pi OS), install the
-libraries first, then build Release (the 32-bit plugin bridge is Windows only):
+### macOS
 
+Xcode (its command line tools), plus `brew install ninja`. One app for Apple
+Silicon and Intel:
+
+```bash
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+cmake --build build
 ```
+
+### Linux and Raspberry Pi (x64 or arm64)
+
+```bash
 sudo apt install build-essential cmake ninja-build pkg-config \
   libasound2-dev libjack-jackd2-dev ladspa-sdk libfreetype-dev libfontconfig1-dev \
   libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
@@ -178,23 +249,74 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-The app ends up in `build/EncoreStudio_artefacts/Release/`. Checks you can run:
+The .deb and the AppImage (needs `dpkg-dev`, `librsvg2-bin`, `curl` and `file`):
+
+```bash
+bash installer/linux/package.sh "build/EncoreStudio_artefacts/Release/Encore Studio" dist all
+```
+
+The app ends up in `build/EncoreStudio_artefacts/Release/`.
+
+## Tests
 
 - `--selftest <folder>`: makes songs, imports, mixes, exports, reopens, and
-  runs each built-in ENCORE. plugin, without a window (exit code 0 = all good,
-  details in `<folder>/selftest.log`). GitHub runs it on every build.
+  runs each built-in ENCORE. plugin, without a window or an audio device
+  (exit code 0 = all good, details in `<folder>/selftest.log`). CI runs it on
+  every build. On Linux without a display, run it under `xvfb-run -a`.
 - `--plugintest <report file> [folder]`: loads every VST3 and VST2 in a folder
-  (default: the standard plugin folders) the way
-  the Effects menu does and reports what happened with each one.
+  (default: the standard plugin folders) the way the Effects menu does and
+  reports what happened with each one.
+- `--audiotest <folder>`: monitoring, meters and recording against a pretend
+  four-input interface.
 - `--profile <name>`: keeps settings separately, for testing without touching
   your own.
 
-The code for the ENCORE. plugins is in `encore/` (copied from the plugin repo with
-`tools/sync-encore-plugins.ps1`).
+The plugins' and the audio processing's own test suites run in encore-vst and
+encore-audio-processing.
 
-## License
+## CI
 
-Copyright (C) 2026 Encore Studio. All rights reserved. ENCORE. Basement Studio and
-ENCORE. Green Room are proprietary; see `LICENSE`. Third-party software and the terms
-ENCORE. uses it under are in `THIRD-PARTY-NOTICES.md`. The ENCORE. name and logo
-(including `Assets/encore-icon.*`) belong to Encore Studio.
+`.github/workflows/ci.yml`. Each push starts one run (push for `main` and `v*`
+tags, plus pull requests and manual runs).
+
+| When | What runs |
+|---|---|
+| Pull request | Linux x64: the app and its self-test |
+| Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on Debian 12, Ubuntu 22.04 and Ubuntu 24.04. The files, each with a `.sha256`, are kept as workflow artifacts |
+| `v*` tag | no build: the files from the successful `main` build of the tag's commit are attached to the Release |
+
+- A pull request or push that only changes `*.md`, `LICENSE` or
+  `.github/CODEOWNERS` skips the builds (skipped counts as passing).
+- "CI passed" is the one check to require: it fails if any build or test job
+  failed or was cancelled.
+- Linux builds inside Debian 12 (so the packages run on Bookworm and newer),
+  and arm64 builds on GitHub's native arm64 runner (`ubuntu-24.04-arm`).
+
+### Build speed
+
+- Ninja on every platform, all cores.
+- A compiler cache: ccache on Linux and macOS, sccache on Windows, kept between
+  runs with `actions/cache`, keyed on OS, architecture, compiler and the JUCE
+  and Tracktion pins.
+- No full LTO (JUCE's `juce_recommended_lto_flags` is not used).
+  `-DENCORE_LTO=THIN` turns on ThinLTO (Clang) or incremental LTCG (MSVC), the
+  same switch as encore-vst's; it is off.
+- Submodules are checked out at depth 1, never recursively.
+
+## Releases
+
+Versions are `vMAJOR.MINOR.PATCH`. The version lives in `CMakeLists.txt`
+(`project(EncoreStudio VERSION ...)`) and nowhere else: the app's About box
+and start screen, the Windows installer (through `build/version.iss`, written
+by CMake), the Linux packages and the Mac disk image all read it from there.
+Change it on `main` (through a pull request) before releasing. CI refuses a tag
+that doesn't match it.
+
+A person at Encore Music, Inc. creates each release in GitHub: Releases, Draft
+a new release, choose a new tag `vX.Y.Z` on `main`, Publish. The tag starts CI,
+which doesn't rebuild: it takes the files from the successful `main` build of
+that exact commit and attaches them to the Release. If that commit has no
+successful `main` build (it's still running, or the push only changed docs and
+skipped the builds), the release job fails and says so: run CI by hand on
+`main` (Actions, CI, Run workflow), then re-run the release job. Workflow
+artifacts are kept for 90 days, so release a commit within that time.

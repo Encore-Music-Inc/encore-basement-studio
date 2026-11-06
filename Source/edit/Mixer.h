@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The mixer (Window > Mixer, F3): a channel strip per track, with its effects,
 // sends, pan, mute/solo/record, fader and meter, and the master strip on the

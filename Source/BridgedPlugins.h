@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // 32-bit plugins (Windows): Studio is 64-bit and can't load a 32-bit .dll or
 // .vst3 itself, so each one runs in "Encore Studio Bridge32.exe" beside it

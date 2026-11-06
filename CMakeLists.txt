@@ -1,12 +1,22 @@
-# Encore: Basement Studio, an open-source DAW (AGPLv3).
-# Built on JUCE (AGPLv3) and Tracktion Engine (GPLv3), both git submodules.
+# ENCORE. Basement Studio, the desktop DAW.
+# Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+# Built on JUCE (AGPLv3) and Tracktion Engine (GPLv3), with the ENCORE. plugins
+# (encore-vst) and audio processing (encore-audio-processing), all git submodules.
 #
-#   git clone https://github.com/jimmyrlondo/encore-studio.git
-#   git submodule update --init --depth 1 external/JUCE external/tracktion_engine
-#   cmake -B build -G "Visual Studio 17 2022" -A x64
-#   cmake --build build --config Release
+#   git clone https://github.com/Encore-Music-Inc/encore-basement-studio.git
+#   cd encore-basement-studio
+#   git submodule update --init --depth 1 external/JUCE external/tracktion_engine external/encore-vst external/encore-audio-processing
+#   cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+#   cmake --build build
 cmake_minimum_required(VERSION 3.22)
-project(EncoreStudio VERSION 0.4.3)
+
+# Mac builds run on macOS 11 and newer (set before project() so it sticks)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
+
+# The version lives here and only here. The app (About box, start screen, update
+# check), the Windows installer, the Linux packages, the Mac disk image and CI
+# all read it from this line.
+project(EncoreStudio VERSION 0.5.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,7 +24,22 @@ if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# Submodules. Initialise them without --recursive: encore-vst and
+# encore-audio-processing have their own external/ submodules (JUCE and the
+# audio processing again), which are only for their own builds and tests.
+foreach(sub JUCE/CMakeLists.txt tracktion_engine/modules/CMakeLists.txt
+            encore-vst/shared/EncoreProcessorBase.h encore-audio-processing/dsp/MasterChain.h)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/${sub}")
+        message(FATAL_ERROR "external/${sub} is missing. Run:\n"
+            "  git submodule update --init --depth 1 external/JUCE external/tracktion_engine external/encore-vst external/encore-audio-processing\n"
+            "(not --recursive)")
+    endif()
+endforeach()
+
 add_subdirectory(external/JUCE)
+
+# Version for the Windows installer (installer/EncoreStudio.iss includes it)
+file(WRITE "${CMAKE_BINARY_DIR}/version.iss" "#define AppVersion \"${PROJECT_VERSION}\"\n")
 
 # The 32-bit plugin bridge (Windows): a small 32-bit program Studio runs 32-bit
 # plugins in. It's built on its own, in a 32-bit build folder:
@@ -25,7 +50,7 @@ option(STUDIO_BRIDGE_ONLY "Build only the 32-bit plugin bridge" OFF)
 if (STUDIO_BRIDGE_ONLY)
     juce_add_gui_app(EncoreStudioBridge32
         PRODUCT_NAME "Encore Studio Bridge32"
-        COMPANY_NAME "Encore"
+        COMPANY_NAME "Encore Music, Inc."
         VERSION ${PROJECT_VERSION}
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Assets/encore-icon.png"
         NEEDS_CURL FALSE
@@ -62,9 +87,30 @@ foreach(patch ${TRACKTION_PATCHES})
 endforeach()
 add_subdirectory(external/tracktion_engine/modules ${CMAKE_BINARY_DIR}/tracktion)
 
+# Link-time optimisation. Off by default: full LTO (JUCE's juce_recommended_lto_flags)
+# is not used, it costs a lot of link time. THIN is Clang's ThinLTO, or MSVC's /GL
+# with incremental LTCG, the same switch as encore-vst's.
+set(ENCORE_LTO "OFF" CACHE STRING "OFF or THIN")
+set_property(CACHE ENCORE_LTO PROPERTY STRINGS OFF THIN)
+add_library(encore_lto INTERFACE)
+if(ENCORE_LTO STREQUAL "THIN")
+    if(MSVC)
+        target_compile_options(encore_lto INTERFACE /GL)
+        target_link_options(encore_lto INTERFACE /LTCG:INCREMENTAL)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(encore_lto INTERFACE -flto=thin)
+        target_link_options(encore_lto INTERFACE -flto=thin)
+    else()
+        message(FATAL_ERROR "ENCORE_LTO=THIN needs Clang or MSVC")
+    endif()
+elseif(NOT ENCORE_LTO STREQUAL "OFF")
+    message(FATAL_ERROR "ENCORE_LTO must be OFF or THIN")
+endif()
+
 juce_add_gui_app(EncoreStudio
     PRODUCT_NAME "Encore Studio"
-    COMPANY_NAME "Encore"
+    COMPANY_NAME "Encore Music, Inc."
+    COMPANY_COPYRIGHT "Copyright (C) 2026 Encore Music, Inc. GNU AGPLv3."
     BUNDLE_ID com.encoremusic.studio
     VERSION ${PROJECT_VERSION}
     MICROPHONE_PERMISSION_ENABLED TRUE
@@ -82,26 +128,32 @@ juce_generate_juce_header(EncoreStudio)
 target_sources(EncoreStudio PRIVATE Source/Main.cpp $<$<PLATFORM_ID:Windows>:Source/bridge/Shm.cpp>)
 target_include_directories(EncoreStudio PRIVATE Source)
 
-# Encore's own plugins (Vox, Verb, Equalize, Master, Strum), built in: Encore Studio hosts
-# their processors directly. The sources in encore/ come from the plugin repo
-# (tools/sync-encore-plugins.ps1); each plugin's files get its product name.
+# ENCORE.'s own plugins (Vox, Verb, Equalize, Master, Strum), built in: Basement
+# Studio hosts their processors directly. Their sources come from the encore-vst
+# submodule and the audio processing headers from encore-audio-processing, so
+# Basement compiles exactly the code the plugins ship with. Each plugin's files
+# get its product name.
+set(ENCORE_VST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/encore-vst)
+set(ENCORE_AUDIO_PROCESSING_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/encore-audio-processing)
 foreach (entry "Vox|Encore Vox" "Verb|Encore Verb" "EQ|Encore Equalize" "Master|Encore Master" "Strum|Encore Strum")
     string (REPLACE "|" ";" parts "${entry}")
     list (GET parts 0 dir)
     list (GET parts 1 product)
-    file (GLOB plugin_sources CONFIGURE_DEPENDS encore/plugins/${dir}/Source/*.cpp)
+    file (GLOB plugin_sources CONFIGURE_DEPENDS ${ENCORE_VST_DIR}/plugins/${dir}/Source/*.cpp)
     list (APPEND plugin_sources Source/encore/Make${dir}.cpp)
     target_sources(EncoreStudio PRIVATE ${plugin_sources})
     set_source_files_properties(${plugin_sources} PROPERTIES COMPILE_DEFINITIONS "JucePlugin_Name=\"${product}\"")
 endforeach()
-target_include_directories(EncoreStudio PRIVATE encore/shared)
+# encore-vst's shared/ for "EncoreProcessorBase.h" and "ui/...", and the
+# encore-audio-processing root for "dsp/...", as in encore-vst itself
+target_include_directories(EncoreStudio PRIVATE ${ENCORE_VST_DIR}/shared ${ENCORE_AUDIO_PROCESSING_DIR})
 # the app keeps its own default look and fonts; the plugins don't take them over
 target_compile_definitions(EncoreStudio PRIVATE ENCORE_PLUGIN_OWNS_DEFAULT_LOOK=0)
 
-# older VST2 plugins: FST, an open (GPLv3+) stand-in for the VST2 headers
+# older VST2 plugins: FST, a GPLv3+ stand-in for the VST2 headers
 target_include_directories(EncoreStudio PRIVATE external/fst)
 
-# MP3 export: LAME's encoder library (LGPL), built from source
+# MP3 export: LAME's encoder library (LGPL), built from source as its own static library
 file (GLOB lame_sources CONFIGURE_DEPENDS external/lame/libmp3lame/*.c)
 add_library(lame STATIC ${lame_sources})
 target_include_directories(lame PRIVATE external/lame external/lame/libmp3lame PUBLIC external/lame/include)
@@ -138,10 +190,14 @@ target_link_libraries(EncoreStudio PRIVATE
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_recommended_config_flags
-    juce::juce_recommended_lto_flags)
+    encore_lto)
 
 if (MSVC)
-    target_compile_options(EncoreStudio PRIVATE /bigobj /MP)
+    target_compile_options(EncoreStudio PRIVATE /bigobj)
+    # /MP only for Visual Studio's own builds (Ninja already compiles in parallel)
+    if (CMAKE_GENERATOR MATCHES "Visual Studio")
+        target_compile_options(EncoreStudio PRIVATE /MP)
+    endif()
 endif()
 
 # Linux (GCC): Tracktion keeps some atomics too big for one instruction, which need libatomic

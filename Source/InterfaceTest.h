@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 // --interfacetest <word> <dir>: the live side of the app on a REAL interface (the word picks it, like "Volt"), through
 // its ASIO driver and through Windows audio. Every block is measured at the very end of the engine and then blanked,

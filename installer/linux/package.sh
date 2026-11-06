@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # ENCORE. Basement Studio: the Linux packages, from a Release build.
+# Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 #
 #   installer/linux/package.sh <path to the built "Encore Studio"> <output folder> [deb|appimage|all]
 #
@@ -7,7 +8,7 @@
 #   encore-basement-studio_<version>_<amd64|arm64>.deb
 #     the app in /opt/encore-basement-studio, "encore-basement-studio" on the PATH,
 #     a menu entry, icons, and .encore / .basement songs opening in it
-#   Encore-Basement-Studio-<version>-<x86_64|aarch64>.AppImage
+#   ENCORE-Basement-Studio-<version>-<x86_64|aarch64>.AppImage
 #     one file that runs on most distributions (built with a pinned linuxdeploy)
 #
 # Needs: dpkg-dev (dpkg-shlibdeps), rsvg-convert (librsvg2-bin), curl, file.
@@ -74,14 +75,20 @@ EOF
     {
         echo "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
         echo "Upstream-Name: ENCORE. Basement Studio"
-        echo "Upstream-Contact: https://github.com/jimmyrlondo/encore-studio/issues"
-        echo "Source: https://github.com/jimmyrlondo/encore-studio"
-        echo "Comment: The ENCORE. name and logo belong to Encore Studio; forks are"
-        echo " welcome under the license but should use their own name."
+        echo "Upstream-Contact: Encore Music, Inc. <support@encoremusic.studio>"
+        echo "Source: https://github.com/Encore-Music-Inc/encore-basement-studio"
+        echo "Comment: The ENCORE. name and logo belong to Encore Music, Inc. and are"
+        echo " not licensed (TRADEMARKS.md); forks must use their own name and logo."
+        echo " Third-party software and its licences: THIRD-PARTY-NOTICES.md, next to this file."
         echo
         echo "Files: *"
-        echo "Copyright: 2026 Encore Studio"
+        echo "Copyright: 2026 Encore Music, Inc."
         echo "License: AGPL-3"
+        echo
+        echo "Files: external/encore-vst/* external/encore-audio-processing/*"
+        echo "Copyright: 2026 Encore Music, Inc."
+        echo "License: AGPL-3"
+        echo " The ENCORE. plugins and audio processing, built into the app."
         echo
         echo "Files: external/JUCE/*"
         echo "Copyright: Raw Material Software Limited"
@@ -89,8 +96,13 @@ EOF
         echo
         echo "Files: external/tracktion_engine/*"
         echo "Copyright: Tracktion Corporation"
-        echo "License: GPL-3"
-        echo " Tracktion Engine is used under the GNU General Public License v3."
+        echo "License: GPL-3+"
+        echo " Tracktion Engine is used under the GNU General Public License v3 or later."
+        echo
+        echo "Files: external/tracktion_engine/modules/tracktion_engine/3rd_party/soundtouch/*"
+        echo "Copyright: Olli Parviainen"
+        echo "License: LGPL-2.1+"
+        echo " On Debian systems the LGPL 2.1 is in /usr/share/common-licenses/LGPL-2.1."
         echo
         echo "Files: external/fst/*"
         echo "Copyright: IOhannes m zmoelnig"
@@ -101,9 +113,6 @@ EOF
         echo "License: LGPL-2+"
         echo " On Debian systems the LGPL is in /usr/share/common-licenses/LGPL-2."
         echo
-        echo "License: GPL-3"
-        echo " On Debian systems the GPL v3 is in /usr/share/common-licenses/GPL-3."
-        echo
         echo "License: GPL-3+"
         echo " On Debian systems the GPL v3 is in /usr/share/common-licenses/GPL-3."
         echo
@@ -111,6 +120,7 @@ EOF
         sed -e 's/^[[:space:]]*$/./' -e 's/^/ /' "$repo/LICENSE"
     } > "$doc/copyright"
     chmod 644 "$doc/copyright"
+    install -m644 "$repo/THIRD-PARTY-NOTICES.md" "$repo/TRADEMARKS.md" "$doc/"
 
     # Depends: what the app links (dpkg-shlibdeps), plus the X11 libraries JUCE opens at run time
     say "deb: finding library dependencies"
@@ -135,7 +145,7 @@ EOF
 Package: $name
 Version: $version
 Architecture: $debarch
-Maintainer: ENCORE. Music <jimmyrlondo@users.noreply.github.com>
+Maintainer: Encore Music, Inc. <support@encoremusic.studio>
 Installed-Size: $(du -sk --exclude=DEBIAN "$root" | cut -f1)
 Depends: $linked, $x11
 Recommends: libjack-jackd2-0 | libjack0
@@ -166,7 +176,7 @@ declare -A LINUXDEPLOY_SHA256=(
 
 make_appimage() {
     local tool="$work/linuxdeploy-$imgarch.AppImage"
-    local img="Encore-Basement-Studio-$version-$imgarch.AppImage"
+    local img="ENCORE-Basement-Studio-$version-$imgarch.AppImage"
     say "appimage: fetching linuxdeploy $LINUXDEPLOY_RELEASE ($imgarch)"
     curl -fsSL --retry 3 -o "$tool" \
         "https://github.com/linuxdeploy/linuxdeploy/releases/download/$LINUXDEPLOY_RELEASE/linuxdeploy-$imgarch.AppImage" \

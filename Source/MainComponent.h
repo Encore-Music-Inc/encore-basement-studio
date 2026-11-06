@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The main window: a song (a Tracktion "Edit") with its tracks, the transport,
 // and the things you do to a song (record, import, add effects, export).
@@ -1908,7 +1908,7 @@ public:
             case cmdGroupSelected:  addGroup (selectedTracks()); return true;
 
             case cmdShortcuts:      showPreferences ("Keyboard Shortcuts"); return true;
-            case cmdGuide:          url ("https://github.com/jimmyrlondo/encore-studio#readme"); return true;
+            case cmdGuide:          url ("https://github.com/Encore-Music-Inc/encore-basement-studio#readme"); return true;
             case cmdReport:         showReport(); return true;
             case cmdUpdates:        checkForUpdates (true); return true;
             case cmdAutoUpdates:    props().setValue ("checkUpdates", ! props().getBoolValue ("checkUpdates", true)); commandManager.commandStatusChanged(); return true;
@@ -4104,10 +4104,11 @@ private:
     void showAbout()
     {
         juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::NoIcon, "ENCORE. Basement Studio " + juce::String (ProjectInfo::versionString),
-            "A free, open-source DAW from ENCORE. Music.\n\n"
-            "Copyright (C) 2026 Encore Studio. Free software under the GNU AGPLv3.\n"
+            "A free, open-source DAW from ENCORE.\n\n"
+            "Copyright (C) 2026 Encore Music, Inc. Free software under the GNU AGPLv3.\n"
             "Built on Tracktion Engine (GPLv3) and JUCE (AGPLv3).\n\n"
-            "github.com/jimmyrlondo/encore-studio");
+            "github.com/" + juce::String (support::repo()) + "\n"
+            "support@encoremusic.studio");
     }
 
     //==============================================================================

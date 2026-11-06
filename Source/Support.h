@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 
 // Help menu support: checking GitHub for a newer Studio, and a problem
@@ -5,7 +8,7 @@
 
 namespace support
 {
-    inline const char* repo() { return "jimmyrlondo/encore-studio"; }
+    inline const char* repo() { return "Encore-Music-Inc/encore-basement-studio"; }
 
     //==============================================================================
     /** "v0.4.1" or "0.4.1" as numbers, for comparing */

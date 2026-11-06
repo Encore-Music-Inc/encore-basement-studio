@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 // --audiotest <dir>: the live side of the app (monitoring, meters, recording, stopping) run against a pretend
 // four-input interface, with a tone on one input. It opens no real audio or MIDI device, so it's safe while
