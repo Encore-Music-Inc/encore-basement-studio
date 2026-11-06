@@ -79,9 +79,9 @@ jobs:
           fi
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
           if [[ "$kind" == pr ]]; then
-            echo 'linux=[{"arch":"x64","runner":"ubuntu-24.04"}]' >> "$GITHUB_OUTPUT"
+            echo 'linux=[{"arch":"x64"}]' >> "$GITHUB_OUTPUT"
           else
-            echo 'linux=[{"arch":"x64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' >> "$GITHUB_OUTPUT"
+            echo 'linux=[{"arch":"x64"},{"arch":"arm64"}]' >> "$GITHUB_OUTPUT"
           fi
           if [[ "$EVENT" == "pull_request" ]]; then
             files=$(git diff --name-only "$PR_BASE" "$PR_HEAD")
@@ -113,14 +113,16 @@ jobs:
   # Bookworm-based Raspberry Pi OS and other older systems. arm64 runs on GitHub's
   # native arm64 runner, never under emulation.
   linux:
-    name: Linux ${{ matrix.arch }} (app and tests${{ needs.changes.outputs.kind == 'build' && ', .deb and AppImage' || '' }})
+    # A fixed name: GitHub adds the matrix value to it ("Linux (x64)"), and a skipped
+    # run shows plain "Linux" instead of an unfilled ${{ }} template.
+    name: Linux
     needs: changes
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind != 'release'
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.changes.outputs.linux) }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     container: debian:bookworm
     defaults:
       run:
