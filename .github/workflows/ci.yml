@@ -228,23 +228,20 @@ jobs:
   # Each installs the .deb the way a user would, checks what it put in place, then
   # self-tests the installed app and the AppImage. No build here.
   linux-packages:
-    # A fixed name: GitHub adds each leg's matrix values to it, and a skipped run
-    # (pull requests, docs-only changes) shows this name instead of a placeholder
+    # A fixed name: GitHub adds the matrix values to it ("Linux package tests
+    # (arm64, debian-12)"), and a skipped run (pull requests, docs-only changes)
+    # shows this name instead of a placeholder. The matrix only carries what the
+    # name should show; the runner and container image come from it.
     name: Linux package tests
     needs: [changes, linux]
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind == 'build'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { arch: x64, system: debian-12, runner: ubuntu-24.04, image: "debian:bookworm" }
-          - { arch: x64, system: ubuntu-22.04, runner: ubuntu-22.04, image: "" }
-          - { arch: x64, system: ubuntu-24.04, runner: ubuntu-24.04, image: "" }
-          - { arch: arm64, system: debian-12, runner: ubuntu-24.04-arm, image: "debian:bookworm" }
-          - { arch: arm64, system: ubuntu-22.04, runner: ubuntu-22.04-arm, image: "" }
-          - { arch: arm64, system: ubuntu-24.04, runner: ubuntu-24.04-arm, image: "" }
-    runs-on: ${{ matrix.runner }}
-    container: ${{ matrix.image }}
+        arch: [x64, arm64]
+        system: [debian-12, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ format('{0}{1}', matrix.system == 'ubuntu-22.04' && 'ubuntu-22.04' || 'ubuntu-24.04', matrix.arch == 'arm64' && '-arm' || '') }}
+    container: ${{ matrix.system == 'debian-12' && 'debian:bookworm' || '' }}
     defaults:
       run:
         shell: bash
