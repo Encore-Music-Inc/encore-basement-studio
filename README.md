@@ -181,7 +181,7 @@ Four submodules, all pinned:
 |---|---|---|
 | `external/JUCE` | JUCE 9 | `7ff644f` |
 | `external/tracktion_engine` | Tracktion Engine | `a5e4499` |
-| `external/encore-vst` | the ENCORE. plugins: `plugins/<Name>/Source/*.cpp` and `shared/` | `c133085`, the head of Encore-Music-Inc/encore-vst#3 (moves to tag `v0.5.0` once it is published) |
+| `external/encore-vst` | the ENCORE. plugins: `plugins/<Name>/Source/*.cpp` and `shared/` | tag `v0.5.0` |
 | `external/encore-audio-processing` | the audio processing headers (`dsp/...`) | tag `v1.0.0` |
 
 Basement Studio builds the five plugins from encore-vst's own sources, with
