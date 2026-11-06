@@ -5,9 +5,11 @@
     |  |  |  |  \ '-'  \ `--.|  \  \  |  |  |  |' '-' '|  ||  |       Corporation
     `---' `--'   `--`--'`---'`--'`--' `---' `--' `---' `--''--'    www.tracktion.com
 
-    Modified for Encore: Basement Studio (2026): Encore colours, clip dragging, a bar
-    ruler, wheel zoom/scroll, volume and pan on the track headers. Licensed
-    under the GPL v3 (or later) as part of Studio (AGPLv3).
+    From Tracktion Engine's examples (GPLv3 or later). Modified for
+    ENCORE. Basement Studio: ENCORE. colours, clip dragging, a bar ruler,
+    wheel zoom and scroll, volume and pan on the track headers.
+    Changes Copyright (C) 2026 Encore Music, Inc. This file is part of
+    ENCORE. Basement Studio, licensed under the GNU AGPLv3 (see LICENSE).
 */
 
 #pragma once
@@ -284,7 +286,7 @@ inline void showMenuAndCreatePluginAsync (te::Track::Ptr destTrack, int index,
 
 
 //==============================================================================
-/** The Effects menu: Encore's plugins first, then yours by maker, then a short
+/** The Effects menu: ENCORE.'s plugins first, then yours by maker, then a short
     list of built-in effects. New plugins are found in the background, so the
     menu says when a search is still running. */
 inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Component* target)
@@ -312,7 +314,7 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
         auto item = [&edit, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); };
         if (d.pluginFormatName == "Encore")
             encore.addItem (d.name + "  (" + d.category + ")", item);
-        else if (maker.containsIgnoreCase ("Encore") || maker.containsIgnoreCase ("Sick & Sad"))
+        else if (maker.containsIgnoreCase ("Encore"))
             continue; // installed VST3 copies of the same plugins: the built-in ones replace them
         else if (d.isInstrument)
             instruments.addItem (d.name, [&edit, track, d]

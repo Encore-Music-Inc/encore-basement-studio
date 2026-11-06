@@ -1,6 +1,9 @@
+# ENCORE. Basement Studio
+# Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 # Does a plugin checker hide a prompt that a CHILD process puts up, and clean it up when it gives up?
 # Runs Studio with --windowtest and a child PowerShell whose window is see-through and takes no focus.
-param([string]$Exe = "$PSScriptRoot\..\build\EncoreStudio_artefacts\Release\Encore Studio.exe")
+param([string]$Exe = "$PSScriptRoot\..\build\EncoreBasementStudio_artefacts\Release\ENCORE Basement Studio.exe")
 $marker = "EncoreWindowTest" + (Get-Random)
 $dir = Join-Path $env:TEMP $marker
 New-Item -ItemType Directory $dir | Out-Null

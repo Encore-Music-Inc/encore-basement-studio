@@ -5,9 +5,11 @@
     |  |  |  |  \ '-'  \ `--.|  \  \  |  |  |  |' '-' '|  ||  |       Corporation
     `---' `--'   `--`--'`---'`--'`--' `---' `--' `---' `--''--'    www.tracktion.com
 
-    Modified for Encore: Basement Studio (2026): Encore colours, clip dragging, a bar
-    ruler, wheel zoom/scroll, volume and pan on the track headers. Licensed
-    under the GPL v3 (or later) as part of Studio (AGPLv3).
+    From Tracktion Engine's examples (GPLv3 or later). Modified for
+    ENCORE. Basement Studio: ENCORE. colours, clip dragging, a bar ruler,
+    wheel zoom and scroll, volume and pan on the track headers.
+    Changes Copyright (C) 2026 Encore Music, Inc. This file is part of
+    ENCORE. Basement Studio, licensed under the GNU AGPLv3 (see LICENSE).
 */
 
 #pragma once

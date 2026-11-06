@@ -1,7 +1,7 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// Genres: Apple Music's list (the one Encore uses): its main genres and the
+// Genres: Apple Music's list (the one ENCORE. uses): its main genres and the
 // genres under each, from Apple's public genre service (genre 34, Music).
 #pragma once
 

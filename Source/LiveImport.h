@@ -1,11 +1,14 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 
-// File > Import > Live Recording: an Encore Live session (session.json beside
+// File > Import > Live Recording: an ENCORE. Live session (session.json beside
 // the raw recording), or any multichannel WAV from a live recorder or a mixing
-// desk's card. Every input becomes its own track; Encore Live's song marks
+// desk's card. Every input becomes its own track; ENCORE. Live's song marks
 // become markers, or each song becomes its own Studio song to mix.
 //
-// session.json ("encore-live-session", written by Encore Live's Save for Studio):
+// session.json ("encore-live-session", written by ENCORE. Live's Save for Studio):
 //   { "kind": "encore-live-session", "version": 1,
 //     "recording": { "file": "recording.wav", "channelNames": ["Kick", "Snare", ...] },
 //     "show": { "title": "...", "artist": "...", "venue": "...", "date": "2026-10-28" },
@@ -18,7 +21,7 @@ namespace liveimport
     struct Session
     {
         juce::File recording;          // one WAV with every input in it
-        juce::StringArray names;       // a name per input (from Encore Live), or "Input 1"...
+        juce::StringArray names;       // a name per input (from ENCORE. Live), or "Input 1"...
         juce::String title, artist, venue, date;
         juce::Array<Song> songs;
         int channels = 0;

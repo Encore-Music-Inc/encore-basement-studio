@@ -1,8 +1,8 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // 32-bit plugins (Windows): Studio is 64-bit and can't load a 32-bit .dll or
-// .vst3 itself, so each one runs in "Encore Studio Bridge32.exe" beside it
+// .vst3 itself, so each one runs in "ENCORE Basement Studio Bridge32.exe" beside it
 // (see bridge/BridgeMain.cpp). To the engine it's a normal plugin of the
 // formats "32-bit" (VST2) and "32-bit v3" (VST3): parameters, automation, saved
 // state and MIDI all work; its window opens on its own, in front of Studio.
@@ -18,7 +18,7 @@ namespace bridged
 {
     inline juce::File helperExe()
     {
-        return juce::File::getSpecialLocation (juce::File::currentExecutableFile).getSiblingFile ("Encore Studio Bridge32.exe");
+        return juce::File::getSpecialLocation (juce::File::currentExecutableFile).getSiblingFile ("ENCORE Basement Studio Bridge32.exe");
     }
 
     inline bool available() { return helperExe().existsAsFile(); }

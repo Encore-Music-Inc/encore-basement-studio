@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # ENCORE. Basement Studio: the Linux packages, from a Release build.
+# Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 #
-#   installer/linux/package.sh <path to the built "Encore Studio"> <output folder> [deb|appimage|all]
+#   installer/linux/package.sh <path to the built "ENCORE Basement Studio"> <output folder> [deb|appimage|all]
 #
 # Makes, for the machine it runs on (x64 or arm64):
 #   encore-basement-studio_<version>_<amd64|arm64>.deb
 #     the app in /opt/encore-basement-studio, "encore-basement-studio" on the PATH,
 #     a menu entry, icons, and .encore / .basement songs opening in it
-#   Encore-Basement-Studio-<version>-<x86_64|aarch64>.AppImage
+#   ENCORE-Basement-Studio-<version>-<x86_64|aarch64>.AppImage
 #     one file that runs on most distributions (built with a pinned linuxdeploy)
 #
 # Needs: dpkg-dev (dpkg-shlibdeps), rsvg-convert (librsvg2-bin), curl, file.
@@ -16,7 +17,7 @@ set -euo pipefail
 say()  { echo "[package] $*"; }
 fail() { echo "::error::[package] $*"; exit 1; }
 
-[ $# -ge 2 ] || fail "usage: package.sh <Encore Studio binary> <output folder> [deb|appimage|all]"
+[ $# -ge 2 ] || fail "usage: package.sh <ENCORE Basement Studio binary> <output folder> [deb|appimage|all]"
 bin=$(readlink -f "$1")
 out=$(mkdir -p "$2" && readlink -f "$2")
 what=${3:-all}
@@ -24,8 +25,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 
 [ -x "$bin" ] || fail "no app at $bin (build Release first)"
-version=$(sed -nE 's/^project\(EncoreStudio VERSION ([0-9.]+)\)/\1/p' "$repo/CMakeLists.txt")
-[ -n "$version" ] || fail "no project(EncoreStudio VERSION x.y.z) in CMakeLists.txt"
+version=$(sed -nE 's/^project\(EncoreBasementStudio VERSION ([0-9.]+)\)/\1/p' "$repo/CMakeLists.txt")
+[ -n "$version" ] || fail "no project(EncoreBasementStudio VERSION x.y.z) in CMakeLists.txt"
 
 debarch=$(dpkg --print-architecture)
 case "$debarch" in
@@ -54,13 +55,13 @@ icons() {
 make_deb() {
     local root="$work/deb" deb="$out/${name}_${version}_${debarch}.deb"
     say "deb: staging"
-    install -Dm755 "$bin" "$root/opt/$name/Encore Studio"
-    strip --strip-unneeded "$root/opt/$name/Encore Studio" || say "strip failed, keeping symbols"
+    install -Dm755 "$bin" "$root/opt/$name/ENCORE Basement Studio"
+    strip --strip-unneeded "$root/opt/$name/ENCORE Basement Studio" || say "strip failed, keeping symbols"
     mkdir -p "$root/usr/bin"
     cat > "$root/usr/bin/$name" <<EOF
 #!/bin/sh
 # ENCORE. Basement Studio
-exec "/opt/$name/Encore Studio" "\$@"
+exec "/opt/$name/ENCORE Basement Studio" "\$@"
 EOF
     chmod 755 "$root/usr/bin/$name"
     install -Dm644 "$here/$name.desktop" "$root/usr/share/applications/$name.desktop"
@@ -74,14 +75,20 @@ EOF
     {
         echo "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
         echo "Upstream-Name: ENCORE. Basement Studio"
-        echo "Upstream-Contact: https://github.com/jimmyrlondo/encore-studio/issues"
-        echo "Source: https://github.com/jimmyrlondo/encore-studio"
-        echo "Comment: The ENCORE. name and logo belong to Encore Studio; forks are"
-        echo " welcome under the license but should use their own name."
+        echo "Upstream-Contact: Encore Music, Inc. <support@encoremusic.studio>"
+        echo "Source: https://github.com/Encore-Music-Inc/encore-basement-studio"
+        echo "Comment: The ENCORE. name and logo belong to Encore Music, Inc. and are"
+        echo " not licensed (TRADEMARKS.md); forks must use their own name and logo."
+        echo " Third-party software and its licences: THIRD-PARTY-NOTICES.md, next to this file."
         echo
         echo "Files: *"
-        echo "Copyright: 2026 Encore Studio"
+        echo "Copyright: 2026 Encore Music, Inc."
         echo "License: AGPL-3"
+        echo
+        echo "Files: external/encore-vst/* external/encore-audio-processing/*"
+        echo "Copyright: 2026 Encore Music, Inc."
+        echo "License: AGPL-3"
+        echo " The ENCORE. plugins and audio processing, built into the app."
         echo
         echo "Files: external/JUCE/*"
         echo "Copyright: Raw Material Software Limited"
@@ -89,8 +96,13 @@ EOF
         echo
         echo "Files: external/tracktion_engine/*"
         echo "Copyright: Tracktion Corporation"
-        echo "License: GPL-3"
-        echo " Tracktion Engine is used under the GNU General Public License v3."
+        echo "License: GPL-3+"
+        echo " Tracktion Engine is used under the GNU General Public License v3 or later."
+        echo
+        echo "Files: external/tracktion_engine/modules/tracktion_engine/3rd_party/soundtouch/*"
+        echo "Copyright: Olli Parviainen"
+        echo "License: LGPL-2.1+"
+        echo " On Debian systems the LGPL 2.1 is in /usr/share/common-licenses/LGPL-2.1."
         echo
         echo "Files: external/fst/*"
         echo "Copyright: IOhannes m zmoelnig"
@@ -101,9 +113,6 @@ EOF
         echo "License: LGPL-2+"
         echo " On Debian systems the LGPL is in /usr/share/common-licenses/LGPL-2."
         echo
-        echo "License: GPL-3"
-        echo " On Debian systems the GPL v3 is in /usr/share/common-licenses/GPL-3."
-        echo
         echo "License: GPL-3+"
         echo " On Debian systems the GPL v3 is in /usr/share/common-licenses/GPL-3."
         echo
@@ -111,13 +120,14 @@ EOF
         sed -e 's/^[[:space:]]*$/./' -e 's/^/ /' "$repo/LICENSE"
     } > "$doc/copyright"
     chmod 644 "$doc/copyright"
+    install -m644 "$repo/THIRD-PARTY-NOTICES.md" "$repo/TRADEMARKS.md" "$doc/"
 
     # Depends: what the app links (dpkg-shlibdeps), plus the X11 libraries JUCE opens at run time
     say "deb: finding library dependencies"
     mkdir -p "$work/shlib/debian"
     printf 'Source: %s\n\nPackage: %s\nArchitecture: any\n' "$name" "$name" > "$work/shlib/debian/control"
     local linked
-    linked=$(cd "$work/shlib" && dpkg-shlibdeps -O "$root/opt/$name/Encore Studio" 2>"$work/shlibdeps.err") \
+    linked=$(cd "$work/shlib" && dpkg-shlibdeps -O "$root/opt/$name/ENCORE Basement Studio" 2>"$work/shlibdeps.err") \
         || { cat "$work/shlibdeps.err"; fail "dpkg-shlibdeps failed"; }
     linked=${linked#shlibs:Depends=}
     [ -n "$linked" ] || fail "dpkg-shlibdeps found no libraries"
@@ -135,7 +145,7 @@ EOF
 Package: $name
 Version: $version
 Architecture: $debarch
-Maintainer: ENCORE. Music <jimmyrlondo@users.noreply.github.com>
+Maintainer: Encore Music, Inc. <support@encoremusic.studio>
 Installed-Size: $(du -sk --exclude=DEBIAN "$root" | cut -f1)
 Depends: $linked, $x11
 Recommends: libjack-jackd2-0 | libjack0
@@ -166,7 +176,7 @@ declare -A LINUXDEPLOY_SHA256=(
 
 make_appimage() {
     local tool="$work/linuxdeploy-$imgarch.AppImage"
-    local img="Encore-Basement-Studio-$version-$imgarch.AppImage"
+    local img="ENCORE-Basement-Studio-$version-$imgarch.AppImage"
     say "appimage: fetching linuxdeploy $LINUXDEPLOY_RELEASE ($imgarch)"
     curl -fsSL --retry 3 -o "$tool" \
         "https://github.com/linuxdeploy/linuxdeploy/releases/download/$LINUXDEPLOY_RELEASE/linuxdeploy-$imgarch.AppImage" \

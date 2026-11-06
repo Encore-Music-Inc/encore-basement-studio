@@ -1,9 +1,8 @@
-# Encore: Basement Studio
-# Copyright (C) 2026 Encore Studio. All rights reserved (see LICENSE).
+# ENCORE. Basement Studio
+# Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 #
 # The tuner's instruments and tunings, in one place. Running this writes
-# Source/edit/Tunings.h (Studio's tuner) and tools/tunings.json (the web tuner),
-# so both always offer the same list.
+# Source/edit/Tunings.h, which Basement Studio's tuner is built from.
 #
 #   python tools/tunings.py
 #
@@ -14,7 +13,7 @@
 # string written out, e.g. "E2+E3" for an octave pair, "B3+B3" for a unison pair. "transpose" is for horns and reeds: the written
 # note is the concert note plus that many semitones.
 
-import json, os
+import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -395,21 +394,9 @@ def write_cpp():
     body = body.replace("@CATALOG@", "\n".join(lines)).replace("@TEMPERAMENTS@", temps).replace("@REFERENCES@", refs)
     open(os.path.join(HERE, "..", "Source", "edit", "Tunings.h"), "w", encoding="utf-8", newline="\n").write(body)
 
-def write_json():
-    data = {
-        "families": [{"name": f, "instruments": [{"name": n, "transpose": TRANSPOSE.get(n, 0), "part": part(n, f),
-                                                   "tunings": [{"name": t["name"], "notes": t["notes"], "midi": [midi(x) for x in t["notes"]],
-                                                               "courses": t["courses"], "note": t["note"]} for t in ts]}
-                                                  for n, ts in insts]} for f, insts in CATALOG],
-        "temperaments": [{"name": n, "cents": offs} for n, offs in TEMPERAMENTS],
-        "references": [{"name": n, "hz": v} for n, v in REFERENCES],
-    }
-    json.dump(data, open(os.path.join(HERE, "tunings.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
-
 if __name__ == "__main__":
     check()
     write_cpp()
-    write_json()
     n = sum(len(i) for _, i in CATALOG)
     t = sum(len(ts) for _, i in CATALOG for _, ts in i)
     strings = sum(len(x["notes"]) for _, i in CATALOG for _, ts in i for x in ts)

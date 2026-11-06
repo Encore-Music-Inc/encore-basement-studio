@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 
 // MP3 export with LAME (external/lame, LGPL). Tracktion renders the mix to a

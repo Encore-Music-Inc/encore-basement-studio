@@ -1,7 +1,7 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// "Encore Studio Bridge32.exe": a small 32-bit program that runs one 32-bit
+// "ENCORE Basement Studio Bridge32.exe": a small 32-bit program that runs one 32-bit
 // VST or VST3 plugin for Studio (which is 64-bit and can't load them itself).
 //
 //   --scan <plugin> <out.xml>        what's in a plugin file (written as XML), then quit
@@ -16,12 +16,12 @@
 
 namespace
 {
-    /** %TEMP%/Encore Studio Bridge32.log: what the bridge did, for problem reports (kept short) */
+    /** %TEMP%/ENCORE Basement Studio Bridge32.log: what the bridge did, for problem reports (kept short) */
     void log (const juce::String& line)
     {
         static juce::CriticalSection lock;
         const juce::ScopedLock sl (lock);
-        auto f = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("Encore Studio Bridge32.log");
+        auto f = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ENCORE Basement Studio Bridge32.log");
         if (f.getSize() > 200000) f.deleteFile();
         f.appendText (juce::Time::getCurrentTime().toString (true, true, true, true) + "  [" + juce::String ((int) bridgeos::currentProcessId()) + "] " + line + juce::newLine);
     }
@@ -335,7 +335,7 @@ namespace
 class BridgeApplication : public juce::JUCEApplicationBase
 {
 public:
-    const juce::String getApplicationName() override    { return "Encore Studio Bridge32"; }
+    const juce::String getApplicationName() override    { return "ENCORE. Basement Studio Bridge32"; }
     const juce::String getApplicationVersion() override { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override          { return true; }
     void anotherInstanceStarted (const juce::String&) override {}

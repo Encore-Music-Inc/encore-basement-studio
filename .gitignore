@@ -4,3 +4,5 @@ out/
 *.user
 dist/
 build32/
+.ccache/
+.sccache/

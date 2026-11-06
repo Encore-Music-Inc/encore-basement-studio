@@ -1,20 +1,20 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // Who you're making music as, and where each artist's music lives.
 //
 // For now the account is a profile on this computer (account.json beside the
 // settings): your name, and either one artist or a record label with its
-// artists. When Encore sign-in arrives (docs/ENCORE-API.md) the same profile
-// is filled in from your Encore account instead, and the folders stay as they are.
+// artists. When ENCORE. sign-in arrives (docs/ENCORE-API.md) the same profile
+// is filled in from your ENCORE. account instead, and the folders stay as they are.
 //
 // Every artist gets one folder in the music library:
 //
 //   <Library>/<Artist>/artist.json        who this is (name, genre)
 //   <Library>/<Artist>/Songs/<Song>/      each song's session (the .encore file, recordings...)
-//   <Library>/<Artist>/Releases/<Name>/   singles, EPs and albums: what goes to Encore
+//   <Library>/<Artist>/Releases/<Name>/   singles, EPs and albums: what goes to ENCORE.
 //   <Library>/<Artist>/Masters/<Name>/    every finished master, kept even when it's redone
-//   <Library>/<Artist>/Live/<Show>/       live shows brought in from Encore Live
+//   <Library>/<Artist>/Live/<Show>/       live shows brought in from ENCORE. Live
 #pragma once
 
 namespace account
@@ -24,7 +24,7 @@ namespace account
         juce::String name;
         juce::String genre;      // their genres from Apple Music's list, the main one first ("Indie Pop, Alternative")
         juce::String hometown, members, website;
-        juce::String copyright;  // who owns the recordings, for release notes ("Sick City", or a label)
+        juce::String copyright;  // who owns the recordings, for release notes ("Night Owls", or a label)
         juce::String pro, ipi;   // the songwriter's performing rights organisation (ASCAP, BMI...) and IPI number
 
         /** The genre new songs get */
@@ -60,7 +60,7 @@ namespace account
         juce::Array<Artist> artists;        // one for an artist, any number for a label
         int current = 0;                    // the artist new songs are made for
         juce::File library;                 // where every artist's folder goes
-        juce::String signedInWith { "this computer" };   // "encore" once Encore sign-in exists
+        juce::String signedInWith { "this computer" };   // "encore" once ENCORE. sign-in exists
         bool skipped = false;               // chose "Skip for now" on the first screen
 
         bool isLabel() const   { return label.isNotEmpty(); }
@@ -71,7 +71,7 @@ namespace account
         juce::var toVar() const
         {
             auto* o = new juce::DynamicObject();
-            o->setProperty ("kind", "encore-studio-account");
+            o->setProperty ("kind", "encore-basement-studio-account");
             o->setProperty ("version", 1);
             o->setProperty ("name", name);
             o->setProperty ("email", email);
@@ -108,12 +108,12 @@ namespace account
         }
     };
 
-    /** The music library a new profile suggests: Music/Encore Studio */
-    inline juce::File defaultLibrary() { return juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("Encore Studio"); }
+    /** The music library a new profile suggests: Music/ENCORE Basement Studio */
+    inline juce::File defaultLibrary() { return juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile (musicFolderName); }
 
     inline juce::File file()
     {
-        return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile()).getChildFile ("account.json");
+        return settingsFolder().getChildFile ("account.json");
     }
 
     /** True until the first screen has been answered (set up a profile, or skip) */
@@ -188,14 +188,12 @@ namespace library
     }
 
     /** Where new songs go: the signed-in artist's Songs folder, else the folder chosen in
-        Preferences, else Music/Encore Studio (or the Music/Encore Basement of earlier versions) */
+        Preferences, else Music/ENCORE Basement Studio */
     inline juce::File songsFolderOr (const juce::String& chosen)
     {
         if (auto s = songsFolder(); s != juce::File()) return s;
         if (chosen.isNotEmpty()) return juce::File (chosen);
-        auto music = juce::File::getSpecialLocation (juce::File::userMusicDirectory);
-        if (music.getChildFile ("Encore Basement").isDirectory() && ! music.getChildFile ("Encore Studio").exists()) return music.getChildFile ("Encore Basement");
-        return music.getChildFile ("Encore Studio");
+        return juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile (musicFolderName);
     }
 
     inline juce::File liveFolder()

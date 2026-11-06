@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // Finds your plugins in the background. Every launch checks the plugin folders
 // (the standard ones plus any you add in Preferences) and only looks inside
@@ -46,7 +46,7 @@
 class PluginFinder : private juce::Thread
 {
 public:
-    PluginFinder (te::Engine& e) : Thread ("Encore Studio plugin finder"), engine (e) {}
+    PluginFinder (te::Engine& e) : Thread ("ENCORE Basement Studio plugin finder"), engine (e) {}
     ~PluginFinder() override
     {
         *alive = false;
@@ -71,7 +71,7 @@ public:
     bool isRunning() const { return isThreadRunning(); }
 
     /** Made by a plugin-checking helper that had to hide a window and give up (see bridgeos::hideWindowsWhileScanning) */
-    static juce::File windowFlag() { return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("Encore Studio plugin window.flag"); }
+    static juce::File windowFlag() { return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ENCORE Basement Studio plugin window.flag"); }
     juce::String status() const { const juce::ScopedLock sl (lock); return current; }
 
     /** Every folder Studio looks in, for the Preferences page */
@@ -190,7 +190,7 @@ private:
        #if JUCE_WINDOWS
         auto out = run ({ "powershell", "-NoProfile", "-NonInteractive", "-Command",
                           "$all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name; "
-                          "$all | Where-Object { $_.ParentProcessId -eq " + pid + " -and $_.Name -like '*Encore Studio*' } | ForEach-Object { "
+                          "$all | Where-Object { $_.ParentProcessId -eq " + pid + " -and $_.Name -like '*ENCORE Basement Studio*' } | ForEach-Object { "
                           "$tree = @($_.ProcessId); $i = 0; "
                           "while ($i -lt $tree.Count) { $p = $tree[$i]; $all | Where-Object { $_.ParentProcessId -eq $p } | ForEach-Object { $tree += $_.ProcessId }; $i++ }; "
                           "$tree -join ' ' }" }, true);

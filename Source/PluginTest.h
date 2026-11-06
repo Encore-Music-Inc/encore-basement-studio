@@ -1,7 +1,7 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// "Encore Studio.exe --plugintest <report file> [folder]" loads every VST3
+// "ENCORE Basement Studio.exe --plugintest <report file> [folder]" loads every VST3
 // and VST2 in a folder (default: the system plugin folders) the way the Effects button
 // does: scan it, put it on a track, wait for it to load, open its editor.
 // Writes a line per plugin with what happened and how long each step took,
@@ -17,7 +17,7 @@ namespace selftest
         auto line = [&] (const String& s) { report << s << newLine; outFile.replaceWithText (report); };
 
         auto* ui = new HeadlessUIBehaviour();
-        te::Engine engine { "Encore Studio Plugintest", std::unique_ptr<te::UIBehaviour> (ui), std::make_unique<StudioBehaviour>() };
+        te::Engine engine { "ENCORE/Basement Studio Plugintest", std::unique_ptr<te::UIBehaviour> (ui), std::make_unique<StudioBehaviour>() };
         registerEncorePlugins (engine);
         registerBridgedPlugins (engine);   // 32-bit plugins, through the bridge
         auto& pm = engine.getPluginManager();
@@ -107,7 +107,7 @@ namespace selftest
             if (! ok) ++failures;
         };
         auto* ui = new HeadlessUIBehaviour();
-        te::Engine engine { "Encore Studio Bridgetest", std::unique_ptr<te::UIBehaviour> (ui), std::make_unique<StudioBehaviour> (true) };
+        te::Engine engine { "ENCORE/Basement Studio Bridgetest", std::unique_ptr<te::UIBehaviour> (ui), std::make_unique<StudioBehaviour> (true) };
         registerBridgedPlugins (engine);
         auto& pm = engine.getPluginManager();
         AudioPluginFormat* format = nullptr;

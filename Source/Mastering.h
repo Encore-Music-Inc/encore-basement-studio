@@ -1,6 +1,9 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 
-// Master on export: the rendered mix goes through Encore Master's chain (one of
+// Master on export: the rendered mix goes through ENCORE. Master's chain (one of
 // its styles, a loudness target and how hard it works) on the way out, so the
 // song itself never changes. Plus a short before/after preview: two
 // renders of the same 30 s, played in sync so you can flip between them.
@@ -11,7 +14,7 @@ namespace mastering
 {
     struct Settings
     {
-        int style = -1;            // Encore Master's style (Balanced, Heavy...), or -1 for no mastering
+        int style = -1;            // ENCORE. Master's style (Balanced, Heavy...), or -1 for no mastering
         float intensity = 0.5f;    // 0..1, 0.5 = the style as fitted
         int target = 0;            // 0 Streaming -14, 1 Balanced -11, 2 Loud -9
         bool on() const { return style >= 0; }
@@ -32,7 +35,7 @@ namespace mastering
         return entry != nullptr && juce::String (entry->id) == "encore:master";
     }
 
-    /** Masters a rendered mix in place, the way Encore Master does when a song plays through it:
+    /** Masters a rendered mix in place, the way ENCORE. Master does when a song plays through it:
         it learns the mix on its loudest 30 s (level, tone, then the drive that hits the loudness
         target), then the whole song goes through with what it learned locked. */
     inline void masterBuffer (juce::AudioBuffer<float>& audio, double fs, const Settings& m)

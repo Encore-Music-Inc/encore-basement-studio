@@ -1,5 +1,5 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The main window: a song (a Tracktion "Edit") with its tracks, the transport,
 // and the things you do to a song (record, import, add effects, export).
@@ -113,7 +113,7 @@ struct ExportOptions
     bool masterEffects = true;
     bool tail = true;                  // let reverbs and delays ring out (2 s)
     bool loudness = false;             // normalise to -14 LUFS (streaming level)
-    mastering::Settings mastering;     // through Encore Master on the way out (the mix only)
+    mastering::Settings mastering;     // through ENCORE. Master on the way out (the mix only)
 };
 
 inline std::shared_ptr<SongExport> exportSong (te::Engine& engine, const juce::File& songFile, juce::File dest, ExportOptions o,
@@ -134,7 +134,7 @@ inline std::shared_ptr<SongExport> exportSong (te::Engine& engine, const juce::F
         o.flac = false;
         o.bitDepth = 32;
         if (o.mp3Kbps > 0) o.sampleRate = mp3::rateFor (o.sampleRate);
-        if (master) o.loudness = false;   // Encore Master sets the loudness itself
+        if (master) o.loudness = false;   // ENCORE. Master sets the loudness itself
         std::weak_ptr<SongExport> weak = job;
         done = [weak, finalFile, want, master, done] (juce::File wav, juce::String err)
         {
@@ -320,7 +320,7 @@ private:
 };
 
 /** File > Export > Audio Mixdown: the mix or every track (stems), whole song or loop, format and level,
-    and optionally mastered on the way out with Encore Master (with a quick before/after listen) */
+    and optionally mastered on the way out with ENCORE. Master (with a quick before/after listen) */
 class ExportComponent : public juce::Component
 {
 public:
@@ -620,7 +620,7 @@ namespace clicks
         return b;
     }
 
-    inline juce::File folder() { return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile()).getChildFile ("Click sounds"); }
+    inline juce::File folder() { return settingsFolder().getChildFile ("Click sounds"); }
 
     inline juce::File write (const juce::String& name, const juce::AudioBuffer<float>& audio, float gain)
     {
@@ -784,10 +784,10 @@ private:
     }
 };
 
-/** File > Send to Encore: a release package for Encore Music (the mastered mix, stems if you
+/** File > Send to ENCORE.: a release package for ENCORE. (the mastered mix, stems if you
     want them, the cover art and the song's details in release.json), made in the song's
-    folder, then Encore opens in the browser to upload it. Signing in and uploading straight
-    from Studio come once Encore's upload API exists (see docs/ENCORE-API.md). */
+    folder, then ENCORE. opens in the browser to upload it. Signing in and uploading straight
+    from Basement Studio come once ENCORE.'s upload API exists (see docs/ENCORE-API.md). */
 class EncoreSendComponent : public juce::Component
 {
 public:
@@ -836,7 +836,7 @@ public:
         addAndMakeVisible (pickCover);
 
         hubui::styleLabel (note, 12.0f, theme::muted);
-        note.setText ("The package goes in the song's folder, in a folder named Encore. Then ENCORE. opens in your browser: upload the files from there. "
+        note.setText ("The package goes in the song's folder, in a folder named ENCORE. Then ENCORE. opens in your browser: upload the files from there. "
                       "Signing in from ENCORE. Basement Studio and uploading in one click come next.", juce::dontSendNotification);
         addAndMakeVisible (note);
 
@@ -1097,6 +1097,7 @@ public:
         hub->onAudioSetup = [this] { showPreferences ("Audio"); };
         hub->onCreate = [this] (SongPlan p) { createSong (p); };
         hub->onSignIn = [this] { showFirstScreen(); };
+        hub->onReport = [this] { showReport(); };
         hub->onAddArtist = [this] { addArtist(); };
         hub->onAccountChanged = [this] { accountChanged(); };
         hub->onAccountMenu = [this]
@@ -1908,11 +1909,11 @@ public:
             case cmdGroupSelected:  addGroup (selectedTracks()); return true;
 
             case cmdShortcuts:      showPreferences ("Keyboard Shortcuts"); return true;
-            case cmdGuide:          url ("https://github.com/jimmyrlondo/encore-studio#readme"); return true;
+            case cmdGuide:          url ("https://github.com/Encore-Music-Inc/encore-basement-studio#readme"); return true;
             case cmdReport:         showReport(); return true;
             case cmdUpdates:        checkForUpdates (true); return true;
             case cmdAutoUpdates:    props().setValue ("checkUpdates", ! props().getBoolValue ("checkUpdates", true)); commandManager.commandStatusChanged(); return true;
-            case cmdLogFolder:      juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile()).startAsProcess(); return true;
+            case cmdLogFolder:      settingsFolder().startAsProcess(); return true;
             case cmdAbout:          showAbout(); return true;
             default: return false;
         }
@@ -3194,7 +3195,7 @@ private:
         if (previewAttached) { engine.getDeviceManager().deviceManager.removeAudioCallback (&previewPlayer); previewAttached = false; }
     }
 
-    /** File > Send to Encore */
+    /** File > Send to ENCORE. */
     void sendToEncore()
     {
         if (! edit) return;
@@ -3206,7 +3207,7 @@ private:
             const auto title = info.title.isNotEmpty() ? info.title : songTitle();
             // in the artist's Releases folder (Releases/<Album>/<Song>, or Releases/<Single>), else beside the song
             auto artist = library::artistFolderOf (songFile);
-            auto dir = artist == juce::File() ? songFile.getParentDirectory().getChildFile ("Encore").getChildFile (juce::File::createLegalFileName (title))
+            auto dir = artist == juce::File() ? songFile.getParentDirectory().getChildFile ("ENCORE").getChildFile (juce::File::createLegalFileName (title))
                                               : library::releaseFolder (artist, info.album, title);
             if (artist != juce::File() && info.album.isNotEmpty()) dir = dir.getChildFile (library::folderName (title));
             dir.getChildFile ("stems").deleteRecursively();   // only what the last package made: anything else in the folder stays
@@ -3238,7 +3239,7 @@ private:
             }
             if (choice.cover.existsAsFile()) choice.cover.copyFileTo (dir.getChildFile ("cover" + choice.cover.getFileExtension().toLowerCase()));
 
-            // the song's details, for Encore's release form
+            // the song's details, for ENCORE.'s release form
             auto* rel = new juce::DynamicObject();
             rel->setProperty ("format", "encore-release-1");
             rel->setProperty ("title", title);
@@ -3606,7 +3607,7 @@ private:
     }
 
     //==============================================================================
-    // File > Import > Live Recording: an Encore Live session or a multichannel WAV, a track per input
+    // File > Import > Live Recording: an ENCORE. Live session or a multichannel WAV, a track per input
     void importLiveRecording()
     {
         auto chooser = std::make_shared<juce::FileChooser> ("Import a live recording: an ENCORE. Live session (session.json) or a multichannel WAV",
@@ -3939,12 +3940,12 @@ private:
     }
     bool audioSetupOpen = false;
 
-    /** 0 reverb (Encore Verb), 1 delay, 2 empty */
+    /** 0 reverb (ENCORE. Verb), 1 delay, 2 empty */
     void addFxTrack (int kind)
     {
         juce::PluginDescription verb;
         for (auto& d : engine.getPluginManager().knownPluginList.getTypes())
-            if (d.pluginFormatName == "Encore" && d.name == "Encore Verb") verb = d;
+            if (d.pluginFormatName == "Encore" && d.fileOrIdentifier == "encore:verb") verb = d;
         int n = fx::tracks (*edit).size() + 1;
         juce::String name = kind == 0 ? "Reverb" : kind == 1 ? "Delay" : "FX " + juce::String (n);
         for (auto t : fx::tracks (*edit)) if (t->getName() == name) name << " " << n;
@@ -4090,13 +4091,12 @@ private:
             auto zip = support::makeReport (what, systemInfo(), includeSong ? songFile : juce::File());
             if (zip == juce::File()) { warn ("Couldn't make the report on your Desktop."); return; }
             zip.revealToUser();
-            const juce::String body = "ENCORE. Basement Studio " + juce::String (ProjectInfo::versionString) + " on " + juce::SystemStats::getOperatingSystemName()
-                                      + "\n\nWhat happened:\n\n\n(Drag " + zip.getFileName() + " from your Desktop in here.)";
-            juce::URL ("https://github.com/" + juce::String (support::repo()) + "/issues/new")
-                .withParameter ("title", "Problem: ")
-                .withParameter ("body", body)
-                .launchInDefaultBrowser();
-            status ("Made " + zip.getFileName() + " on your Desktop. Drag it into the GitHub issue that just opened.");
+            if (support::emailSupport ("ENCORE. Basement Studio " + juce::String (ProjectInfo::versionString) + ": a problem",
+                                       support::reportEmailBody (what, zip)))
+                status ("Made " + zip.getFileName() + " on your Desktop. Attach it to the email that just opened.");
+            else
+                warn ("Made " + zip.getFileName() + " on your Desktop. Please email it to " + juce::String (support::email())
+                      + " (no mail app opened). The log is at " + studioLogFile().getFullPathName() + ".");
         };
         showDialog ("Report a Problem", c, this);
     }
@@ -4104,10 +4104,11 @@ private:
     void showAbout()
     {
         juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::NoIcon, "ENCORE. Basement Studio " + juce::String (ProjectInfo::versionString),
-            "A free, open-source DAW from ENCORE. Music.\n\n"
-            "Copyright (C) 2026 Encore Studio. Free software under the GNU AGPLv3.\n"
+            "A free, open-source DAW from ENCORE.\n\n"
+            "Copyright (C) 2026 Encore Music, Inc. Free software under the GNU AGPLv3.\n"
             "Built on Tracktion Engine (GPLv3) and JUCE (AGPLv3).\n\n"
-            "github.com/jimmyrlondo/encore-studio");
+            "github.com/" + juce::String (support::repo()) + "\n"
+            "support@encoremusic.studio");
     }
 
     //==============================================================================

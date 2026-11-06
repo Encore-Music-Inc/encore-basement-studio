@@ -1,3 +1,11 @@
+/*
+    From Tracktion Engine's examples (examples/common/PluginWindow.h),
+    Copyright Tracktion Software Corporation, GPLv3 or later. Modified for
+    ENCORE. Basement Studio. Changes Copyright (C) 2026 Encore Music, Inc.
+    This file is part of ENCORE. Basement Studio, licensed under the GNU
+    AGPLv3 (see LICENSE).
+*/
+
 #pragma once
 
 inline bool isDPIAware (te::Plugin&)

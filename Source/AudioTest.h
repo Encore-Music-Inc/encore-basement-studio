@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 // --audiotest <dir>: the live side of the app (monitoring, meters, recording, stopping) run against a pretend
 // four-input interface, with a tone on one input. It opens no real audio or MIDI device, so it's safe while
@@ -64,7 +67,7 @@ namespace audiotest
 
         auto* behaviour = new StudioBehaviour (true);
         behaviour->songFolder = [songFile] { return songFile.getParentDirectory(); };
-        te::Engine engine { "Encore Studio Audiotest", std::make_unique<HeadlessUIBehaviour>(), std::unique_ptr<te::EngineBehaviour> (behaviour) };
+        te::Engine engine { "ENCORE/Basement Studio Audiotest", std::make_unique<HeadlessUIBehaviour>(), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         auto& dm = engine.getDeviceManager();
 
         auto& hosted = dm.getHostedAudioDeviceInterface();

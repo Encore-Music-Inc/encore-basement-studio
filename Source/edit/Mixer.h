@@ -1,9 +1,9 @@
-// Encore: Basement Studio
-// Copyright (C) 2026 Encore Studio. AGPLv3 (see LICENSE).
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
 // The mixer (Window > Mixer, F3): a channel strip per track, with its effects,
 // sends, pan, mute/solo/record, fader and meter, and the master strip on the
-// right with the effects on the whole mix (Encore Master goes here).
+// right with the effects on the whole mix (ENCORE. Master goes here).
 //
 // FX tracks: a track that plays an "aux" bus (Tracktion's aux return) instead
 // of recording, so several tracks can share one reverb or delay. Each track's
@@ -491,7 +491,7 @@ private:
         m.addSeparator();
         std::map<String, PopupMenu> byMaker;
         for (auto& d : pluginsForMenus (edit.engine))
-            if (d.pluginFormatName != "Encore" && ! d.isInstrument && ! d.manufacturerName.containsIgnoreCase ("Encore") && ! d.manufacturerName.containsIgnoreCase ("Sick & Sad"))
+            if (d.pluginFormatName != "Encore" && ! d.isInstrument && ! d.manufacturerName.containsIgnoreCase ("Encore"))
                 byMaker[d.manufacturerName.isEmpty() ? String ("Other") : d.manufacturerName].addItem (d.name, [this, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); });
         for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);
         m.addSeparator();

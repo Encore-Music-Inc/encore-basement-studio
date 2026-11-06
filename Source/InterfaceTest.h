@@ -1,3 +1,6 @@
+// ENCORE. Basement Studio
+// Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
+
 #pragma once
 // --interfacetest <word> <dir>: the live side of the app on a REAL interface (the word picks it, like "Volt"), through
 // its ASIO driver and through Windows audio. Every block is measured at the very end of the engine and then blanked,
@@ -103,7 +106,7 @@ namespace interfacetest
         auto* behaviour = new StudioBehaviour (true);
         auto* ui = new TestUI();
         ui->onWarning = [&] (const String& m) { note ("  engine says: " + m); };
-        te::Engine engine { "Encore Studio Interfacetest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
+        te::Engine engine { "ENCORE/Basement Studio Interfacetest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         auto& dm = engine.getDeviceManager();
         Levels heardIn, heardOut;
         dm.setGlobalOutputAudioProcessor (std::make_unique<OutputTap> (heardOut));   // before anything opens
