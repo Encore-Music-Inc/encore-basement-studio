@@ -47,7 +47,7 @@ this file does.
 | `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
 | `external/JUCE` | JUCE 9 submodule pinned at `7ff644f` |
 | `external/tracktion_engine` | Tracktion Engine submodule pinned at `a5e4499` |
-| `external/encore-vst` | the plugins' sources and `shared/`, submodule pinned at `c133085` (the head of Encore-Music-Inc/encore-vst#3; move it to tag `v0.5.0` once that is published) |
+| `external/encore-vst` | the plugins' sources and `shared/`, submodule pinned at tag `v0.5.0` |
 | `external/encore-audio-processing` | the audio processing headers, submodule pinned at tag `v1.0.0` |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/workflows/ci.yml` | pull requests: Linux x64 and the self-test; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
