@@ -2,7 +2,7 @@
 # ENCORE. Basement Studio: the Linux packages, from a Release build.
 # Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 #
-#   installer/linux/package.sh <path to the built "Encore Studio"> <output folder> [deb|appimage|all]
+#   installer/linux/package.sh <path to the built "ENCORE Basement Studio"> <output folder> [deb|appimage|all]
 #
 # Makes, for the machine it runs on (x64 or arm64):
 #   encore-basement-studio_<version>_<amd64|arm64>.deb
@@ -17,7 +17,7 @@ set -euo pipefail
 say()  { echo "[package] $*"; }
 fail() { echo "::error::[package] $*"; exit 1; }
 
-[ $# -ge 2 ] || fail "usage: package.sh <Encore Studio binary> <output folder> [deb|appimage|all]"
+[ $# -ge 2 ] || fail "usage: package.sh <ENCORE Basement Studio binary> <output folder> [deb|appimage|all]"
 bin=$(readlink -f "$1")
 out=$(mkdir -p "$2" && readlink -f "$2")
 what=${3:-all}
@@ -25,8 +25,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 
 [ -x "$bin" ] || fail "no app at $bin (build Release first)"
-version=$(sed -nE 's/^project\(EncoreStudio VERSION ([0-9.]+)\)/\1/p' "$repo/CMakeLists.txt")
-[ -n "$version" ] || fail "no project(EncoreStudio VERSION x.y.z) in CMakeLists.txt"
+version=$(sed -nE 's/^project\(EncoreBasementStudio VERSION ([0-9.]+)\)/\1/p' "$repo/CMakeLists.txt")
+[ -n "$version" ] || fail "no project(EncoreBasementStudio VERSION x.y.z) in CMakeLists.txt"
 
 debarch=$(dpkg --print-architecture)
 case "$debarch" in
@@ -55,13 +55,13 @@ icons() {
 make_deb() {
     local root="$work/deb" deb="$out/${name}_${version}_${debarch}.deb"
     say "deb: staging"
-    install -Dm755 "$bin" "$root/opt/$name/Encore Studio"
-    strip --strip-unneeded "$root/opt/$name/Encore Studio" || say "strip failed, keeping symbols"
+    install -Dm755 "$bin" "$root/opt/$name/ENCORE Basement Studio"
+    strip --strip-unneeded "$root/opt/$name/ENCORE Basement Studio" || say "strip failed, keeping symbols"
     mkdir -p "$root/usr/bin"
     cat > "$root/usr/bin/$name" <<EOF
 #!/bin/sh
 # ENCORE. Basement Studio
-exec "/opt/$name/Encore Studio" "\$@"
+exec "/opt/$name/ENCORE Basement Studio" "\$@"
 EOF
     chmod 755 "$root/usr/bin/$name"
     install -Dm644 "$here/$name.desktop" "$root/usr/share/applications/$name.desktop"
@@ -127,7 +127,7 @@ EOF
     mkdir -p "$work/shlib/debian"
     printf 'Source: %s\n\nPackage: %s\nArchitecture: any\n' "$name" "$name" > "$work/shlib/debian/control"
     local linked
-    linked=$(cd "$work/shlib" && dpkg-shlibdeps -O "$root/opt/$name/Encore Studio" 2>"$work/shlibdeps.err") \
+    linked=$(cd "$work/shlib" && dpkg-shlibdeps -O "$root/opt/$name/ENCORE Basement Studio" 2>"$work/shlibdeps.err") \
         || { cat "$work/shlibdeps.err"; fail "dpkg-shlibdeps failed"; }
     linked=${linked#shlibs:Depends=}
     [ -n "$linked" ] || fail "dpkg-shlibdeps found no libraries"

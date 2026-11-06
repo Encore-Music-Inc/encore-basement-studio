@@ -3,7 +3,7 @@
 //
 // What a song is beyond its audio: title, artist, album, genre, key, notes and
 // the recording format, saved inside the song file (a BASEMENTSONG child of the
-// edit) so it travels with the song and can later go straight to Encore.
+// edit) so it travels with the song and can later go straight to ENCORE.
 // Also the recent-songs list the Hub shows, and song templates.
 #pragma once
 
@@ -221,7 +221,7 @@ namespace templates
 
     inline juce::File folder()
     {
-        return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile()).getChildFile ("Templates");
+        return settingsFolder().getChildFile ("Templates");
     }
 
     inline juce::Array<Template> all()

@@ -2,8 +2,8 @@
 
 This is ENCORE. Basement Studio: the desktop DAW (C++, JUCE and Tracktion
 Engine) with the ENCORE. plugins built in, its installers and packages, and its
-self-tests. The notes in encore-studio and sick-and-sad do not apply here; this
-file does.
+self-tests. Notes from ENCORE.'s other and older repositories do not apply here;
+this file does.
 
 ## Decisions (already made, don't revisit)
 
@@ -24,20 +24,30 @@ file does.
   Linux packages carry, the copyright file in `installer/linux/package.sh`).
 - The product: Windows x64 (installer and zip), macOS (universal dmg), Linux
   x64 and arm64 (.deb and AppImage; arm64 is Raspberry Pi and ENCORE. OS).
-- Green Room code (encore-studio's old `web/`) must never be added here.
-- Releases started fresh at 0.5.0. 0.4.3 and earlier stay in encore-studio.
+- Only the DAW lives here. ENCORE.'s browser tools (the old `web/` folder) and
+  their files, tests or scripts must never be added.
+- Releases started fresh at 0.5.0. 0.4.3 and earlier stay where they were published.
+- Names: people read "ENCORE. Basement Studio" (window titles, menus, About box,
+  installers, Settings > Apps, packages). File and folder names leave out the
+  period: `ENCORE Basement Studio.exe` / `.app`, `ENCORE Basement Studio Bridge32.exe`,
+  `ENCORE Basement Studio.log`, `Program Files\ENCORE\Basement Studio`, settings in
+  `ENCORE/Basement Studio` in the app data folder, songs in `Music/ENCORE Basement Studio`.
+  The Linux package is `encore-basement-studio`. The CMake project and target are
+  `EncoreBasementStudio`.
+- Problems go to support@encoremusic.studio (Help > Report a Problem opens an
+  email), not to GitHub issues.
 
 ## Layout
 
 | Path | What |
 |---|---|
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
-| `installer/` | `EncoreStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
+| `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
 | `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
 | `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
 | `external/JUCE` | JUCE 9 submodule pinned at `7ff644f` |
 | `external/tracktion_engine` | Tracktion Engine submodule pinned at `a5e4499` |
-| `external/encore-vst` | the plugins' sources and `shared/`, submodule pinned at `21eccbb` (move it to tag `v0.5.0` once that is published) |
+| `external/encore-vst` | the plugins' sources and `shared/`, submodule pinned at `c133085` (the head of Encore-Music-Inc/encore-vst#3; move it to tag `v0.5.0` once that is published) |
 | `external/encore-audio-processing` | the audio processing headers, submodule pinned at tag `v1.0.0` |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/workflows/ci.yml` | pull requests: Linux x64 and the self-test; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
@@ -59,12 +69,13 @@ file does.
   OFF; THIN is ThinLTO/incremental LTCG).
 - Linux: install the packages listed in the README, then
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release`, `cmake --build build`, and
-  `xvfb-run -a "build/EncoreStudio_artefacts/Release/Encore Studio" --selftest <folder>`
+  `xvfb-run -a "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio" --selftest <folder>`
   (exit 0, `ALL PASSED` at the end of `selftest.log`). It must pass before a
   pull request.
-- The executable and settings keep the old internal name `Encore Studio`
-  (`Encore Studio.exe`, `Encore Studio.log`, the settings folder). Don't rename
-  them without a migration: people's settings and file associations use them.
+- The built-in plugins are found by their identifiers (`encore:vox`, `encore:verb`,
+  `encore:equalize`, `encore:master`, `encore:strum`), which songs save. encore-vst's
+  `EncoreProcessorBase` makes the same identifier from the plugin's name
+  ("ENCORE. Vox"), so keep the names and `Source/EncorePlugins.h` in step.
 
 ## Versioning and releases
 
@@ -74,7 +85,7 @@ file does.
 
 ## Release process
 
-1. The version lives in exactly one place: `project(EncoreStudio VERSION x.y.z)`
+1. The version lives in exactly one place: `project(EncoreBasementStudio VERSION x.y.z)`
    in `CMakeLists.txt`. The app, the Windows installer (`build/version.iss`), the
    Linux packages and the Mac disk image read it from there.
 2. Changing it is its own small pull request ("Release vX.Y.Z"), so a person sees the

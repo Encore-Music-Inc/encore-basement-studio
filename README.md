@@ -27,7 +27,7 @@ each download:
   first time: click **More info**, then **Run anyway**.
 - **Mac** (Apple Silicon and Intel, macOS 11 or newer):
   `ENCORE-Basement-Studio-<version>-macos.dmg`. Open it and drag
-  `Encore Studio` to Applications. It isn't notarized yet, so the first time
+  `ENCORE Basement Studio` to Applications. It isn't notarized yet, so the first time
   right-click it, choose **Open**, then **Open** again.
 - **Linux and Raspberry Pi**: `encore-basement-studio_<version>_amd64.deb` and
   `_arm64.deb`, and `ENCORE-Basement-Studio-<version>-x86_64.AppImage` and
@@ -70,6 +70,14 @@ PipeWire (the standard on current Ubuntu, Fedora and Raspberry Pi OS) through
 its JACK support. For low latency, add yourself to the `audio` group
 (`sudo usermod -aG audio $USER`, then log out and back in).
 
+## Help and problems
+
+In the app, Help > Report a Problem (or "Report a problem" on the start screen)
+makes a zip of the log and your audio setup (no recordings) on your Desktop and
+opens an email to support@encoremusic.studio with the version, your system and
+where the log is: attach the zip and send it. Or write to
+support@encoremusic.studio directly. More at https://encoremusic.studio.
+
 ## What it does
 
 - **Hub**: ENCORE. Basement Studio opens on a start page. Pick up a recent song or set up a
@@ -100,7 +108,8 @@ its JACK support. For low latency, add yourself to the `audio` group
   on the whole mix. Volume and pan automation drawn right on the tracks
   (press A). Effects on any track:
   - **The ENCORE. plugins, built in**: ENCORE. Vox (a whole vocal chain with tune
-    and harmony), Verb, Equalize and Master. Nothing to install.
+    and harmony), Verb, Equalize, Master and Strum (the acoustic guitar fixer).
+    Nothing to install.
   - **Your plugins**: ENCORE. Basement Studio finds your VST3 and VST2 plugins by itself (in the
     background, each checked in a separate helper process so a broken plugin
     can't crash it, and one that stops to show a window, like an activation
@@ -172,7 +181,7 @@ Four submodules, all pinned:
 |---|---|---|
 | `external/JUCE` | JUCE 9 | `7ff644f` |
 | `external/tracktion_engine` | Tracktion Engine | `a5e4499` |
-| `external/encore-vst` | the ENCORE. plugins: `plugins/<Name>/Source/*.cpp` and `shared/` | `21eccbb` (moves to tag `v0.5.0` once it is published) |
+| `external/encore-vst` | the ENCORE. plugins: `plugins/<Name>/Source/*.cpp` and `shared/` | `c133085`, the head of Encore-Music-Inc/encore-vst#3 (moves to tag `v0.5.0` once it is published) |
 | `external/encore-audio-processing` | the audio processing headers (`dsp/...`) | tag `v1.0.0` |
 
 Basement Studio builds the five plugins from encore-vst's own sources, with
@@ -216,7 +225,7 @@ cmake --build build
 ```
 
 The 32-bit plugin bridge is its own 32-bit build (from an "x86 Native Tools
-Command Prompt"); it goes beside `Encore Studio.exe`:
+Command Prompt"); it goes beside `ENCORE Basement Studio.exe`:
 
 ```bat
 cmake -B build32 -G Ninja -DCMAKE_BUILD_TYPE=Release -DSTUDIO_BRIDGE_ONLY=ON
@@ -224,7 +233,7 @@ cmake --build build32
 ```
 
 The installer, `dist\ENCORE-Basement-Studio-<version>-windows-setup.exe`, needs
-Inno Setup 6 and both builds: `ISCC.exe installer\EncoreStudio.iss`. To offer
+Inno Setup 6 and both builds: `ISCC.exe installer\EncoreBasementStudio.iss`. To offer
 ENCORE. VST in it, put an ENCORE. VST Setup at `build\vst\ENCORE-VST-setup.exe`
 first (CI downloads the newest one from the encore-vst releases).
 
@@ -252,10 +261,19 @@ cmake --build build
 The .deb and the AppImage (needs `dpkg-dev`, `librsvg2-bin`, `curl` and `file`):
 
 ```bash
-bash installer/linux/package.sh "build/EncoreStudio_artefacts/Release/Encore Studio" dist all
+bash installer/linux/package.sh "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio" dist all
 ```
 
-The app ends up in `build/EncoreStudio_artefacts/Release/`.
+The app ends up in `build/EncoreBasementStudio_artefacts/Release/`, as
+`ENCORE Basement Studio` (`.exe` on Windows, `.app` on a Mac). File and folder
+names leave out the period of ENCORE.; everything people read says
+ENCORE. Basement Studio.
+
+Settings, the log (`ENCORE Basement Studio.log`), templates and click sounds
+are in `ENCORE/Basement Studio` in the system's app data folder
+(`%APPDATA%\ENCORE\Basement Studio` on Windows, `~/Library/ENCORE/Basement Studio`
+on a Mac, `~/.config/ENCORE/Basement Studio` on Linux). New songs go in
+`Music/ENCORE Basement Studio` unless you pick another folder.
 
 ## Tests
 
@@ -268,8 +286,8 @@ The app ends up in `build/EncoreStudio_artefacts/Release/`.
   reports what happened with each one.
 - `--audiotest <folder>`: monitoring, meters and recording against a pretend
   four-input interface.
-- `--profile <name>`: keeps settings separately, for testing without touching
-  your own.
+- `--profile <name>`: keeps settings separately (in `ENCORE/<name>`), for
+  testing without touching your own.
 
 The plugins' and the audio processing's own test suites run in encore-vst and
 encore-audio-processing.
@@ -306,7 +324,7 @@ tags, plus pull requests and manual runs).
 ## Releases
 
 Versions are `vMAJOR.MINOR.PATCH`. The version lives in `CMakeLists.txt`
-(`project(EncoreStudio VERSION ...)`) and nowhere else: the app's About box
+(`project(EncoreBasementStudio VERSION ...)`) and nowhere else: the app's About box
 and start screen, the Windows installer (through `build/version.iss`, written
 by CMake), the Linux packages and the Mac disk image all read it from there.
 Change it on `main` (through a pull request) before releasing. CI refuses a tag

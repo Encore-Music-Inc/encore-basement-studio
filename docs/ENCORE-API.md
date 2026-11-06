@@ -41,7 +41,7 @@ ENCORE. Basement Studio already writes:
 {
   "format": "encore-release-1",
   "title": "And It Rained",
-  "artist": "Sick City",
+  "artist": "Night Owls",
   "album": "",
   "genre": "Emo",
   "key": "A minor",

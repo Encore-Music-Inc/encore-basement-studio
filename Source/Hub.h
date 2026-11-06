@@ -930,7 +930,7 @@ private:
                               {
                                   auto dir = chooser->getResult();
                                   if (dir == juce::File()) return;
-                                  if (dir.getFileName() != "Encore Studio" && ! dir.getChildFile ("Encore Studio").exists()) dir = dir.getChildFile ("Encore Studio");
+                                  if (dir.getFileName() != musicFolderName && ! dir.getChildFile (musicFolderName).exists()) dir = dir.getChildFile (musicFolderName);
                                   props().setValue ("projectsFolder", dir.getFullPathName());
                                   updateSummary();
                               });
@@ -991,7 +991,7 @@ public:
     std::function<void (juce::File)> onOpen;
     std::function<void()> onOpenOther, onBack, onAudioSetup;
     std::function<void (SongPlan)> onCreate;
-    std::function<void()> onSignIn, onAccountMenu, onAddArtist, onAccountChanged;
+    std::function<void()> onSignIn, onAccountMenu, onAddArtist, onAccountChanged, onReport;
 
     HubComponent (te::Engine& e, juce::PropertiesFile& p) : engine (e), props (p), newPanel (e)
     {
@@ -1038,7 +1038,8 @@ public:
 
         link (studioLink, "https://encoremusic.studio");
         link (guideLink, "https://github.com/Encore-Music-Inc/encore-basement-studio#readme");
-        link (issueLink, "https://github.com/Encore-Music-Inc/encore-basement-studio/issues/new");
+        link (issueLink, {});   // Help > Report a Problem: the zip, then an email to ENCORE. support
+        issueLink.onClick = [this] { if (onReport) onReport(); };
         link (updatesLink, "https://github.com/Encore-Music-Inc/encore-basement-studio/releases");
 
         engine.getDeviceManager().addChangeListener (this);
@@ -1100,7 +1101,7 @@ public:
         mark.removeFromLeft (14);
         g.setColour (theme::text2);
         g.setFont (hubui::font (14.0f, true));
-        g.drawText ("ENCORE: BASEMENT", mark.removeFromTop (26), juce::Justification::bottomLeft);
+        g.drawText ("ENCORE. BASEMENT", mark.removeFromTop (26), juce::Justification::bottomLeft);
         g.setColour (theme::paper);
         g.setFont (hubui::font (30.0f, true));
         g.drawText ("STUDIO", mark.withTrimmedLeft (-2), juce::Justification::topLeft);

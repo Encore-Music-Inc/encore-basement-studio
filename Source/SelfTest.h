@@ -1,7 +1,7 @@
 // ENCORE. Basement Studio
 // Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// "Encore Studio.exe --selftest <folder>" runs the core of the app without
+// "ENCORE Basement Studio.exe --selftest <folder>" runs the core of the app without
 // a window and exits 0 when everything works: make a song, import audio as
 // tracks, mix, pan and mute, export, check the export, save and reopen.
 // Writes only inside <folder>.
@@ -13,7 +13,7 @@ namespace selftest
     inline int devices (const juce::File& outFile)
     {
         juce::String o;
-        te::Engine engine { "Encore Studio" };
+        te::Engine engine { studioProfile() };
         auto& dm = engine.getDeviceManager();
         auto dump = [&] (const juce::String& when)
         {
@@ -75,7 +75,7 @@ namespace selftest
 
         auto* behaviour = new StudioBehaviour (true);   // no audio device: renders don't need one, and it leaves the interface to whatever else is using it
         auto* ui = new HeadlessUIBehaviour();
-        te::Engine engine { "Encore Studio Selftest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
+        te::Engine engine { "ENCORE/Basement Studio Selftest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         registerEncorePlugins (engine);
         registerBridgedPlugins (engine);   // 32-bit plugins, through the bridge
         // plugin formats: VST3 and VST2 (through FST) are both compiled in
@@ -195,7 +195,7 @@ namespace selftest
                         err + (mr ? " " + String (mr->sampleRate) + " Hz, L " + String (ml[0].getEnd(), 3) + " R " + String (ml[1].getEnd(), 3) : String (" unreadable"))
                             + (tagged ? "" : ", no ID3") + (cleaned ? "" : ", temp WAV left"));
 
-                // mastered on export (Encore Master, Balanced, Streaming): near -14 LUFS, and the song itself untouched
+                // mastered on export (ENCORE. Master, Balanced, Streaming): near -14 LUFS, and the song itself untouched
                 auto masteredFile = songDir.getChildFile ("mastered mix.wav");
                 ExportOptions ma; ma.tail = false; ma.mastering.style = 0; ma.mastering.target = 0;
                 done = false; rendered = juce::File();
@@ -223,9 +223,9 @@ namespace selftest
                     masterPluginsInSong = 0;
                     for (auto* p : check->getMasterPluginList().getPlugins()) if (mastering::isEncoreMaster (*p)) ++masterPluginsInSong;
                 }
-                expect ("mastered export (Encore Master) lands near -14 LUFS, song untouched",
+                expect ("mastered export (ENCORE. Master) lands near -14 LUFS, song untouched",
                         mar != nullptr && std::abs (mlufs + 14.0) < 2.0 && masterPluginsInSong == 0,
-                        err + " " + String (mlufs, 1) + " LUFS, Encore Masters in the song: " + String (masterPluginsInSong));
+                        err + " " + String (mlufs, 1) + " LUFS, ENCORE. Masters in the song: " + String (masterPluginsInSong));
             }
 
             te::EditFileOperations (*edit).save (true, true, false);
@@ -247,7 +247,7 @@ namespace selftest
             plan.folder.deleteRecursively();
             plan.info.title = "Planned Song";
             plan.info.artist = "The Selftests";
-            plan.info.album = "Encore Studio Tapes";
+            plan.info.album = "Basement Tapes";
             plan.info.genre = "Polka";
             plan.info.key = "A minor";
             plan.info.notes = "line one\nline two";
@@ -263,7 +263,7 @@ namespace selftest
             if (auto e = songs::open (engine, plan.songFile()))
             {
                 auto info = SongInfo::readFrom (*e, plan.songFile());
-                expect ("song details saved", info.title == "Planned Song" && info.artist == "The Selftests" && info.album == "Encore Studio Tapes"
+                expect ("song details saved", info.title == "Planned Song" && info.artist == "The Selftests" && info.album == "Basement Tapes"
                                                && info.genre == "Polka" && info.key == "A minor" && info.notes == "line one\nline two",
                         info.title + " / " + info.artist + " / " + info.key);
                 expect ("tempo, time signature and format saved", std::abs (info.bpm - 92) < 0.01 && info.sigNum == 6 && info.sigDen == 8
@@ -328,9 +328,9 @@ namespace selftest
             else expect ("band template song opens", false);
         }
 
-        // the built-in Encore plugins: each loads on a track, passes audio, and keeps its settings
+        // the built-in ENCORE. plugins: each loads on a track, passes audio, and keeps its settings
         {
-            auto songFile2 = dir.getChildFile ("Encore Plugins").getChildFile ("Encore Plugins.encore");
+            auto songFile2 = dir.getChildFile ("ENCORE Plugins").getChildFile ("ENCORE Plugins.encore");
             songFile2.getParentDirectory().deleteRecursively();
             songFile2.getParentDirectory().createDirectory();
             auto e = songs::create (engine, songFile2);
@@ -375,11 +375,11 @@ namespace selftest
                         MessageManager::getInstance()->runDispatchLoopUntil (20);
                     if (ext->getAudioPluginInstance() != nullptr) ++loaded;
                 }
-            expect ("Encore plugins saved with the song and load again", encoreOnTrack == (int) EncorePluginFormat::entries().size() && loaded == encoreOnTrack,
+            expect ("ENCORE. plugins saved with the song and load again", encoreOnTrack == (int) EncorePluginFormat::entries().size() && loaded == encoreOnTrack,
                     String (loaded) + " of " + String (encoreOnTrack) + " loaded: " + ids.joinIntoString (", "));
         }
 
-        // a live recording (Encore Live's session.json beside a 4-input WAV): names, song marks, one file per input, silent input left out
+        // a live recording (ENCORE. Live's session.json beside a 4-input WAV): names, song marks, one file per input, silent input left out
         {
             auto liveDir = dir.getChildFile ("Live Import");
             liveDir.deleteRecursively();
@@ -403,7 +403,7 @@ namespace selftest
             }
             liveDir.getChildFile ("session.json").replaceWithText (R"({ "kind": "encore-live-session", "version": 1,
                 "recording": { "file": "show.wav", "channelNames": [ "Kick", "Lead vox", "Spare", "Guitar" ] },
-                "show": { "title": "Selftest Live", "artist": "The Selftests", "venue": "The Encore Studio", "date": "2026-10-28" },
+                "show": { "title": "Selftest Live", "artist": "The Selftests", "venue": "The Basement", "date": "2026-10-28" },
                 "songs": [ { "title": "Opener", "start": 0.2, "end": 1.4 }, { "title": "Closer", "start": 1.6, "end": 2.9 } ] })");
             auto session = liveimport::read (liveDir.getChildFile ("session.json"));
             expect ("live session reads (4 inputs, names, 2 songs, 3 s)",
@@ -458,8 +458,8 @@ namespace selftest
         {
             account::Profile p;
             account::Artist a1;
-            a1.name = "Sick City"; a1.genre = "Indie Pop, Alternative"; a1.hometown = "Cleveland, Ohio";
-            a1.members = "Jimmy: guitar, vocals"; a1.copyright = "Sick & Sad Records"; a1.pro = "BMI"; a1.ipi = "00123456789";
+            a1.name = "Night Owls"; a1.genre = "Indie Pop, Alternative"; a1.hometown = "Cleveland, Ohio";
+            a1.members = "Alex: guitar, vocals"; a1.copyright = "Night Owls Records"; a1.pro = "BMI"; a1.ipi = "00123456789";
             p.artists.add (a1);
             auto back = account::Profile::fromVar (JSON::parse (JSON::toString (p.toVar())));
             const auto& b = back.artists[0];
@@ -542,7 +542,7 @@ namespace selftest
         // a song in an artist's folder knows whose it is, and remastering keeps the earlier master
         {
             account::Profile p;
-            p.name = "Jimmy"; p.label = "Sick & Sad"; p.current = 1;
+            p.name = "Alex"; p.label = "Night Owls Records"; p.current = 1;
             p.artists.add ({ "The Openers", "Rock" });
             p.artists.add ({ "Polka/Kings", "Polka" });
             auto lib = dir.getChildFile ("Library");
@@ -621,7 +621,7 @@ namespace selftest
                 te::EditFileOperations (*e).save (true, true, false);
             }
             const auto kitFiles = drumSong.getParentDirectory().getChildFile ("Drum kit").findChildFiles (File::findFiles, false, "*.wav").size();
-            expect ("drum track: the Encore Studio Kit is made in the song folder and loaded", kitFiles == 10 && sounds == 10,
+            expect ("drum track: the Studio Kit is made in the song folder and loaded", kitFiles == 10 && sounds == 10,
                     String (kitFiles) + " files, " + String (sounds) + " sounds");
 
             auto drumMix = drumSong.getSiblingFile ("drums.wav");

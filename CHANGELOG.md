@@ -4,8 +4,19 @@
 
 **A new home.** ENCORE. Basement Studio now lives in its own repository,
 Encore-Music-Inc/encore-basement-studio, and is published by Encore Music, Inc.
-under the GNU AGPLv3. Help > Check for Updates, Report a Problem and the user
-guide point there.
+under the GNU AGPLv3. Help > Check for Updates and the user guide point there,
+and on Linux the update check offers the .deb or AppImage for your machine.
+
+**Report a Problem sends an email.** Help > Report a Problem (and the link on
+the start screen) still makes the zip on your Desktop, then opens an email to
+support@encoremusic.studio with the version, your system and where the log is.
+
+**The right name on everything.** The program is "ENCORE Basement Studio.exe"
+(".app" on a Mac), installed in Program Files\ENCORE\Basement Studio, with its
+settings and log in ENCORE\Basement Studio in your app data folder and new songs
+in Music\ENCORE Basement Studio. File names leave out the period of ENCORE.;
+everything you read says ENCORE. Basement Studio. The built-in plugins are
+ENCORE. Vox, Verb, Equalize, Master and Strum.
 
 **The same plugins as ENCORE. VST.** The built-in Vox, Verb, Equalize, Master
 and Strum are now built from the ENCORE. VST and ENCORE. audio processing code
@@ -49,7 +60,7 @@ the step that took the time (Help > Open Log Folder).
 
 ## 0.4.0 (2026-11-03)
 
-**Encore: Basement is now ENCORE. Basement Studio.** Your settings and songs carry
+**The new name: ENCORE. Basement Studio.** Your settings and songs carried
 over by themselves. New songs are saved as .encore files, and .basement songs
 still open as they are.
 
@@ -79,8 +90,7 @@ install folder and settings keep their old names, so updating keeps everything.
   horns, which get their band and orchestra tuning notes and what to adjust),
   which string you're playing, a needle or strobe, any reference pitch and
   historical temperaments. Paired strings (12-string, mandolin, lute, bouzouki, charango,
-  tres, tiple...) show every string, octave strings included. The same tuner
-  is on the web beside Master and Live.
+  tres, tiple...) show every string, octave strings included.
 - Metronome sounds (8) and how beat 1 sounds: higher, louder, a cowbell or the
   same. Right-click the Click button for its settings.
 - New Song: the song's details first, then where it starts from, with its
@@ -208,8 +218,8 @@ Everything from the first round of testing, plus a lot more.
   recording keeps every pass as a take.
 - A mixer (F3): channel strips, FX tracks you can send to (one shared
   reverb), and a master strip.
-- Encore's own plugins built in: Encore Vox, Verb, Equalize and Master.
-  Encore Master's styles: Balanced, Heavy, Bright, Warm, Gentle, Wide,
+- ENCORE.'s own plugins built in: ENCORE. Vox, Verb, Equalize and Master.
+  ENCORE. Master's styles: Balanced, Heavy, Bright, Warm, Gentle, Wide,
   Arena and Drive.
 - Older VST2 plugins (.dll) load and open too. When a plugin is installed
   as both VST2 and VST3, only the VST3 is listed.
@@ -232,7 +242,7 @@ Everything from the first round of testing, plus a lot more.
 
 ## 0.2.0
 
-The Hub start page, the new-song setup, the full menu bar and the Encore icon.
+The Hub start page, the new-song setup, the full menu bar and the ENCORE. icon.
 
 ## 0.1.0
 

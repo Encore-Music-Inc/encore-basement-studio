@@ -1,8 +1,9 @@
 // ENCORE. Basement Studio
 // Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// Encore's own plugins (Vox, Verb, Equalize, Master, Strum) built into Studio.
-// They're offered as their own plugin format, "Encore", so the engine treats
+// ENCORE.'s own plugins (Vox, Verb, Equalize, Master, Strum) built into Basement
+// Studio, from encore-vst. They're offered as their own plugin format, "Encore"
+// (an internal identifier, which encore-vst's EncoreProcessorBase matches), so the engine treats
 // them exactly like any other plugin (parameters, automation, saved state)
 // while they load instantly: there's nothing to scan and no file to find.
 #pragma once
@@ -18,22 +19,23 @@ class EncorePluginFormat : public juce::AudioPluginFormat
 public:
     struct Entry { const char* id; const char* name; juce::AudioPluginInstance* (*make)(); const char* category; };
 
-    /** Which plugin an identifier means: "encore:vox", or "encore:Encore Vox" as early songs saved it */
+    /** Which plugin an identifier means: "encore:vox", "encore:equalize"... (what songs save).
+        The plugins' own EncoreProcessorBase makes the same identifier from their name. */
     static const Entry* find (const juce::String& id)
     {
         for (auto& e : entries())
-            if (id.equalsIgnoreCase (e.id) || id.equalsIgnoreCase (juce::String ("encore:") + e.name)) return &e;
+            if (id.equalsIgnoreCase (e.id)) return &e;
         return nullptr;
     }
 
     static const std::array<Entry, 5>& entries()
     {
         static const std::array<Entry, 5> list { {
-            { "encore:vox",      "Encore Vox",      &makeEncoreVox,    "Vocal chain" },
-            { "encore:verb",     "Encore Verb",     &makeEncoreVerb,   "Reverb" },
-            { "encore:equalize", "Encore Equalize", &makeEncoreEQ,     "EQ" },
-            { "encore:master",   "Encore Master",   &makeEncoreMaster, "Mastering" },
-            { "encore:strum",    "Encore Strum",    &makeEncoreStrum,  "Acoustic guitar" },
+            { "encore:vox",      "ENCORE. Vox",      &makeEncoreVox,    "Vocal chain" },
+            { "encore:verb",     "ENCORE. Verb",     &makeEncoreVerb,   "Reverb" },
+            { "encore:equalize", "ENCORE. Equalize", &makeEncoreEQ,     "EQ" },
+            { "encore:master",   "ENCORE. Master",   &makeEncoreMaster, "Mastering" },
+            { "encore:strum",    "ENCORE. Strum",    &makeEncoreStrum,  "Acoustic guitar" },
         } };
         return list;
     }
@@ -44,7 +46,7 @@ public:
         d.name = d.descriptiveName = e.name;
         d.pluginFormatName = "Encore";
         d.category = e.category;
-        d.manufacturerName = "Encore";
+        d.manufacturerName = "ENCORE.";
         d.version = ProjectInfo::versionString;
         d.fileOrIdentifier = e.id;
         d.uniqueId = d.deprecatedUid = juce::String (e.id).hashCode();
@@ -93,7 +95,7 @@ protected:
     }
 };
 
-/** Makes the Encore plugins available to an engine (and lists them, so they're in every Effects menu) */
+/** Makes the ENCORE. plugins available to an engine (and lists them, so they're in every Effects menu) */
 inline void registerEncorePlugins (te::Engine& engine)
 {
     auto& pm = engine.getPluginManager();

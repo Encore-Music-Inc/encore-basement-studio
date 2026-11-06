@@ -1,7 +1,7 @@
 // ENCORE. Basement Studio
 // Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// Encore's look on the desktop: the same warm near-black surfaces, paper text
+// ENCORE.'s look on the desktop: the same warm near-black surfaces, paper text
 // and accent colours as encoremusic.studio (design-tokens.css), so moving
 // between the website and Studio feels like one product.
 #pragma once
@@ -34,11 +34,25 @@ namespace theme
 }
 
 //==============================================================================
-/** Encore Studio.log next to the settings: what happened with devices and songs,
-    for bug reports. Kept short (trimmed when it passes 200 KB). */
-/** The settings profile ("Encore Studio"; "--profile <name>" picks another,
-    so testing never touches your real settings) */
-inline juce::String& studioProfile() { static juce::String p { "Encore Studio" }; return p; }
+/** The settings profile: the folder, under the system's app data folder, that holds
+    the settings, the log, templates and click sounds. "ENCORE/Basement Studio"
+    (%APPDATA%\ENCORE\Basement Studio on Windows, ~/Library/ENCORE/Basement Studio on a
+    Mac, ~/.config/ENCORE/Basement Studio on Linux). "--profile <name>" picks
+    "ENCORE/<name>" instead, so testing never touches your real settings.
+    Tracktion Engine keeps its Settings.xml there too (the engine is named after it). */
+inline juce::String& studioProfile() { static juce::String p { "ENCORE/Basement Studio" }; return p; }
+
+/** The folder for songs and artists that a new profile suggests, in the Music folder */
+inline const char* const musicFolderName = "ENCORE Basement Studio";
+
+inline juce::File settingsFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile());
+}
+
+/** "ENCORE Basement Studio.log" in the settings folder: what happened with devices and
+    songs, for problem reports. Kept short (trimmed when it passes 200 KB). */
+inline juce::File studioLogFile() { return settingsFolder().getChildFile ("ENCORE Basement Studio.log"); }
 
 /** Song files: "Song.encore" (songs from before the rename are "Song.basement" and still open as they are) */
 namespace songfile
@@ -48,22 +62,13 @@ namespace songfile
     inline bool isSong (const juce::File& f) { return f.hasFileExtension ("encore;basement"); }
 }
 
-/** Settings from before the rename (%APPDATA%/Encore Basement) carry over the first time */
-inline void carryOverOldSettings()
-{
-    auto appData = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
-    auto now = appData.getChildFile (studioProfile());
-    auto old = appData.getChildFile (studioProfile().replace ("Encore Studio", "Encore Basement"));
-    if (old != now && old.isDirectory() && ! now.exists() && old.copyDirectoryTo (now))
-        if (now.getChildFile ("Basement.log").existsAsFile()) now.getChildFile ("Basement.log").moveFileTo (now.getChildFile ("Encore Studio.log"));
-}
-
 inline void studioLog (const juce::String& line)
 {
     static juce::CriticalSection lock;   // lines come from several threads (plugin search, autosave, the engine)
     const juce::ScopedLock sl (lock);
-    auto f = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (studioProfile()).getChildFile ("Encore Studio.log");
+    auto f = studioLogFile();
     if (f.getSize() > 200000) f.deleteFile();
+    f.getParentDirectory().createDirectory();
     f.appendText (juce::Time::getCurrentTime().toString (true, true, true, true) + "  " + line + juce::newLine);
 }
 
@@ -94,13 +99,13 @@ inline void darkTitleBar (juce::Component& window)
    #endif
 }
 
-/** Tracktion's and JUCE's own log lines go to Encore Studio.log too */
+/** Tracktion's and JUCE's own log lines go to the log too */
 struct StudioLogger : public juce::Logger
 {
     void logMessage (const juce::String& m) override { studioLog ("engine: " + m.trim()); }
 };
 
-/** The Encore icon (Assets/encore-icon.svg), drawn into r keeping its shape */
+/** The ENCORE. icon (Assets/encore-icon.svg), drawn into r keeping its shape */
 inline void drawEncoreIcon (juce::Graphics& g, juce::Rectangle<float> r)
 {
     static std::unique_ptr<juce::Drawable> icon = juce::Drawable::createFromImageData (BinaryData::encoreicon_svg, BinaryData::encoreicon_svgSize);

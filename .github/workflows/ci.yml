@@ -100,12 +100,12 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          version=$(sed -nE 's/^project\(EncoreStudio VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt)
-          [[ -n "$version" ]] || { echo "::error::No project(EncoreStudio VERSION x.y.z) in CMakeLists.txt"; exit 1; }
+          version=$(sed -nE 's/^project\(EncoreBasementStudio VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt)
+          [[ -n "$version" ]] || { echo "::error::No project(EncoreBasementStudio VERSION x.y.z) in CMakeLists.txt"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Version: $version"
           if [[ "$REF" == refs/tags/v* && "v$version" != "$REF_NAME" ]]; then
-            echo "::error::Tag $REF_NAME does not match the version in CMakeLists.txt ($version). Change project(EncoreStudio VERSION ...) on main first."
+            echo "::error::Tag $REF_NAME does not match the version in CMakeLists.txt ($version). Change project(EncoreBasementStudio VERSION ...) on main first."
             exit 1
           fi
 
@@ -177,7 +177,7 @@ jobs:
       # ENCORE. plugin, without an audio device (needs an X display)
       - name: Self-test
         run: |
-          exe="build/EncoreStudio_artefacts/Release/Encore Studio"
+          exe="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio"
           dir="$RUNNER_TEMP/selftest"
           code=0
           timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --selftest "$dir" || code=$?
@@ -190,7 +190,7 @@ jobs:
       - name: Audio test
         if: needs.changes.outputs.kind == 'build'
         run: |
-          exe="build/EncoreStudio_artefacts/Release/Encore Studio"
+          exe="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio"
           dir="$RUNNER_TEMP/audiotest"
           code=0
           timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --audiotest "$dir" || code=$?
@@ -205,7 +205,7 @@ jobs:
           VERSION: ${{ needs.changes.outputs.version }}
         run: |
           set -euo pipefail
-          bash installer/linux/package.sh "build/EncoreStudio_artefacts/Release/Encore Studio" dist all
+          bash installer/linux/package.sh "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio" dist all
           cd dist
           for f in *.deb *.AppImage; do sha256sum "$f" > "$f.sha256"; done
           ls -l
@@ -226,7 +226,9 @@ jobs:
   # Each installs the .deb the way a user would, checks what it put in place, then
   # self-tests the installed app and the AppImage. No build here.
   linux-packages:
-    name: Linux packages ${{ matrix.arch }} on ${{ matrix.system }}
+    # A fixed name: GitHub adds each leg's matrix values to it, and a skipped run
+    # (pull requests, docs-only changes) shows this name instead of a placeholder
+    name: Linux package tests
     needs: [changes, linux]
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind == 'build'
     strategy:
@@ -333,7 +335,7 @@ jobs:
         run: |
           sccache --zero-stats
           cmake --build build --parallel
-      # The 32-bit plugin bridge: its own 32-bit build, beside Encore Studio.exe
+      # The 32-bit plugin bridge: its own 32-bit build, beside ENCORE Basement Studio.exe
       - name: MSVC environment, x86 (for the 32-bit bridge)
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -345,7 +347,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
             -DCMAKE_POLICY_DEFAULT_CMP0141=NEW -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
           cmake --build build32 --parallel
-          Copy-Item "build32/EncoreStudioBridge32_artefacts/Release/Encore Studio Bridge32.exe" "build/EncoreStudio_artefacts/Release/"
+          Copy-Item "build32/EncoreBasementStudioBridge32_artefacts/Release/ENCORE Basement Studio Bridge32.exe" "build/EncoreBasementStudio_artefacts/Release/"
           sccache --show-stats
       - uses: actions/cache/save@v4
         if: always() && steps.key.outputs.pins != ''
@@ -355,7 +357,7 @@ jobs:
       - name: Self-test
         shell: pwsh
         run: |
-          $exe = "build/EncoreStudio_artefacts/Release/Encore Studio.exe"
+          $exe = "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.exe"
           $dir = Join-Path $env:RUNNER_TEMP "selftest"
           $p = Start-Process -FilePath $exe -ArgumentList "--selftest", "`"$dir`"" -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw "self-test timed out" }
@@ -383,7 +385,7 @@ jobs:
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
-          & $iscc /Q installer/EncoreStudio.iss
+          & $iscc /Q installer/EncoreBasementStudio.iss
           if ($LASTEXITCODE -ne 0) { throw "installer failed" }
       - name: Zip and SHA-256
         shell: bash
@@ -395,7 +397,7 @@ jobs:
           zip="ENCORE-Basement-Studio-$VERSION-windows-x64.zip"
           test -f "dist/$setup" || { echo "::error::dist/$setup is missing (does the installer's version match CMakeLists.txt?)"; ls dist; exit 1; }
           mkdir zip
-          cp "build/EncoreStudio_artefacts/Release/Encore Studio.exe" "build/EncoreStudio_artefacts/Release/Encore Studio Bridge32.exe" zip/
+          cp "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.exe" "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio Bridge32.exe" zip/
           cp LICENSE THIRD-PARTY-NOTICES.md TRADEMARKS.md README.md zip/
           (cd zip && 7z a -tzip "../dist/$zip" . > /dev/null)
           cd dist
@@ -460,10 +462,10 @@ jobs:
           key: ccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
       - name: Self-test
         run: |
-          app="build/EncoreStudio_artefacts/Release/Encore Studio.app"
-          lipo -info "$app/Contents/MacOS/Encore Studio"
+          app="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app"
+          lipo -info "$app/Contents/MacOS/ENCORE Basement Studio"
           dir="$RUNNER_TEMP/selftest"
-          "$app/Contents/MacOS/Encore Studio" --selftest "$dir" &
+          "$app/Contents/MacOS/ENCORE Basement Studio" --selftest "$dir" &
           pid=$!
           for i in $(seq 1 300); do kill -0 $pid 2>/dev/null || break; sleep 1; done
           if kill -0 $pid 2>/dev/null; then kill $pid; echo "::error::the self-test timed out"; exit 1; fi
@@ -478,7 +480,7 @@ jobs:
           set -euo pipefail
           dmg="ENCORE-Basement-Studio-$VERSION-macos.dmg"
           mkdir -p dmg dist
-          cp -R "build/EncoreStudio_artefacts/Release/Encore Studio.app" dmg/
+          cp -R "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app" dmg/
           ln -s /Applications dmg/Applications
           cp LICENSE dmg/LICENSE.txt
           cp THIRD-PARTY-NOTICES.md TRADEMARKS.md dmg/

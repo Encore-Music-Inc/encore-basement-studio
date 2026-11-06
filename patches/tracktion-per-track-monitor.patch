@@ -7,7 +7,7 @@ index c0675a3..d9b93bf 100644
          switch (owner.getMonitorMode())
          {
 -            case InputDevice::MonitorMode::on:          return true;
-+            // Encore: monitoring is per destination, so tracks sharing an input each have their own monitor button
++            // ENCORE. Basement Studio: monitoring is per destination, so tracks sharing an input each have their own monitor button
 +            case InputDevice::MonitorMode::on:          return dest->state.getProperty ("monitor", false);
              case InputDevice::MonitorMode::automatic:   return isRecordingEnabled (t.itemID);
              case InputDevice::MonitorMode::off:         return false;

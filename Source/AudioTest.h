@@ -67,7 +67,7 @@ namespace audiotest
 
         auto* behaviour = new StudioBehaviour (true);
         behaviour->songFolder = [songFile] { return songFile.getParentDirectory(); };
-        te::Engine engine { "Encore Studio Audiotest", std::make_unique<HeadlessUIBehaviour>(), std::unique_ptr<te::EngineBehaviour> (behaviour) };
+        te::Engine engine { "ENCORE/Basement Studio Audiotest", std::make_unique<HeadlessUIBehaviour>(), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         auto& dm = engine.getDeviceManager();
 
         auto& hosted = dm.getHostedAudioDeviceInterface();

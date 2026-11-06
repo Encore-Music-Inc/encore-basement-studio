@@ -106,7 +106,7 @@ namespace interfacetest
         auto* behaviour = new StudioBehaviour (true);
         auto* ui = new TestUI();
         ui->onWarning = [&] (const String& m) { note ("  engine says: " + m); };
-        te::Engine engine { "Encore Studio Interfacetest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
+        te::Engine engine { "ENCORE/Basement Studio Interfacetest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         auto& dm = engine.getDeviceManager();
         Levels heardIn, heardOut;
         dm.setGlobalOutputAudioProcessor (std::make_unique<OutputTap> (heardOut));   // before anything opens

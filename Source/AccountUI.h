@@ -90,7 +90,7 @@ public:
         hubui::styleEditor (labelName, "Your label's name");
         hubui::styleEditor (genre.getEditor());
         hubui::styleEditor (hometown, "City, state or country");
-        hubui::styleEditor (members, "One per line: name and what they play (Jimmy: guitar, vocals)");
+        hubui::styleEditor (members, "One per line: name and what they play (Alex: guitar, vocals)");
         hubui::styleEditor (website, "Your site, ENCORE. page or socials");
         hubui::styleEditor (copyright, "Who owns the recordings (you, your band or your label)");
         hubui::styleEditor (ipi, "The songwriter's IPI/CAE number, if you have one");
@@ -309,7 +309,7 @@ private:
         {
             auto dir = chooser->getResult();
             if (safe == nullptr || dir == juce::File()) return;
-            if (dir.getFileName() != "Encore Studio" && ! dir.getChildFile ("Encore Studio").exists()) dir = dir.getChildFile ("Encore Studio");
+            if (dir.getFileName() != musicFolderName && ! dir.getChildFile (musicFolderName).exists()) dir = dir.getChildFile (musicFolderName);
             safe->library = dir;
             safe->updateKind();
         });

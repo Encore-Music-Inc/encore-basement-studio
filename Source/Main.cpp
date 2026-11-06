@@ -112,11 +112,10 @@ public:
         {
             auto tokens = juce::StringArray::fromTokens (args, true);
             const int at = tokens.indexOf ("--profile");
-            if (at >= 0 && at + 1 < tokens.size()) studioProfile() = tokens[at + 1].unquoted();
+            if (at >= 0 && at + 1 < tokens.size()) studioProfile() = "ENCORE/" + tokens[at + 1].unquoted();
         }
-        carryOverOldSettings();
         juce::Logger::setCurrentLogger (&logger);
-        // a crash leaves its last words in Encore Studio.log (for Help > Report a Problem next time)
+        // a crash leaves its last words in the log (for Help > Report a Problem next time)
         juce::SystemStats::setApplicationCrashHandler ([] (void*) { studioLog (juce::String ("CRASH: ") + juce::NewLine::getDefault() + juce::SystemStats::getStackBacktrace()); });
         juce::LookAndFeel::setDefaultLookAndFeel (&lookAndFeel);
         const auto t0 = juce::Time::getMillisecondCounterHiRes();
@@ -127,7 +126,7 @@ public:
 
     void anotherInstanceStarted (const juce::String& args) override { openFrom (args); }
 
-    /** "Encore Studio.exe "C:\...\Song.encore"": open that song once the window is up */
+    /** "ENCORE Basement Studio.exe "C:\...\Song.encore"": open that song once the window is up */
     void openFrom (const juce::String& args)
     {
         if (mainWindow == nullptr) return;
