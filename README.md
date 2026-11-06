@@ -27,8 +27,13 @@ each download:
   first time: click **More info**, then **Run anyway**.
 - **Mac** (Apple Silicon and Intel, macOS 11 or newer):
   `ENCORE-Basement-Studio-<version>-macos.dmg`. Open it and drag
-  `ENCORE Basement Studio` to Applications. It isn't notarized yet, so the first time
-  right-click it, choose **Open**, then **Open** again.
+  `ENCORE Basement Studio` to Applications. It isn't signed or notarized yet, so
+  the first time macOS says it was "Not Opened": click **Done** (not Move to
+  Trash), go to **System Settings > Privacy & Security**, scroll to Security
+  and click **Open Anyway**, then open the app again and click **Open Anyway**.
+  You only do this once. If it still won't open, run
+  `xattr -dr com.apple.quarantine "/Applications/ENCORE Basement Studio.app"`
+  in Terminal.
 - **Linux and Raspberry Pi**: `encore-basement-studio_<version>_amd64.deb` and
   `_arm64.deb`, and `ENCORE-Basement-Studio-<version>-x86_64.AppImage` and
   `-aarch64.AppImage`. See below.
