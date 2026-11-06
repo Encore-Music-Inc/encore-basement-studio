@@ -79,9 +79,9 @@ jobs:
           fi
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
           if [[ "$kind" == pr ]]; then
-            echo 'linux=[{"arch":"x64","runner":"ubuntu-24.04"}]' >> "$GITHUB_OUTPUT"
+            echo 'linux=[{"arch":"x64"}]' >> "$GITHUB_OUTPUT"
           else
-            echo 'linux=[{"arch":"x64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' >> "$GITHUB_OUTPUT"
+            echo 'linux=[{"arch":"x64"},{"arch":"arm64"}]' >> "$GITHUB_OUTPUT"
           fi
           if [[ "$EVENT" == "pull_request" ]]; then
             files=$(git diff --name-only "$PR_BASE" "$PR_HEAD")
@@ -113,14 +113,16 @@ jobs:
   # Bookworm-based Raspberry Pi OS and other older systems. arm64 runs on GitHub's
   # native arm64 runner, never under emulation.
   linux:
-    name: Linux ${{ matrix.arch }} (app and tests${{ needs.changes.outputs.kind == 'build' && ', .deb and AppImage' || '' }})
+    # A fixed name: GitHub adds the matrix value to it ("Linux (x64)"), and a skipped
+    # run shows plain "Linux" instead of an unfilled ${{ }} template.
+    name: Linux
     needs: changes
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind != 'release'
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.changes.outputs.linux) }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     container: debian:bookworm
     defaults:
       run:
@@ -226,23 +228,20 @@ jobs:
   # Each installs the .deb the way a user would, checks what it put in place, then
   # self-tests the installed app and the AppImage. No build here.
   linux-packages:
-    # A fixed name: GitHub adds each leg's matrix values to it, and a skipped run
-    # (pull requests, docs-only changes) shows this name instead of a placeholder
+    # A fixed name: GitHub adds the matrix values to it ("Linux package tests
+    # (arm64, debian-12)"), and a skipped run (pull requests, docs-only changes)
+    # shows this name instead of a placeholder. The matrix only carries what the
+    # name should show; the runner and container image come from it.
     name: Linux package tests
     needs: [changes, linux]
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind == 'build'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { arch: x64, system: debian-12, runner: ubuntu-24.04, image: "debian:bookworm" }
-          - { arch: x64, system: ubuntu-22.04, runner: ubuntu-22.04, image: "" }
-          - { arch: x64, system: ubuntu-24.04, runner: ubuntu-24.04, image: "" }
-          - { arch: arm64, system: debian-12, runner: ubuntu-24.04-arm, image: "debian:bookworm" }
-          - { arch: arm64, system: ubuntu-22.04, runner: ubuntu-22.04-arm, image: "" }
-          - { arch: arm64, system: ubuntu-24.04, runner: ubuntu-24.04-arm, image: "" }
-    runs-on: ${{ matrix.runner }}
-    container: ${{ matrix.image }}
+        arch: [x64, arm64]
+        system: [debian-12, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ format('{0}{1}', matrix.system == 'ubuntu-22.04' && 'ubuntu-22.04' || 'ubuntu-24.04', matrix.arch == 'arm64' && '-arm' || '') }}
+    container: ${{ matrix.system == 'debian-12' && 'debian:bookworm' || '' }}
     defaults:
       run:
         shell: bash
