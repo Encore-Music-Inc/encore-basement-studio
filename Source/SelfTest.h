@@ -38,6 +38,69 @@ namespace selftest
         return 0;
     }
 
+    /** The text of one ID3v2 text frame ("TIT2" title, "TSSE" encoder...) in an MP3
+        file, or empty. Reads what LAME wrote, so the self-test can check the tags
+        come back exactly, accents included. */
+    inline juce::String id3Text (const juce::File& file, const char* frameId)
+    {
+        juce::MemoryBlock data;
+        if (! file.loadFileAsData (data) || data.getSize() < 10) return {};
+        const auto* d = static_cast<const juce::uint8*> (data.getData());
+        if (std::memcmp (d, "ID3", 3) != 0) return {};
+        const int major = d[3];   // 3 = ID3v2.3, 4 = ID3v2.4
+        auto syncsafe = [] (const juce::uint8* p) { return (size_t) (p[0] & 0x7f) << 21 | (size_t) (p[1] & 0x7f) << 14 | (size_t) (p[2] & 0x7f) << 7 | (size_t) (p[3] & 0x7f); };
+        auto plain = [] (const juce::uint8* p) { return (size_t) p[0] << 24 | (size_t) p[1] << 16 | (size_t) p[2] << 8 | (size_t) p[3]; };
+        const size_t end = juce::jmin (data.getSize(), 10 + syncsafe (d + 6));
+
+        for (size_t pos = 10; pos + 10 <= end;)
+        {
+            const auto* frame = d + pos;
+            if (frame[0] == 0) break;   // padding: no more frames
+            const size_t size = major >= 4 ? syncsafe (frame + 4) : plain (frame + 4);
+            if (size > end - pos - 10) break;
+            if (std::memcmp (frame, frameId, 4) == 0 && size >= 1)
+            {
+                const auto* text = frame + 11;
+                const size_t n = size - 1;
+                switch (frame[10])   // the text encoding
+                {
+                    case 0:   // ISO-8859-1
+                    {
+                        juce::String s;
+                        for (size_t i = 0; i < n && text[i] != 0; ++i) s += (juce::juce_wchar) text[i];
+                        return s;
+                    }
+                    case 1:   // UTF-16 with a byte order mark
+                    case 2:   // UTF-16 big endian, no byte order mark
+                    {
+                        size_t i = 0;
+                        bool bigEndian = frame[10] == 2;
+                        if (frame[10] == 1 && n >= 2)
+                        {
+                            bigEndian = text[0] == 0xfe && text[1] == 0xff;
+                            i = 2;
+                        }
+                        std::vector<juce::CharPointer_UTF16::CharType> units;
+                        for (; i + 1 < n; i += 2)
+                        {
+                            const auto unit = (juce::uint16) (bigEndian ? (text[i] << 8 | text[i + 1]) : (text[i + 1] << 8 | text[i]));
+                            if (unit == 0) break;
+                            units.push_back ((juce::CharPointer_UTF16::CharType) unit);
+                        }
+                        units.push_back (0);
+                        return juce::String (juce::CharPointer_UTF16 (units.data()));
+                    }
+                    case 3:   // UTF-8
+                        return juce::String::fromUTF8 (std::string (reinterpret_cast<const char*> (text), n).c_str());
+                    default:
+                        return {};
+                }
+            }
+            pos += 10 + size;
+        }
+        return {};
+    }
+
     inline int run (const juce::File& dir)
     {
         using namespace juce;
@@ -194,6 +257,12 @@ namespace selftest
                         mr != nullptr && mr->numChannels == 2 && ml[0].getEnd() > 0.05f && ml[0].getEnd() > ml[1].getEnd() * 1.5f && tagged && cleaned,
                         err + (mr ? " " + String (mr->sampleRate) + " Hz, L " + String (ml[0].getEnd(), 3) + " R " + String (ml[1].getEnd(), 3) : String (" unreadable"))
                             + (tagged ? "" : ", no ID3") + (cleaned ? "" : ", temp WAV left"));
+                // the tags read back exactly: the title (with accents, so LAME's UTF-16
+                // path) and the encoder line. This is where LAME's frame matching runs.
+                const String mp3Title = id3Text (rendered, "TIT2"), mp3Encoder = id3Text (rendered, "TSSE");
+                expect ("MP3 tags read back exactly (title with accents, encoder)",
+                        mp3Title == mo.tags.title && mp3Encoder == "ENCORE. Basement Studio (LAME 3.100)",
+                        "title \"" + mp3Title + "\", encoder \"" + mp3Encoder + "\"");
 
                 // mastered on export (ENCORE. Master, Balanced, Streaming): near -14 LUFS, and the song itself untouched
                 auto masteredFile = songDir.getChildFile ("mastered mix.wav");

@@ -1,0 +1,13 @@
+# UndefinedBehaviorSanitizer exceptions for the weekly sanitizer run (ci.yml).
+# Each entry is one kind of check in one function, with the reason. Keep the
+# list short: everything not listed here stays fully checked.
+
+# LAME 3.100 (external/lame, unchanged third-party code; no newer release
+# exists). frame_id_matches() in libmp3lame/id3tag.c slides a 0xff mask across
+# a signed int, and the last step (0xff0000 << 8) overflows it. GCC, Clang and
+# MSVC all give the intended 0xff000000, so the right ID3 frames are chosen.
+# The self-test reads the MP3 tags back on every build (Linux, Windows, macOS)
+# to prove it ("MP3 tags read back exactly").
+# Revisit, by patching or replacing LAME, if LAME needs more than one or two
+# entries here, or if AddressSanitizer ever finds a memory error in it.
+shift-base:frame_id_matches
