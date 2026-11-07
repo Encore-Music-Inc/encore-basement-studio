@@ -13,26 +13,28 @@ to rebuild against a changed copy, and the rest are permissive.
   they share (`shared/`: `EncoreProcessorBase.h`, `ui/`). Basement Studio
   compiles their processors and editors in.
 - Where: git submodule at `external/encore-vst`
-  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.5.0
-- Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its own `external/`
-  submodules are not used here.
+  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.6.0
+- Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its
+  `external/encore-audio-processing` (and that repo's `external/JUCE`) are the
+  audio processing and JUCE below.
 
 ## ENCORE. audio processing (encore-audio-processing)
 
-- What: ENCORE.'s shared audio processing headers (`dsp/...`), release v1.0.0
-- Where: git submodule at `external/encore-audio-processing`
+- What: ENCORE.'s shared audio processing headers (`dsp/...`), release v1.0.1
+- Where: `external/encore-vst/external/encore-audio-processing`, pinned by encore-vst
   (https://github.com/Encore-Music-Inc/encore-audio-processing)
-- Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its own
-  `external/JUCE` is for its tests only and is not used here.
+- Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its `external/JUCE`
+  is the JUCE below.
 
 ## JUCE
 
-- What: the JUCE framework, version 9 (9.0.5), at commit `7ff644f65d7daa1428c34b9738ebb5c449dc9172`
-- Where: git submodule at `external/JUCE` (https://github.com/juce-framework/JUCE)
+- What: the JUCE framework, release 9.0.5 (commit `d60b7a78030661574a615b586d9325ba7a7fa7dd`)
+- Where: `external/encore-vst/external/encore-audio-processing/external/JUCE`,
+  pinned by encore-audio-processing (https://github.com/juce-framework/JUCE)
 - Used by: the whole app, the ENCORE. plugins inside it and the 32-bit plugin bridge
 - Licence: dual licensed under the GNU AGPLv3 and the commercial JUCE licence.
   ENCORE. Basement Studio uses JUCE under the AGPLv3, so no commercial JUCE
-  licence is needed. The full terms are in `external/JUCE/LICENSE.md` once the
+  licence is needed. The full terms are in `external/encore-vst/external/encore-audio-processing/external/JUCE/LICENSE.md` once the
   submodule is checked out.
 
 ### Libraries bundled with JUCE
@@ -46,12 +48,12 @@ module and platform. The modules used here (`juce_audio_devices`,
 (BSD-3-Clause), HarfBuzz (MIT), SheenBidi (Apache-2.0), PlutoVG and LunaSVG
 (MIT), CHOC (ISC), QuickJS (MIT) and Chromium's cubic bezier code
 (BSD-3-Clause). The complete inventory, with versions, licences and locations,
-is JUCE's software bill of materials: `external/JUCE/JUCE.spdx.json`.
+is JUCE's software bill of materials: `external/encore-vst/external/encore-audio-processing/external/JUCE/JUCE.spdx.json`.
 
 ### Steinberg VST3 SDK
 
 - What: the VST3 SDK 3.8.0, bundled with JUCE
-  (`external/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK`)
+  (`external/encore-vst/external/encore-audio-processing/external/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK`)
 - Used by: hosting VST3 plugins
 - Licence: MIT. VST is a registered trademark of Steinberg Media Technologies GmbH.
 
@@ -59,11 +61,11 @@ is JUCE's software bill of materials: `external/JUCE/JUCE.spdx.json`.
 
 - What: the ASIO SDK 2.3 interface headers (`asio.h`, `asiosys.h`,
   `iasiodrv.h`), bundled with JUCE
-  (`external/JUCE/modules/juce_audio_devices/native/asio/`)
+  (`external/encore-vst/external/encore-audio-processing/external/JUCE/modules/juce_audio_devices/native/asio/`)
 - Used by: the Windows build, for audio interfaces' own ASIO drivers
   (`JUCE_ASIO=1` in `CMakeLists.txt`)
 - Licence: Steinberg's proprietary ASIO licence or the GNU GPLv3, at the
-  user's choice (`external/JUCE/modules/juce_audio_devices/native/asio/LICENSE.txt`).
+  user's choice (`external/encore-vst/external/encore-audio-processing/external/JUCE/modules/juce_audio_devices/native/asio/LICENSE.txt`).
   ENCORE. Basement Studio uses it under the GPLv3, which needs no agreement
   with Steinberg. ASIO is a trademark of Steinberg Media Technologies GmbH.
 
