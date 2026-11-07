@@ -2,22 +2,38 @@ name: CI
 
 # One run per push: pull requests run on pull_request; main and v* tags run on push.
 #
-#   pull request          Linux x64: the app and its self-test
+#   pull request          in parallel: Linux x64, Windows x64 (with the 32-bit plugin
+#                         bridge) and macOS on Apple Silicon: the app and its
+#                         self-test. No installers or packages
 #   push to main, manual  the release files, in parallel: Windows x64 (installer and
 #                         zip), macOS (dmg, Apple Silicon and Intel), Linux x64 and
 #                         arm64 (.deb and AppImage), each with its self-test, plus the
 #                         Linux packages installed and tested on Debian 12 and
 #                         Ubuntu 22.04 and 24.04. Uploaded as workflow artifacts
+#   weekly (Monday), or   the pull request checks, plus the app built with
+#   manual with checks:   AddressSanitizer and UndefinedBehaviorSanitizer on Linux
+#   weekly                x64, running its self-test
 #   v* tag                no rebuild: the files from the successful main build of
 #                         the tag's commit are attached to the GitHub Release
 #
 # Docs-only changes skip the builds (see the changes job).
+#
+# Every action is pinned to a commit (the version is in the comment next to it);
+# Dependabot proposes updates (.github/dependabot.yml).
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
+  schedule:
+    - cron: '29 6 * * 1'
   workflow_dispatch:
+    inputs:
+      checks:
+        description: 'build: the release files, as on main. weekly: the sanitizer self-test too'
+        type: choice
+        options: [build, weekly]
+        default: build
 
 permissions:
   contents: read
@@ -25,7 +41,7 @@ permissions:
 # A newer push to the same pull request cancels the older run. Runs on main are
 # never cancelled: every main commit keeps its build, so it can be released.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -45,8 +61,8 @@ env:
 jobs:
   # Decides what runs. A pull request or push that only touches docs (*.md,
   # LICENSE, .github/CODEOWNERS) skips the builds; skipped jobs count as passing,
-  # so docs-only pull requests stay mergeable when checks are required. Tags and
-  # manual runs always run what they need.
+  # so docs-only pull requests stay mergeable when checks are required. Tags,
+  # manual and weekly runs always run what they need.
   changes:
     name: What changed
     runs-on: ubuntu-24.04
@@ -56,39 +72,44 @@ jobs:
       linux: ${{ steps.diff.outputs.linux }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: diff
         env:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
+          CHECKS: ${{ inputs.checks }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          # kind: pr (Linux x64 and the self-test), build (all the release files), release (no build)
+          # kind: pr (the app and its self-test on each system), build (all the
+          # release files), weekly (pr, plus the sanitizers), release (no build)
           if [[ "$REF" == refs/tags/v* ]]; then
             kind=release
           elif [[ "$EVENT" == "pull_request" ]]; then
             kind=pr
+          elif [[ "$EVENT" == "schedule" || "$CHECKS" == "weekly" ]]; then
+            kind=weekly
           else
             kind=build
           fi
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
-          if [[ "$kind" == pr ]]; then
-            echo 'linux=[{"arch":"x64"}]' >> "$GITHUB_OUTPUT"
-          else
+          if [[ "$kind" == build ]]; then
             echo 'linux=[{"arch":"x64"},{"arch":"arm64"}]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'linux=[{"arch":"x64"}]' >> "$GITHUB_OUTPUT"
           fi
           if [[ "$EVENT" == "pull_request" ]]; then
             files=$(git diff --name-only "$PR_BASE" "$PR_HEAD")
           elif [[ "$EVENT" == "push" && "$REF" == refs/heads/* && -n "$PUSH_BEFORE" && "$PUSH_BEFORE" != 0000000000000000000000000000000000000000 ]]; then
             files=$(git diff --name-only "$PUSH_BEFORE" "$SHA")
           else
-            echo "code=true" >> "$GITHUB_OUTPUT"; echo "Tag or manual run: everything it needs runs"; exit 0
+            echo "code=true" >> "$GITHUB_OUTPUT"; echo "Tag, manual or weekly run: everything it needs runs"; exit 0
           fi
           echo "Changed files:"; echo "$files"
           code=$(echo "$files" | grep -Ev '(\.md$|^LICENSE$|^\.github/CODEOWNERS$)' | grep -c . || true)
@@ -144,7 +165,7 @@ jobs:
       # Submodules: depth 1 and not recursive (submodules: true, not 'recursive').
       # Tracktion Engine, encore-vst and encore-audio-processing have their own
       # submodules, which are not used here.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
           fetch-depth: 1
@@ -156,7 +177,7 @@ jobs:
           echo "compiler=gcc-$(gcc -dumpfullversion)" >> "$GITHUB_OUTPUT"
       # Keyed on OS and architecture, compiler and the JUCE and Tracktion pins; each
       # run saves a new one and the next run starts from the newest
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ccache-debian12-${{ matrix.arch }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
@@ -170,7 +191,7 @@ jobs:
           ccache -z
           cmake --build build --parallel "$(nproc)"
           ccache -s
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: always() && steps.key.outputs.pins != ''
         with:
           path: .ccache
@@ -212,7 +233,7 @@ jobs:
           for f in *.deb *.AppImage; do sha256sum "$f" > "$f.sha256"; done
           ls -l
           cat *.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: needs.changes.outputs.kind == 'build'
         with:
           name: linux-${{ matrix.arch }}
@@ -246,7 +267,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: linux-${{ matrix.arch }}
       - name: Check the SHA-256 files
@@ -286,15 +307,15 @@ jobs:
           exit $code
 
   windows:
-    name: Windows x64 (app, self-test, installer and zip)
+    name: Windows x64
     needs: changes
-    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind == 'build'
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind != 'release'
     runs-on: windows-2022
     env:
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
       SCCACHE_CACHE_SIZE: 2G
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
           fetch-depth: 1
@@ -308,7 +329,7 @@ jobs:
           Expand-Archive "$env:RUNNER_TEMP\sccache.zip" -DestinationPath "$env:RUNNER_TEMP"
           "$env:RUNNER_TEMP\$name" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
       - name: MSVC environment, x64 (for Ninja)
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x64
       - name: Cache key
@@ -317,7 +338,7 @@ jobs:
         run: |
           echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=msvc-$VCToolsVersion" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .sccache
           key: sccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
@@ -336,7 +357,7 @@ jobs:
           cmake --build build --parallel
       # The 32-bit plugin bridge: its own 32-bit build, beside ENCORE Basement Studio.exe
       - name: MSVC environment, x86 (for the 32-bit bridge)
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x86
       - name: Build the 32-bit plugin bridge
@@ -348,7 +369,7 @@ jobs:
           cmake --build build32 --parallel
           Copy-Item "build32/EncoreBasementStudioBridge32_artefacts/Release/ENCORE Basement Studio Bridge32.exe" "build/EncoreBasementStudio_artefacts/Release/"
           sccache --show-stats
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: always() && steps.key.outputs.pins != ''
         with:
           path: .sccache
@@ -366,6 +387,7 @@ jobs:
       # the newest published release of Encore-Music-Inc/encore-vst that has one
       # (left out, with a warning, if there is none)
       - name: Fetch the ENCORE. VST installer
+        if: needs.changes.outputs.kind == 'build'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -380,6 +402,7 @@ jobs:
       # Inno Setup: Start menu and desktop shortcuts, opens .encore songs, uninstaller.
       # The version comes from build/version.iss (written by CMake from CMakeLists.txt).
       - name: Installer
+        if: needs.changes.outputs.kind == 'build'
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
@@ -387,6 +410,7 @@ jobs:
           & $iscc /Q installer/EncoreBasementStudio.iss
           if ($LASTEXITCODE -ne 0) { throw "installer failed" }
       - name: Zip and SHA-256
+        if: needs.changes.outputs.kind == 'build'
         shell: bash
         env:
           VERSION: ${{ needs.changes.outputs.version }}
@@ -404,7 +428,8 @@ jobs:
           sha256sum "$zip" > "$zip.sha256"
           ls -l
           cat *.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.changes.outputs.kind == 'build'
         with:
           name: windows-x64
           path: |
@@ -415,9 +440,9 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS (app, self-test and dmg)
+    name: macOS
     needs: changes
-    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind == 'build'
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.kind != 'release'
     runs-on: macos-15
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -426,7 +451,7 @@ jobs:
       CCACHE_COMPRESS: 'true'
       CCACHE_MAXSIZE: 2G
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
           fetch-depth: 1
@@ -438,23 +463,26 @@ jobs:
         run: |
           echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=xcode-$(xcodebuild -version | head -n 1 | tr -cd '0-9.')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
           restore-keys: ccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-
-      # One app for Apple Silicon and Intel Macs
+      # Release files: one app for Apple Silicon and Intel Macs. Checks build for
+      # Apple Silicon only: half the compiling, and Intel-only bugs are rare.
       - name: Configure
+        env:
+          ARCHS: ${{ needs.changes.outputs.kind == 'build' && 'arm64;x86_64' || 'arm64' }}
         run: >
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          "-DCMAKE_OSX_ARCHITECTURES=$ARCHS"
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: Build
         run: |
           ccache -z
           cmake --build build --parallel "$(sysctl -n hw.ncpu)"
           ccache -s
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: always() && steps.key.outputs.pins != ''
         with:
           path: .ccache
@@ -473,6 +501,7 @@ jobs:
           exit $code
       # The Mac installer: a disk image to drag the app into Applications
       - name: Disk image and SHA-256
+        if: needs.changes.outputs.kind == 'build'
         env:
           VERSION: ${{ needs.changes.outputs.version }}
         run: |
@@ -488,7 +517,8 @@ jobs:
           shasum -a 256 "$dmg" > "$dmg.sha256"
           ls -l
           cat *.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.changes.outputs.kind == 'build'
         with:
           name: macos
           path: |
@@ -496,12 +526,86 @@ jobs:
             dist/ENCORE-Basement-Studio-*-macos.dmg.sha256
           if-no-files-found: error
 
+  # Weekly: the app built with AddressSanitizer and UndefinedBehaviorSanitizer,
+  # running its self-test. They catch memory errors and undefined behaviour
+  # (the kind of bug that crashes a session) that the plain self-test misses.
+  # Two to three times slower, so weekly.
+  sanitizers:
+    name: Sanitizers (Linux x64)
+    needs: changes
+    if: needs.changes.outputs.kind == 'weekly'
+    runs-on: ubuntu-24.04
+    container: debian:bookworm
+    defaults:
+      run:
+        shell: bash
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_COMPRESS: 'true'
+      CCACHE_MAXSIZE: 2G
+      # Leak checking is off: fontconfig, X11 and ALSA keep memory until exit by design
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - name: Install build dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates $LINUX_DEPS
+          git config --global --add safe.directory '*'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Cache key
+        id: key
+        run: |
+          echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "compiler=gcc-$(gcc -dumpfullversion)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ccache
+          key: ccache-sanitizers-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
+          restore-keys: ccache-sanitizers-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+          "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+          "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined"
+          "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined"
+          "-DCMAKE_MODULE_LINKER_FLAGS=-fsanitize=address,undefined"
+      - name: Build
+        run: |
+          ccache -z
+          cmake --build build --parallel "$(nproc)"
+          ccache -s
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: always() && steps.key.outputs.pins != ''
+        with:
+          path: .ccache
+          key: ccache-sanitizers-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
+      - name: Self-test
+        run: |
+          exe="build/EncoreBasementStudio_artefacts/RelWithDebInfo/ENCORE Basement Studio"
+          dir="$RUNNER_TEMP/selftest"
+          code=0
+          timeout 900 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --selftest "$dir" || code=$?
+          cat "$dir/selftest.log" || true
+          if [ $code -eq 124 ]; then echo "::error::the self-test timed out"; fi
+          if [ $code -ne 0 ]; then echo "::error::the self-test failed ($code)"; fi
+          exit $code
+
   # The one check to require on main. It fails if any build or test job failed or
   # was cancelled, and passes when they passed or were skipped (docs-only changes).
   ci-passed:
     name: CI passed
     if: always()
-    needs: [changes, linux, linux-packages, windows, macos]
+    needs: [changes, linux, linux-packages, windows, macos, sanitizers]
     runs-on: ubuntu-24.04
     steps:
       - name: Check the build and test jobs

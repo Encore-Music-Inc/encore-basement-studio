@@ -300,12 +300,13 @@ encore-audio-processing.
 ## CI
 
 `.github/workflows/ci.yml`. Each push starts one run (push for `main` and `v*`
-tags, plus pull requests and manual runs).
+tags, plus pull requests, manual runs and a weekly run).
 
 | When | What runs |
 |---|---|
-| Pull request | Linux x64: the app and its self-test |
+| Pull request | in parallel: Linux x64, Windows x64 (with the 32-bit plugin bridge) and macOS on Apple Silicon: the app and its self-test. No installers or packages |
 | Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on Debian 12, Ubuntu 22.04 and Ubuntu 24.04. The files, each with a `.sha256`, are kept as workflow artifacts |
+| Every Monday, or a manual run with `checks: weekly` | the pull request checks, plus the app built with AddressSanitizer and UndefinedBehaviorSanitizer on Linux x64 running its self-test (memory errors and undefined behaviour). A failure shows as a red run under Actions |
 | `v*` tag | no build: the files from the successful `main` build of the tag's commit are attached to the Release |
 
 - A pull request or push that only changes `*.md`, `LICENSE` or
@@ -314,6 +315,10 @@ tags, plus pull requests and manual runs).
   failed or was cancelled.
 - Linux builds inside Debian 12 (so the packages run on Bookworm and newer),
   and arm64 builds on GitHub's native arm64 runner (`ubuntu-24.04-arm`).
+- Pull requests build the Mac app for Apple Silicon only (half the
+  compiling); `main` builds it universal.
+- Every action is pinned to a commit, with its version in a comment.
+  Dependabot proposes updates once a month (`.github/dependabot.yml`).
 
 ### Build speed
 
