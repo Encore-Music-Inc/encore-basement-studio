@@ -18,7 +18,7 @@ to rebuild against a changed copy, and the rest are permissive.
   `external/encore-audio-processing` (and that repo's `external/JUCE`) are the
   audio processing and JUCE below.
 
-## ENCORE. audio processing (encore-audio-processing)
+## ENCORE. Audio Processing (encore-audio-processing)
 
 - What: ENCORE.'s shared audio processing headers (`dsp/...`), release v1.0.1
 - Where: `external/encore-vst/external/encore-audio-processing`, pinned by encore-vst

@@ -1,44 +1,79 @@
 # Changes
 
-## 0.5.0 (not released yet)
+Each release's notes, newest first. When a release is published, the release
+job puts its section on the GitHub release (see "Release notes" in
+`CLAUDE.md`). Versions 0.4.3 and earlier were published from a different
+repository; their notes are kept below as they were written.
 
-**A new home.** ENCORE. Basement Studio now lives in its own repository,
-Encore-Music-Inc/encore-basement-studio, and is published by Encore Music, Inc.
-under the GNU AGPLv3. Help > Check for Updates and the user guide point there,
-and on Linux the update check offers the .deb or AppImage for your machine.
+## v0.5.0
 
-**Report a Problem sends an email.** Help > Report a Problem (and the link on
-the start screen) still makes the zip on your Desktop, then opens an email to
-support@encoremusic.studio with the version, your system and where the log is.
+The first release of ENCORE. Basement Studio from this repository: a DAW for
+bands and home studios, with the ENCORE. plugins built in, for Windows, Mac,
+Linux and Raspberry Pi.
 
-**The right name on everything.** The program is "ENCORE Basement Studio.exe"
-(".app" on a Mac), installed in Program Files\ENCORE\Basement Studio, with its
-settings and log in ENCORE\Basement Studio in your app data folder and new songs
-in Music\ENCORE Basement Studio. File names leave out the period of ENCORE.;
-everything you read says ENCORE. Basement Studio. The built-in plugins are
-ENCORE. Vox, Verb, Equalize, Master and Strum.
+### What's new
+- **The same plugins as ENCORE. VST.** The built-in Vox, Verb, Equalize,
+  Master and Strum are built from the ENCORE. VST v0.6.0 code itself, so they
+  sound and behave exactly like the plugins in your other DAWs.
+- **The right name on everything.** Everything you read says ENCORE. Basement
+  Studio. The program is "ENCORE Basement Studio.exe" (".app" on a Mac),
+  installed in Program Files\ENCORE\Basement Studio, with its settings and log
+  in ENCORE\Basement Studio in your app data folder and new songs in
+  Music\ENCORE Basement Studio.
+- **Report a Problem sends an email.** Help > Report a Problem (and the link
+  on the start screen) makes the zip on your Desktop, then opens an email to
+  support@encoremusic.studio with the version, your system and where the log
+  is.
+- **Updates come from here.** Help > Check for Updates looks at this
+  repository's releases, and on Linux offers the .deb or AppImage for your
+  machine.
+- **ENCORE. VST in the Windows installer** is ENCORE. VST v0.6.0.
+- Published by Encore Music, Inc. under the GNU AGPLv3.
 
-**The same plugins as ENCORE. VST.** The built-in Vox, Verb, Equalize, Master
-and Strum are now built from the ENCORE. VST and ENCORE. audio processing code
-itself, so they sound and behave exactly like the plugins in your other DAWs.
+### Downloads
+- **Windows** (10 and 11, 64-bit):
+  `ENCORE-Basement-Studio-0.5.0-windows-setup.exe`, the installer (Start menu,
+  desktop shortcut, opens .encore songs, and it can also install ENCORE. VST
+  for your other DAWs). Or `ENCORE-Basement-Studio-0.5.0-windows-x64.zip` to
+  run it from any folder without installing. If SmartScreen warns you, click
+  **More info**, then **Run anyway**.
+- **Mac** (Apple Silicon and Intel, macOS 11 or newer):
+  `ENCORE-Basement-Studio-0.5.0-macos.dmg`. Open it and drag
+  `ENCORE Basement Studio` to Applications. It isn't signed yet: the first
+  time, macOS says it was "Not Opened". Click **Done**, go to
+  **System Settings > Privacy & Security**, click **Open Anyway**, then open
+  the app again and click **Open Anyway**.
+- **Linux and Raspberry Pi** (64-bit Raspberry Pi OS Bookworm or newer,
+  Debian 12 or newer, Ubuntu 22.04 or newer):
+  `encore-basement-studio_0.5.0_amd64.deb` and
+  `ENCORE-Basement-Studio-0.5.0-x86_64.AppImage` for PCs,
+  `encore-basement-studio_0.5.0_arm64.deb` and
+  `ENCORE-Basement-Studio-0.5.0-aarch64.AppImage` for Raspberry Pi 4 and 5.
+  Install the .deb with `sudo apt install ./<file>.deb`, or make the AppImage
+  runnable (`chmod +x`) and start it.
 
-**New file names.** Downloads are named `ENCORE-Basement-Studio-<version>-...`
-(the Linux .deb keeps `encore-basement-studio_<version>_<arch>.deb`), each with a
-`.sha256` file.
+Each file has a `.sha256` next to it, to check the download.
 
-## 0.4.3 (2026-11-04)
+### Built on
+ENCORE. VST v0.6.0 (which brings ENCORE. Audio Processing v1.0.1 and JUCE
+9.0.5), and Tracktion Engine at commit `a5e4499` (no Tracktion Engine release
+supports JUCE 9 yet).
+
+Questions or problems: support@encoremusic.studio
+
+## v0.4.3 (2026-11-04)
 
 **Linux and Raspberry Pi.** ENCORE. Basement Studio now comes as a .deb to install and an
 AppImage to just run, for 64-bit PCs and for Raspberry Pi 4, 400, 5 and 500 on 64-bit
 Raspberry Pi OS (Bookworm or newer). Also Debian 12+ and Ubuntu 22.04+. Songs open
 with a double-click, and it shows up in your menu under Sound & Video.
 
-## 0.4.2 (2026-11-03)
+## v0.4.2 (2026-11-03)
 
 **The ENCORE. VST option really is in the installer now.** 0.4.1 meant to
 offer it, but a typo in the installer script left it out.
 
-## 0.4.1 (2026-11-03)
+## v0.4.1 (2026-11-03)
 
 **Plugins open when you click them.** Clicking a plugin in a track's Plug-ins
 column (or the mixer) opened its window behind the main window, so it looked
@@ -58,7 +93,7 @@ install ENCORE. VST" and pick the plugins in its own window.
 **A slow start says why.** If starting up ever takes a while, the log names
 the step that took the time (Help > Open Log Folder).
 
-## 0.4.0 (2026-11-03)
+## v0.4.0 (2026-11-03)
 
 **The new name: ENCORE. Basement Studio.** Your settings and songs carried
 over by themselves. New songs are saved as .encore files, and .basement songs
@@ -188,7 +223,7 @@ install folder and settings keep their old names, so updating keeps everything.
 - MP3 files import now (the import box offered them, but they didn't load).
 - Give Tracks Their Inputs no longer gives inputs to FX or group tracks.
 
-## 0.3.0 (2026-10-28)
+## v0.3.0 (2026-10-28)
 
 Everything from the first round of testing, plus a lot more.
 
@@ -240,10 +275,10 @@ Everything from the first round of testing, plus a lot more.
 - 32-bit plugins don't load (64-bit only).
 - No piano roll for editing MIDI notes yet.
 
-## 0.2.0
+## v0.2.0
 
 The Hub start page, the new-song setup, the full menu bar and the ENCORE. icon.
 
-## 0.1.0
+## v0.1.0
 
 First test build: record, import, arrange, mix and export.

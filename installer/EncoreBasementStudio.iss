@@ -22,9 +22,9 @@
 #ifndef BuildDir
   #define BuildDir "..\build\EncoreBasementStudio_artefacts\Release"
 #endif
-; ENCORE. VST's own installer, offered as an extra (CI downloads the newest
-; published one from github.com/Encore-Music-Inc/encore-vst releases; without
-; it the option isn't shown)
+; ENCORE. VST's own installer, offered as an extra (CI downloads it from the
+; encore-vst release that external/encore-vst is pinned to; without it the
+; option isn't shown)
 #ifndef VstSetup
   #define VstSetup "..\build\vst\ENCORE-VST-setup.exe"
 #endif

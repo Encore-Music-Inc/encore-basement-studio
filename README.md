@@ -190,8 +190,8 @@ published release and is exactly what the folder is pinned to
 | Folder | Repository | Release |
 |---|---|---|
 | `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.6.0` |
-| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing) (through encore-vst) | `v1.0.1` |
-| `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE) (through encore-audio-processing) | `9.0.5` |
+| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v1.0.1` |
+| `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE), pinned by encore-audio-processing (shown, not pinned here) | `9.0.5` |
 | `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9 yet; its latest, v3.2.0, is older than this commit. Move to the first release that does) |
 <!-- pinned-releases:end -->
 
@@ -379,10 +379,14 @@ by CMake), the Linux packages and the Mac disk image all read it from there.
 Change it on `main` (through a pull request) before releasing. CI refuses a tag
 that doesn't match it.
 
+Each release's notes are written in `CHANGELOG.md` in the same pull request
+that changes the version; CI fails until the version has its section.
+
 A person at Encore Music, Inc. creates each release in GitHub: Releases, Draft
-a new release, choose a new tag `vX.Y.Z` on `main`, Publish. The tag starts CI,
-which doesn't rebuild: it takes the files from the successful `main` build of
-that exact commit and attaches them to the Release. If that commit has no
+a new release, choose a new tag `vX.Y.Z` on `main`, leave the title and
+description empty, Publish. The tag starts CI, which doesn't rebuild: it takes
+the files from the successful `main` build of that exact commit, attaches them
+to the Release, and sets its title and notes from `CHANGELOG.md`. If that commit has no
 successful `main` build (it's still running, or the push only changed docs and
 skipped the builds), the release job fails and says so: run CI by hand on
 `main` (Actions, CI, Run workflow), then re-run the release job. Workflow

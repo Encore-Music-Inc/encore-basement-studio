@@ -47,6 +47,8 @@ this file does.
 | `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to commit `a5e4499`: the one listed exception to releases-only (no Tracktion release supports JUCE 9 yet) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to release `v0.6.0`; its `external/encore-audio-processing` (`v1.0.1`) and that repo's `external/JUCE` (`9.0.5`) are the audio processing and JUCE Basement Studio builds with |
+| `CHANGELOG.md` | every release's notes, newest first; the release job copies the version's section onto the GitHub release |
+| `.github/release-notes.sh` | prints a version's notes from `CHANGELOG.md`, and fails if they're missing (CI runs it on every build) |
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/sanitizers/` | the weekly sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
@@ -131,17 +133,23 @@ Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by i
    in `CMakeLists.txt`. The app, the Windows installer (`build/version.iss`), the
    Linux packages and the Mac disk image read it from there.
 2. Changing it is its own small pull request ("Release vX.Y.Z"), so a person sees the
-   number before it's built.
+   number before it's built. It adds the release notes to `CHANGELOG.md` (see
+   Release notes below); CI fails until they're there.
 3. Merging builds everything on `main`: the self-tests run, and the Windows installer
    and zip, the Mac dmg and the Linux x64 and arm64 .deb and AppImage are uploaded as
    workflow artifacts.
-4. A person publishes the release in GitHub (Releases, Draft a new release, a new tag
-   `vX.Y.Z` on that `main` commit, Publish). Never a Claude session.
+4. After the `main` build of that commit has passed, a person publishes the release in
+   GitHub. Never a Claude session. Releases, Draft a new release; tag `vX.Y.Z` (Create
+   new tag) with target `main` at the "Release vX.Y.Z" commit; leave the title and the
+   description empty, don't click Generate release notes and don't attach files (the
+   release job fills all of them in); Publish. Never publish an old draft release:
+   publishing creates its tag on whatever its target is at that moment.
 5. The tag's CI run doesn't rebuild. It checks that the tag matches the version, finds
    the successful `main` build of that exact commit and attaches its files, each with a
-   `.sha256` file, to the Release. If either check fails, nothing is attached.
-   If that commit was docs-only (its build was skipped), run CI by hand on `main`
-   (Actions, CI, Run workflow) and then re-run the release job.
+   `.sha256` file, to the Release, and sets its title (`ENCORE. Basement Studio vX.Y.Z`)
+   and notes (the version's section of `CHANGELOG.md`). If either check fails, nothing
+   is attached. If that commit was docs-only (its build was skipped), run CI by hand on
+   `main` (Actions, CI, Run workflow) and then re-run the release job.
 
 - Claude sessions can't push tags: the push is refused with HTTP 403. Don't try, and
   don't look for another way (the API, a workflow, a different remote). When a
@@ -150,6 +158,36 @@ Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by i
   them to publish it.
 - Tags `v*` should be protected (a tag ruleset, as on encore-vst): they can't be
   moved or deleted (an org admin can, in an emergency).
+
+## Release notes
+
+Every release's notes use this format, so they read the same in every ENCORE.
+repository:
+
+```
+<One or two sentences: what this release is.>
+
+### What's new        (a repository's first release: "What's in it")
+### Downloads         (the files attached, and what each is for)
+### Built on          (exactly what the Pinned releases table pinned for this release)
+
+Questions or problems: support@encoremusic.studio
+```
+
+- The title is `ENCORE. Basement Studio vX.Y.Z`; the tag stays `vX.Y.Z`.
+- The notes describe the release as it is on the day it's published: no links
+  to or mentions of later releases, and no promises ("coming soon", "will
+  support"). If a limitation matters to people, state the limitation, not a plan.
+- They live in `CHANGELOG.md`, newest first, one `## vX.Y.Z` section each,
+  written once, in plain language, in the "Release vX.Y.Z" pull request. CI
+  (`.github/release-notes.sh`) fails while the version has no section, or the
+  section has no Downloads, Built on or Questions line. The release job copies
+  the section onto the GitHub release, so nobody pastes notes.
+- A published section isn't edited except to fix a factual error. Then fix it
+  in a pull request and make the same fix on the GitHub release (Edit), so the
+  two stay the same.
+- "Built on" names each top-level pin's release, and what it brings in
+  brackets when that matters to people (for example the JUCE version).
 
 ## Changes
 
