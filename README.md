@@ -2,8 +2,10 @@
 
 A DAW for bands and home studios, from [ENCORE.](https://encoremusic.studio).
 Record, edit and mix on your own computer, with the ENCORE. plugins built in,
-and (soon) send finished songs straight to your ENCORE. account. Runs on
-Windows, macOS, Linux and Raspberry Pi (ENCORE. OS, or 64-bit Raspberry Pi OS).
+then make a release package for ENCORE. (File > Send to ENCORE.: the mastered
+mix, stems, cover art and the song's details, ready to upload in the browser).
+Runs on Windows, macOS, Linux and Raspberry Pi (ENCORE. OS, or 64-bit
+Raspberry Pi OS).
 
 Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU Affero General
 Public License v3 (see `LICENSE`). The ENCORE. name and logo are not licensed
@@ -152,11 +154,6 @@ Ctrl+S save, Ctrl+N new song, Ctrl+O open, Ctrl+T add track, Ctrl+I import,
 Ctrl+E export, Alt+X split, Ctrl+Left/Right nudge, Insert adds a marker,
 Shift+Left/Right jumps between markers, Ctrl+Z / Ctrl+Y undo / redo.
 Help > Keyboard Shortcuts has the full list.
-
-## Coming next
-
-- Sign in with ENCORE. and upload a song to your catalog as a draft
-- A drum editor, and more MIDI tools
 
 ## What is here
 
