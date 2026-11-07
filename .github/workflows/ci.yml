@@ -130,6 +130,14 @@ jobs:
             exit 1
           fi
 
+      # Every version has its release notes in CHANGELOG.md, so the "Release
+      # vX.Y.Z" pull request can't merge without them. The release job puts
+      # them on the GitHub release.
+      - name: Release notes for this version (CHANGELOG.md)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: .github/release-notes.sh "$VERSION"
+
   # Built inside Debian 12 (bookworm, glibc 2.36) so the packages also run on
   # Bookworm-based Raspberry Pi OS and other older systems. arm64 runs on GitHub's
   # native arm64 runner, never under emulation.
@@ -162,18 +170,26 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends git ca-certificates $LINUX_DEPS
           git config --global --add safe.directory '*'
-      # Submodules: depth 1 and not recursive (submodules: true, not 'recursive').
-      # Tracktion Engine, encore-vst and encore-audio-processing have their own
-      # submodules, which are not used here.
+      # Submodules: depth 1 and not recursive (submodules: true, not 'recursive'):
+      # encore-vst and Tracktion Engine. The next step fetches the audio
+      # processing and JUCE through encore-vst.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
+      # The audio processing and JUCE come through encore-vst (the one pin that
+      # decides the plugins, the audio processing and JUCE): those two
+      # folders, one level at a time, not recursive
+      - name: Audio processing and JUCE (through encore-vst)
+        shell: bash
+        run: |
+          git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+          git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE
       - name: Cache key
         id: key
         run: |
-          echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "pins=$(git -C external/encore-vst/external/encore-audio-processing rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=gcc-$(gcc -dumpfullversion)" >> "$GITHUB_OUTPUT"
       # Keyed on OS and architecture, compiler and the JUCE and Tracktion pins; each
       # run saves a new one and the next run starts from the newest
@@ -320,6 +336,14 @@ jobs:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
+      # The audio processing and JUCE come through encore-vst (the one pin that
+      # decides the plugins, the audio processing and JUCE): those two
+      # folders, one level at a time, not recursive
+      - name: Audio processing and JUCE (through encore-vst)
+        shell: bash
+        run: |
+          git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+          git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE
       - name: Install sccache ${{ env.SCCACHE_VERSION }}
         shell: pwsh
         run: |
@@ -336,7 +360,7 @@ jobs:
         id: key
         shell: bash
         run: |
-          echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "pins=$(git -C external/encore-vst/external/encore-audio-processing rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=msvc-$VCToolsVersion" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -384,21 +408,26 @@ jobs:
           Get-Content (Join-Path $dir "selftest.log")
           if ($p.ExitCode -ne 0) { throw "self-test failed ($($p.ExitCode))" }
       # ENCORE. VST's installer, offered in Basement Studio's installer as an extra:
-      # the newest published release of Encore-Music-Inc/encore-vst that has one
-      # (left out, with a warning, if there is none)
-      - name: Fetch the ENCORE. VST installer
+      # the ENCORE. VST release external/encore-vst is pinned to, so the bundled
+      # installer always matches the plugins built in, and the same commit
+      # always makes the same installer. On main it must exist.
+      - name: Fetch the ENCORE. VST installer (the pinned release)
         if: needs.changes.outputs.kind == 'build'
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          try {
-            $tag = gh api repos/Encore-Music-Inc/encore-vst/releases --jq '[.[] | select(.draft | not) | select(any(.assets[]; .name | endswith("windows-setup.exe")))][0].tag_name'
-            if (-not $tag) { throw "no published ENCORE. VST release with a Windows installer" }
-            gh release download $tag --repo Encore-Music-Inc/encore-vst --pattern "*windows-setup.exe" --dir build/vst
-            Get-ChildItem build/vst/*.exe | Select-Object -First 1 | Rename-Item -NewName "ENCORE-VST-setup.exe"
-            "::notice title=ENCORE. VST in the installer::$tag"
-          } catch { "::warning title=ENCORE. VST left out of the installer::$_" }
+          set -euo pipefail
+          pin=$(git ls-tree HEAD external/encore-vst | awk '{ print $3 }')
+          tag=$(git ls-remote --tags https://github.com/Encore-Music-Inc/encore-vst.git \
+                | awk -v pin="$pin" '$1 == pin { sub("refs/tags/", "", $2); sub(/\^\{\}$/, "", $2); print $2 }' | grep '^v' | head -1 || true)
+          if [ -z "$tag" ]; then
+            echo "::error::external/encore-vst (${pin:0:12}) is not a published ENCORE. VST release"
+            exit 1
+          fi
+          gh release download "$tag" --repo Encore-Music-Inc/encore-vst --pattern "*windows-setup.exe" --dir build/vst
+          mv build/vst/*windows-setup.exe build/vst/ENCORE-VST-setup.exe
+          echo "::notice title=ENCORE. VST in the installer::$tag"
       # Inno Setup: Start menu and desktop shortcuts, opens .encore songs, uninstaller.
       # The version comes from build/version.iss (written by CMake from CMakeLists.txt).
       - name: Installer
@@ -456,12 +485,20 @@ jobs:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
+      # The audio processing and JUCE come through encore-vst (the one pin that
+      # decides the plugins, the audio processing and JUCE): those two
+      # folders, one level at a time, not recursive
+      - name: Audio processing and JUCE (through encore-vst)
+        shell: bash
+        run: |
+          git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+          git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE
       - name: Install Ninja and ccache
         run: brew install ninja ccache
       - name: Cache key
         id: key
         run: |
-          echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "pins=$(git -C external/encore-vst/external/encore-audio-processing rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=xcode-$(xcodebuild -version | head -n 1 | tr -cd '0-9.')" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -564,10 +601,18 @@ jobs:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
+      # The audio processing and JUCE come through encore-vst (the one pin that
+      # decides the plugins, the audio processing and JUCE): those two
+      # folders, one level at a time, not recursive
+      - name: Audio processing and JUCE (through encore-vst)
+        shell: bash
+        run: |
+          git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+          git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE
       - name: Cache key
         id: key
         run: |
-          echo "pins=$(git rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "pins=$(git -C external/encore-vst/external/encore-audio-processing rev-parse HEAD:external/JUCE | cut -c1-12)-$(git rev-parse HEAD:external/tracktion_engine | cut -c1-12)" >> "$GITHUB_OUTPUT"
           echo "compiler=gcc-$(gcc -dumpfullversion)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -605,12 +650,33 @@ jobs:
           cat "$dir/selftest.log" || true
           bash .github/sanitizers/report.sh "$reports" "$code"
 
+  # Every pin is a published release (or a listed exception): the README's
+  # Pinned releases table against what each folder is pinned to, including what
+  # encore-vst pins (the audio processing) and what that pins (JUCE). Runs on
+  # every pull request and push, docs-only ones too: it reads the README.
+  pins:
+    name: Pinned releases
+    needs: changes
+    if: needs.changes.outputs.kind != 'release'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: The pinned folders whose own pins are listed
+        run: |
+          git submodule update --init --depth 1 external/encore-vst
+          git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+      - name: Check the pins
+        run: bash .github/pins/check.sh
+
   # The one check to require on main. It fails if any build or test job failed or
   # was cancelled, and passes when they passed or were skipped (docs-only changes).
   ci-passed:
     name: CI passed
     if: always()
-    needs: [changes, linux, linux-packages, windows, macos, sanitizers]
+    needs: [changes, pins, linux, linux-packages, windows, macos, sanitizers]
     runs-on: ubuntu-24.04
     steps:
       - name: Check the build and test jobs
@@ -657,13 +723,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN: ${{ steps.find.outputs.run }}
         run: gh run download "$RUN" --repo "$GITHUB_REPOSITORY" -n windows-x64 -n macos -n linux-x64 -n linux-arm64 -D files
-      - name: Attach them to the release
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: src
+          sparse-checkout: |
+            CHANGELOG.md
+            .github/release-notes.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Attach them to the release, with its title and notes
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           VERSION: ${{ needs.changes.outputs.version }}
         run: |
           set -euo pipefail
+          # Title and notes come from the repository (CHANGELOG.md), whatever
+          # was typed when the release was published.
+          title="ENCORE. Basement Studio $TAG"
+          (cd src && .github/release-notes.sh "$VERSION") > notes.md
           mkdir upload
           find files -type f -exec mv {} upload/ \;
           cd upload
@@ -677,8 +755,8 @@ jobs:
           done
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" ./* --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --title "$title" --notes-file ../notes.md --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" ./* --verify-tag --title "ENCORE. Basement Studio $TAG" \
-              --notes "Windows installer and zip, macOS disk image (Apple Silicon and Intel), and Linux x64 and arm64 packages (.deb and AppImage). A SHA-256 file is next to each download." \
-              --repo "$GITHUB_REPOSITORY"
+            gh release create "$TAG" ./* --verify-tag --title "$title" \
+              --notes-file ../notes.md --repo "$GITHUB_REPOSITORY"
           fi
