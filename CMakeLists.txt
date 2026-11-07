@@ -1,11 +1,14 @@
 # ENCORE. Basement Studio, the desktop DAW.
 # Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 # Built on JUCE (AGPLv3) and Tracktion Engine (GPLv3), with the ENCORE. plugins
-# (encore-vst) and audio processing (encore-audio-processing), all git submodules.
+# and audio processing. Two git submodules: encore-vst (which brings the audio
+# processing, encore-audio-processing, and JUCE with it) and Tracktion Engine.
 #
 #   git clone https://github.com/Encore-Music-Inc/encore-basement-studio.git
 #   cd encore-basement-studio
-#   git submodule update --init --depth 1 external/JUCE external/tracktion_engine external/encore-vst external/encore-audio-processing
+#   git submodule update --init --depth 1 external/encore-vst external/tracktion_engine
+#   git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
+#   git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE
 #   cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build
 cmake_minimum_required(VERSION 3.22)
@@ -24,19 +27,28 @@ if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-# Submodules. Initialise them without --recursive: encore-vst and
-# encore-audio-processing have their own external/ submodules (JUCE and the
-# audio processing again), which are only for their own builds and tests.
-foreach(sub JUCE/CMakeLists.txt tracktion_engine/modules/CMakeLists.txt
-            encore-vst/shared/EncoreProcessorBase.h encore-audio-processing/dsp/MasterChain.h)
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/${sub}")
-        message(FATAL_ERROR "external/${sub} is missing. Run:\n"
-            "  git submodule update --init --depth 1 external/JUCE external/tracktion_engine external/encore-vst external/encore-audio-processing\n"
+# One pin decides the plugins, the audio processing and JUCE: encore-vst. The
+# audio processing is the one encore-vst pins, and JUCE the one that pins (the
+# JUCE version for all of ENCORE.), so Basement Studio builds exactly what the
+# ENCORE. VST release was built and tested with. Tracktion Engine is the other
+# pin. Fetch them by path, one level at a time, not --recursive.
+set(ENCORE_VST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/encore-vst)
+set(ENCORE_AUDIO_PROCESSING_DIR ${ENCORE_VST_DIR}/external/encore-audio-processing)
+set(ENCORE_JUCE_DIR ${ENCORE_AUDIO_PROCESSING_DIR}/external/JUCE)
+foreach(needed ${ENCORE_JUCE_DIR}/CMakeLists.txt
+               ${CMAKE_CURRENT_SOURCE_DIR}/external/tracktion_engine/modules/CMakeLists.txt
+               ${ENCORE_VST_DIR}/shared/EncoreProcessorBase.h
+               ${ENCORE_AUDIO_PROCESSING_DIR}/dsp/MasterChain.h)
+    if(NOT EXISTS "${needed}")
+        message(FATAL_ERROR "${needed} is missing. Run:\n"
+            "  git submodule update --init --depth 1 external/encore-vst external/tracktion_engine\n"
+            "  git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing\n"
+            "  git -C external/encore-vst/external/encore-audio-processing submodule update --init --depth 1 external/JUCE\n"
             "(not --recursive)")
     endif()
 endforeach()
 
-add_subdirectory(external/JUCE)
+add_subdirectory(${ENCORE_JUCE_DIR} ${CMAKE_BINARY_DIR}/JUCE)
 
 # Version for the Windows installer (installer/EncoreBasementStudio.iss includes it)
 file(WRITE "${CMAKE_BINARY_DIR}/version.iss" "#define AppVersion \"${PROJECT_VERSION}\"\n")
@@ -134,11 +146,9 @@ target_include_directories(EncoreBasementStudio PRIVATE Source)
 
 # ENCORE.'s own plugins (Vox, Verb, Equalize, Master, Strum), built in: Basement
 # Studio hosts their processors directly. Their sources come from the encore-vst
-# submodule and the audio processing headers from encore-audio-processing, so
-# Basement compiles exactly the code the plugins ship with. Each plugin's files
-# get its product name.
-set(ENCORE_VST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/encore-vst)
-set(ENCORE_AUDIO_PROCESSING_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/encore-audio-processing)
+# submodule and the audio processing headers from the encore-audio-processing
+# it pins (both set above), so Basement compiles exactly the code the plugins
+# ship with. Each plugin's files get its product name.
 foreach (entry "Vox|ENCORE. Vox" "Verb|ENCORE. Verb" "EQ|ENCORE. Equalize" "Master|ENCORE. Master" "Strum|ENCORE. Strum")
     string (REPLACE "|" ";" parts "${entry}")
     list (GET parts 0 dir)

@@ -85,12 +85,12 @@ EOF
         echo "Copyright: 2026 Encore Music, Inc."
         echo "License: AGPL-3"
         echo
-        echo "Files: external/encore-vst/* external/encore-audio-processing/*"
+        echo "Files: external/encore-vst/*"
         echo "Copyright: 2026 Encore Music, Inc."
         echo "License: AGPL-3"
         echo " The ENCORE. plugins and audio processing, built into the app."
         echo
-        echo "Files: external/JUCE/*"
+        echo "Files: external/encore-vst/external/encore-audio-processing/external/JUCE/*"
         echo "Copyright: Raw Material Software Limited"
         echo "License: AGPL-3"
         echo
