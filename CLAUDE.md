@@ -50,7 +50,8 @@ this file does.
 | `external/encore-vst` | the plugins' sources and `shared/`, submodule pinned at tag `v0.5.0` |
 | `external/encore-audio-processing` | the audio processing headers, submodule pinned at tag `v1.0.0` |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
-| `.github/workflows/ci.yml` | pull requests: Linux x64 and the self-test; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
+| `.github/sanitizers/` | the weekly sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
+| `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging; weekly: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
 
 ## Submodules
 
@@ -65,6 +66,8 @@ this file does.
 
 ## Building and testing
 
+- Actions in `ci.yml` are pinned to commits (version in a comment); Dependabot
+  proposes updates. Keep new ones pinned the same way.
 - Keep builds fast: Ninja, ccache/sccache in CI, no full LTO (`ENCORE_LTO` is
   OFF; THIN is ThinLTO/incremental LTCG).
 - Linux: install the packages listed in the README, then
