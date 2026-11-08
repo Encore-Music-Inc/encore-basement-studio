@@ -130,6 +130,10 @@ juce_add_gui_app(EncoreBasementStudio
     VERSION ${PROJECT_VERSION}
     MICROPHONE_PERMISSION_ENABLED TRUE
     MICROPHONE_PERMISSION_TEXT "ENCORE. Basement Studio records from your audio inputs."
+    # .encore songs (and .basement ones from before the rename) open with a
+    # double-click on a Mac too; the Windows installer and the Linux packages
+    # register them themselves
+    DOCUMENT_EXTENSIONS encore basement
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Assets/encore-icon.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/Assets/encore-icon.png"
     PLIST_TO_MERGE "<plist><dict><key>CFBundleName</key><string>ENCORE. Basement Studio</string><key>CFBundleDisplayName</key><string>ENCORE. Basement Studio</string></dict></plist>"
@@ -185,6 +189,7 @@ target_compile_definitions(EncoreBasementStudio PRIVATE
     JUCE_PLUGINHOST_VST=1
     JUCE_PLUGINHOST_AU=1
     JUCE_PLUGINHOST_LADSPA=1
+    $<$<PLATFORM_ID:Linux>:JUCE_PLUGINHOST_LV2=1>
     JUCE_USE_MP3AUDIOFORMAT=1
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1

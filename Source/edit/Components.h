@@ -76,8 +76,8 @@ inline String inputLabel (const String& deviceName)
 }
 
 //==============================================================================
-/** The plugins to offer in menus: an older VST2 copy is left out when the same
-    plugin is also installed as VST3 (most makers install both) */
+/** The plugins to offer in menus: each plugin once, even when it's installed in
+    several formats (most makers install several) */
 inline Array<PluginDescription> pluginsForMenus (te::Engine& engine)
 {
     auto all = engine.getPluginManager().knownPluginList.getTypes();
@@ -86,16 +86,32 @@ inline Array<PluginDescription> pluginsForMenus (te::Engine& engine)
         return d.name.toLowerCase().retainCharacters ("abcdefghijklmnopqrstuvwxyz0123456789") + "|"
              + d.manufacturerName.toLowerCase().retainCharacters ("abcdefghijklmnopqrstuvwxyz0123456789");
     };
-    // the VST3 when a plugin is there as VST3 and VST2 too, and the 64-bit one when it's also there in 32-bit
+    // A plugin installed in several formats is listed once, in the first of: VST3, Audio
+    // Unit, LV2, VST2, LADSPA; and a 32-bit one only when it isn't there in 64-bit too
     auto key64 = [&key] (const PluginDescription& d) { auto c = d; c.name = c.name.upToLastOccurrenceOf (" (32-bit)", false, false); return key (c); };
-    std::set<String> vst3, native;
-    for (auto& d : all) if (d.pluginFormatName == "VST3") vst3.insert (key (d));
-    for (auto& d : all) if (d.pluginFormatName == "VST3" || d.pluginFormatName == "VST") native.insert (key (d));
+    auto rank = [] (const String& format)
+    {
+        static const StringArray order { "VST3", "AudioUnit", "LV2", "VST", "LADSPA" };
+        const int i = order.indexOf (format);
+        return i < 0 ? order.size() : i;   // anything else (the built-in ones) is never hidden
+    };
+    std::map<String, int> best;   // the best format each plugin is installed in
+    std::set<String> native;      // installed in a 64-bit format
+    for (auto& d : all)
+    {
+        if (d.pluginFormatName.startsWith ("32-bit")) continue;
+        const auto k = key (d);
+        const auto it = best.find (k);
+        best[k] = it == best.end() ? rank (d.pluginFormatName) : jmin (it->second, rank (d.pluginFormatName));
+        native.insert (k);
+    }
     Array<PluginDescription> out;
     for (auto& d : all)
-        if (! (d.pluginFormatName == "VST" && vst3.count (key (d)) > 0)
-            && ! (d.pluginFormatName.startsWith ("32-bit") && native.count (key64 (d)) > 0))
-            out.add (d);
+    {
+        if (d.pluginFormatName.startsWith ("32-bit")) { if (native.count (key64 (d)) == 0) out.add (d); continue; }
+        const int r = rank (d.pluginFormatName);
+        if (r == rank ({}) || r == best[key (d)]) out.add (d);
+    }
     return out;
 }
 

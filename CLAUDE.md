@@ -46,9 +46,10 @@ this file does.
 | `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
 | `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to commit `a5e4499`: the one listed exception to releases-only (no Tracktion release supports JUCE 9 yet) |
-| `external/encore-vst` | the plugins' sources and `shared/`, pinned to release `v0.6.0`; its `external/encore-audio-processing` (`v1.0.1`) and that repo's `external/JUCE` (`9.0.5`) are the audio processing and JUCE Basement Studio builds with |
+| `external/encore-vst` | the plugins' sources and `shared/`, pinned to release `v0.6.1`; its `external/encore-audio-processing` (`v1.0.1`) and that repo's `external/JUCE` (`9.0.5`) are the audio processing and JUCE Basement Studio builds with |
 | `CHANGELOG.md` | every release's notes, newest first; the release job copies the version's section onto the GitHub release |
 | `.github/release-notes.sh` | prints a version's notes from `CHANGELOG.md`, and fails if they're missing (CI runs it on every build) |
+| `.github/encore-vst-release.sh` | downloads a file of the ENCORE. VST release the pin points to and checks its SHA-256 (the Windows installer and the Mac disk image bundle it; Linux CI loads its plugins) |
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/sanitizers/` | the weekly sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
@@ -116,6 +117,12 @@ Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by i
   `xvfb-run -a "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio" --selftest <folder>`
   (exit 0, `ALL PASSED` at the end of `selftest.log`). It must pass before a
   pull request.
+- Plugin formats: VST3 and VST2 everywhere, Audio Units on macOS, LV2 and LADSPA
+  on Linux, 32-bit through the bridge on Windows. `PluginFinder::isSearched` is the
+  one list of what the plugin search looks for; a format compiled in but not in it
+  is never found, so change both together. The self-test checks each system's set.
+- macOS: CI signs the whole app ad hoc (both halves of the universal binary) and
+  checks it declares `.encore` songs (`DOCUMENT_EXTENSIONS` in `CMakeLists.txt`).
 - The built-in plugins are found by their identifiers (`encore:vox`, `encore:verb`,
   `encore:equalize`, `encore:master`, `encore:strum`), which songs save. encore-vst's
   `EncoreProcessorBase` makes the same identifier from the plugin's name

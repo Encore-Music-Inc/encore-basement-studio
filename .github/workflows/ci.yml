@@ -224,6 +224,28 @@ jobs:
           if [ $code -eq 124 ]; then echo "::error::the self-test timed out"; fi
           if [ $code -ne 0 ]; then echo "::error::the self-test failed ($code)"; fi
           exit $code
+      # Other makers' plugins, the way the Effects button loads them: the ENCORE. VST
+      # release the pin points to, as LV2 and VST3, each put on a track and its
+      # editor opened (--plugintest). Proves LV2 hosting with real plugins.
+      - name: Plugin hosting (ENCORE. VST's LV2 and VST3)
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          tgz=$(.github/encore-vst-release.sh "linux-$ARCH.tar.gz" "$RUNNER_TEMP/vst")
+          tar -xzf "$tgz" -C "$RUNNER_TEMP/vst"
+          folder=$(find "$RUNNER_TEMP/vst" -mindepth 1 -maxdepth 1 -type d -name 'ENCORE-VST-*' | head -n 1)
+          exe="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio"
+          report="$RUNNER_TEMP/plugintest.txt"
+          code=0
+          timeout 300 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --plugintest "$report" "$folder" || code=$?
+          cat "$report" || true
+          for format in LV2 VST3; do
+            grep -q "^$format in " "$report" || { echo "::error::$format plugins were not searched"; code=1; }
+          done
+          pass=$(grep -c '^PASS ' "$report" || true)
+          [ "$pass" -eq 10 ] || { echo "::error::expected the 5 ENCORE. plugins as LV2 and as VST3 (10) to load and open, $pass did"; code=1; }
+          exit $code
       # Monitoring, meters and recording against a pretend four-input interface
       # (about a minute, so not on pull requests)
       - name: Audio test
@@ -261,7 +283,8 @@ jobs:
           if-no-files-found: error
 
   # The packages on the oldest and newest systems they're for: a bare Debian 12
-  # (Bookworm, the base of Raspberry Pi OS Bookworm), Ubuntu 22.04 and Ubuntu 24.04.
+  # (Bookworm, the base of Raspberry Pi OS Bookworm), Debian 13 (Trixie, the base
+  # of Raspberry Pi OS Trixie and ENCORE. OS), Ubuntu 22.04 and Ubuntu 24.04.
   # Each installs the .deb the way a user would, checks what it put in place, then
   # self-tests the installed app and the AppImage. No build here.
   linux-packages:
@@ -276,9 +299,9 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x64, arm64]
-        system: [debian-12, ubuntu-22.04, ubuntu-24.04]
+        system: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ format('{0}{1}', matrix.system == 'ubuntu-22.04' && 'ubuntu-22.04' || 'ubuntu-24.04', matrix.arch == 'arm64' && '-arm' || '') }}
-    container: ${{ matrix.system == 'debian-12' && 'debian:bookworm' || '' }}
+    container: ${{ matrix.system == 'debian-12' && 'debian:bookworm' || matrix.system == 'debian-13' && 'debian:trixie' || '' }}
     defaults:
       run:
         shell: bash
@@ -418,16 +441,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          pin=$(git ls-tree HEAD external/encore-vst | awk '{ print $3 }')
-          tag=$(git ls-remote --tags https://github.com/Encore-Music-Inc/encore-vst.git \
-                | awk -v pin="$pin" '$1 == pin { sub("refs/tags/", "", $2); sub(/\^\{\}$/, "", $2); print $2 }' | grep '^v' | head -1 || true)
-          if [ -z "$tag" ]; then
-            echo "::error::external/encore-vst (${pin:0:12}) is not a published ENCORE. VST release"
-            exit 1
-          fi
-          gh release download "$tag" --repo Encore-Music-Inc/encore-vst --pattern "*windows-setup.exe" --dir build/vst
-          mv build/vst/*windows-setup.exe build/vst/ENCORE-VST-setup.exe
-          echo "::notice title=ENCORE. VST in the installer::$tag"
+          setup=$(.github/encore-vst-release.sh windows-setup.exe build/vst)
+          mv "$setup" build/vst/ENCORE-VST-setup.exe
       # Inno Setup: Start menu and desktop shortcuts, opens .encore songs, uninstaller.
       # The version comes from build/version.iss (written by CMake from CMakeLists.txt).
       - name: Installer
@@ -524,6 +539,22 @@ jobs:
         with:
           path: .ccache
           key: ccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
+      # Signed ad hoc as a whole (both halves of the universal app and its resources),
+      # as ENCORE. VST's plugins are: not with a Developer ID, so Gatekeeper still asks
+      # once (Privacy & Security, Open Anyway)
+      - name: Sign the app (ad hoc)
+        run: |
+          set -euo pipefail
+          app="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          for arch in $(lipo -archs "$app/Contents/MacOS/ENCORE Basement Studio"); do
+            codesign --display --arch "$arch" "$app" 2>&1 | grep -q "Signature=adhoc" \
+              || { echo "::error::the $arch half of the app is not signed"; exit 1; }
+            echo "$arch: signed (ad hoc)"
+          done
+          /usr/libexec/PlistBuddy -c "Print :CFBundleDocumentTypes:0:CFBundleTypeExtensions" "$app/Contents/Info.plist" | tee /dev/stderr | grep -q encore \
+            || { echo "::error::the app doesn't say it opens .encore songs"; exit 1; }
       - name: Self-test
         run: |
           app="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app"
@@ -536,7 +567,8 @@ jobs:
           code=0; wait $pid || code=$?
           cat "$dir/selftest.log"
           exit $code
-      # The Mac installer: a disk image to drag the app into Applications
+      # The Mac download: a disk image to drag the app into Applications, with
+      # ENCORE. VST's installer beside it
       - name: Disk image and SHA-256
         if: needs.changes.outputs.kind == 'build'
         env:
@@ -547,6 +579,10 @@ jobs:
           mkdir -p dmg dist
           cp -R "build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app" dmg/
           ln -s /Applications dmg/Applications
+          # ENCORE. VST's Mac installer (the release the pin points to), for the same
+          # plugins in Logic, GarageBand and other music apps
+          .github/encore-vst-release.sh macos.pkg dmg
+          rm dmg/*.sha256
           cp LICENSE dmg/LICENSE.txt
           cp THIRD-PARTY-NOTICES.md TRADEMARKS.md dmg/
           hdiutil create -volname "ENCORE. Basement Studio" -srcfolder dmg -ov -format UDZO "dist/$dmg"

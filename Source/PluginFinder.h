@@ -74,12 +74,28 @@ public:
     static juce::File windowFlag() { return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ENCORE Basement Studio plugin window.flag"); }
     juce::String status() const { const juce::ScopedLock sl (lock); return current; }
 
+    /** The plugin formats Studio looks for: VST3 and VST2 everywhere, Audio Units on a
+        Mac, LV2 and LADSPA on Linux (each only where it's compiled in, see CMakeLists.txt),
+        and 32-bit plugins through the bridge on Windows. Not the built-in ones. */
+    static bool isSearched (const juce::AudioPluginFormat& f)
+    {
+        const auto n = f.getName();
+        return n == "VST3" || n == "VST" || n == "AudioUnit" || n == "LV2" || n == "LADSPA" || n.startsWith ("32-bit");
+    }
+
+    /** Formats whose folders also hold files that aren't plugins (helper .dll/.so files):
+        a file there that doesn't load is noted and not checked again */
+    static bool foldersHoldOtherFiles (const juce::AudioPluginFormat& f)
+    {
+        return f.getName() == "VST" || f.getName() == "LADSPA";
+    }
+
     /** Every folder Studio looks in, for the Preferences page */
     static juce::StringArray defaultFolders (te::Engine& e)
     {
         juce::StringArray out;
         for (auto* f : e.getPluginManager().pluginFormatManager.getFormats())
-            if (f->getName() == "VST3" || f->getName() == "VST" || f->getName().startsWith ("32-bit"))
+            if (isSearched (*f))
             {
                 auto paths = f->getDefaultLocationsToSearch();
                 if (f->getName() == "VST") addCommonVst2Folders (paths);
@@ -230,7 +246,7 @@ private:
         for (auto* format : engine.getPluginManager().pluginFormatManager.getFormats())
         {
             const bool bits32 = format->getName().startsWith ("32-bit");   // run through the bridge (and so already out of Studio's process)
-            if (! (format->getName() == "VST3" || format->getName() == "VST" || (bits32 && format->canScanForPlugins()))) continue;
+            if (! isSearched (*format) || (bits32 && ! format->canScanForPlugins())) continue;
             auto paths = format->getDefaultLocationsToSearch();
             if (format->getName() == "VST") addCommonVst2Folders (paths);
             for (auto& f : extra) if (juce::File (f).isDirectory()) paths.addIfNotAlreadyThere (juce::File (f));
@@ -263,9 +279,9 @@ private:
                 }
                 for (auto& failed : scanner.getFailedFiles())
                 {
-                    // VST2 folders are full of helper .dlls that aren't plugins: note them so later searches skip them
-                    // (Plugin Manager can clear the list)
-                    const bool forget = format->getName() == "VST" || bits32;
+                    // VST2 and LADSPA folders hold helper .dll/.so files that aren't plugins: note them so later
+                    // searches skip them (Plugin Manager can clear the list)
+                    const bool forget = foldersHoldOtherFiles (*format) || bits32;
                     if (forget) list.addToBlacklist (failed);
                     studioLog ("plugin skipped (didn't load" + juce::String (forget ? ", won't check again" : "") + "): " + failed);
                 }

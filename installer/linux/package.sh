@@ -155,8 +155,8 @@ Priority: optional
 Homepage: https://encoremusic.studio
 Description: ENCORE. Basement Studio, a free DAW for bands and home studios
  Record, edit and mix on your own computer, with the ENCORE. plugins
- (Vox, Verb, Equalize, Master and Strum) built in. Hosts your VST3, VST2
- and LADSPA plugins. Plays and records through ALSA, JACK or PipeWire.
+ (Vox, Verb, Equalize, Master and Strum) built in. Hosts your VST3, LV2,
+ VST2 and LADSPA plugins. Plays and records through ALSA, JACK or PipeWire.
 EOF
     find "$root" -type d -exec chmod 755 {} +
     dpkg-deb --build --root-owner-group -Zxz "$root" "$deb" >/dev/null || fail "dpkg-deb failed"
