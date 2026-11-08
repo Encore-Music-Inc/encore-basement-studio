@@ -786,8 +786,7 @@ private:
 
 /** File > Send to ENCORE.: a release package for ENCORE. (the mastered mix, stems if you
     want them, the cover art and the song's details in release.json), made in the song's
-    folder, then ENCORE. opens in the browser to upload it. Signing in and uploading straight
-    from Basement Studio come once ENCORE.'s upload API exists (see docs/ENCORE-API.md). */
+    folder, then ENCORE. opens in the browser to upload it. */
 class EncoreSendComponent : public juce::Component
 {
 public:

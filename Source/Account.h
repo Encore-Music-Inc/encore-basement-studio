@@ -3,10 +3,9 @@
 //
 // Who you're making music as, and where each artist's music lives.
 //
-// For now the account is a profile on this computer (account.json beside the
+// The account is a profile on this computer (account.json beside the
 // settings): your name, and either one artist or a record label with its
-// artists. When ENCORE. sign-in arrives (docs/ENCORE-API.md) the same profile
-// is filled in from your ENCORE. account instead, and the folders stay as they are.
+// artists.
 //
 // Every artist gets one folder in the music library:
 //
@@ -60,7 +59,7 @@ namespace account
         juce::Array<Artist> artists;        // one for an artist, any number for a label
         int current = 0;                    // the artist new songs are made for
         juce::File library;                 // where every artist's folder goes
-        juce::String signedInWith { "this computer" };   // "encore" once ENCORE. sign-in exists
+        juce::String signedInWith { "this computer" };   // where this profile comes from
         bool skipped = false;               // chose "Skip for now" on the first screen
 
         bool isLabel() const   { return label.isNotEmpty(); }

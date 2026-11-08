@@ -170,7 +170,6 @@ Source/edit/                        the arrange view, mixer, piano roll, tuner
 Source/encore/                      creates the built-in ENCORE. plugins (Make<Name>.cpp)
 Source/bridge/                      the 32-bit plugin bridge (Windows)
 Assets/                             the ENCORE. icon
-docs/                               ENCORE-API.md (Send to ENCORE.), SHORTCUTS.md
 installer/                          Windows installer (Inno Setup), Linux .deb and AppImage
 patches/                            ENCORE.'s change to Tracktion Engine, applied by CMake
 tools/                              tuner data generator, Windows plugin window test
