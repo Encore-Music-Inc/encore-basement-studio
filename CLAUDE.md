@@ -11,7 +11,7 @@ this file does.
   JUCE is used under the AGPLv3 and Tracktion Engine under the GPLv3, so no
   commercial JUCE or Tracktion licence is needed. GPLv3 code such as FST (VST2
   hosting) and the ASIO SDK (used under its GPLv3 option) stays.
-- The repo will be public. Outside contributions are not accepted
+- The repo is public. Outside contributions are not accepted
   (`CONTRIBUTING.md`). The ENCORE. name and logo are not licensed (`TRADEMARKS.md`).
 - Contact: support@encoremusic.studio
 - Always write ENCORE. (capitals and the period) in anything people read, and
@@ -36,6 +36,13 @@ this file does.
   `EncoreBasementStudio`.
 - Problems go to support@encoremusic.studio (Help > Report a Problem opens an
   email), not to GitHub issues.
+- Docs (README, CLAUDE.md) describe this repository and what it directly uses
+  or is used by, never a map of ENCORE.'s other repositories.
+- Docs say what the repository does and point to the file that sets a value
+  (`ci.yml`, `dependabot.yml`, a CMake file, the Pinned releases table). They
+  never repeat a value from config or code, and never give an estimate or a
+  measurement (how long, how fast, how often). Release notes are the
+  exception: each describes its release on the day it was published.
 
 ## Layout
 
@@ -45,15 +52,15 @@ this file does.
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
 | `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
 | `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
-| `external/tracktion_engine` | Tracktion Engine, pinned to commit `a5e4499`: the one listed exception to releases-only (no Tracktion release supports JUCE 9 yet) |
-| `external/encore-vst` | the plugins' sources and `shared/`, pinned to release `v0.6.1`; its `external/encore-audio-processing` (`v1.0.1`) and that repo's `external/JUCE` (`9.0.5`) are the audio processing and JUCE Basement Studio builds with |
+| `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
+| `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |
 | `CHANGELOG.md` | every release's notes, newest first; the release job copies the version's section onto the GitHub release |
 | `.github/release-notes.sh` | prints a version's notes from `CHANGELOG.md`, and fails if they're missing (CI runs it on every build) |
 | `.github/encore-vst-release.sh` | downloads a file of the ENCORE. VST release the pin points to and checks its SHA-256 (the Windows installer and the Mac disk image bundle it; Linux CI loads its plugins) |
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
-| `.github/sanitizers/` | the weekly sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
-| `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging; weekly: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
+| `.github/sanitizers/` | the scheduled sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
+| `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging; on a schedule: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
 
 ## Submodules
 
@@ -75,36 +82,22 @@ this file does.
 - `tools/sync-encore-plugins.ps1` and the copied `encore/` folder are gone on
   purpose.
 
-## How ENCORE.'s repositories fit together
+## Pins
 
-```
-encore-audio-processing ──▶ JUCE                        (the JUCE version for all of ENCORE.)
-encore-vst              ──▶ encore-audio-processing     (brings JUCE with it)
-encore-basement-studio  ──▶ encore-vst                  (brings the sound engine and JUCE with it)
-                        ──▶ Tracktion Engine
-encore-os               ──▶ encore-vst and encore-basement-studio releases
-Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by its SHA-256
-```
-
-- Each repository pins each thing it uses in one place, and only to a
-  published release. The Pinned releases table in the README names them, and
-  CI (`.github/pins/check.sh`) checks that each one is a release and is exactly
+- What this repository uses is pinned in one place, and only to a published
+  release. The Pinned releases table in the README names each pin, and CI
+  (`.github/pins/check.sh`) checks that each one is a release and is exactly
   what the folder is pinned to. An exception (no usable release exists) is
   written in the table with its reason.
-- Nothing is pinned twice. A repository that uses encore-vst uses encore-vst's
-  sound engine and JUCE, never its own copy; one that uses
-  encore-audio-processing uses its JUCE.
 - Fetch pinned folders by their paths, one level at a time
   (`git -C <folder> submodule update --init --depth 1 <path>`), never with
-  `--recursive`: some pinned repositories have test-only folders of their own.
-- Changes travel up one repository at a time, each through a release:
-  encore-audio-processing, then encore-vst, then encore-basement-studio, then
-  encore-os (Green Room beside them). A repository moves to a new release only
-  when something changes for its own users, and picks its own version number
-  by what its users notice, not by the number of what it uses.
-- Pull request titles: "Use <repository> vX.Y.Z (was vA.B.C)" in the repository
-  that moves a pin; "Release vX.Y.Z" only for the repository's own version.
-- After this repository publishes a release: encore-os pins the new release for its next image.
+  `--recursive`.
+- Move a pin to a new release only when something changes for this
+  repository's users, and pick this repository's version number by what its
+  users notice, not by the number of what it uses.
+- Pull request titles: "Use <repository> vX.Y.Z (was vA.B.C)" for a pull
+  request that moves a pin; "Release vX.Y.Z" only for this repository's own
+  version.
 
 ## Building and testing
 
@@ -163,8 +156,8 @@ Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by i
   release is due, open the version pull request, then tell your human the version
   number, why that number, and what changed since the last release, and wait for
   them to publish it.
-- Tags `v*` should be protected (a tag ruleset, as on encore-vst): they can't be
-  moved or deleted (an org admin can, in an emergency).
+- Tags `v*` are protected: they can't be moved or deleted (an org admin can, in an
+  emergency).
 
 ## Release notes
 

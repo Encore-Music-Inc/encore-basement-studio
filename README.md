@@ -10,7 +10,7 @@ Raspberry Pi OS).
 Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU Affero General
 Public License v3 (see `LICENSE`). The ENCORE. name and logo are not licensed
 (see `TRADEMARKS.md`). Third-party code: `THIRD-PARTY-NOTICES.md`. Outside
-contributions are not accepted yet (see `CONTRIBUTING.md`).
+contributions are not accepted (see `CONTRIBUTING.md`).
 Contact: support@encoremusic.studio
 
 Built on [Tracktion Engine](https://github.com/Tracktion/tracktion_engine)
@@ -25,7 +25,7 @@ each download:
   the installer (Start menu, desktop shortcut, opens .encore songs, and it can
   also install ENCORE. VST for your other DAWs). Or
   `ENCORE-Basement-Studio-<version>-windows-x64.zip` to run it from any folder
-  without installing. It isn't code-signed yet, so SmartScreen warns the
+  without installing. It isn't code-signed, so SmartScreen warns the
   first time: click **More info**, then **Run anyway**.
 - **Mac** (Apple Silicon and Intel, macOS 11 or newer):
   `ENCORE-Basement-Studio-<version>-macos.dmg`. Open it and drag
@@ -33,7 +33,7 @@ each download:
   then opens it in ENCORE. Basement Studio. The disk image also holds
   ENCORE. VST's Mac installer (`ENCORE-VST-<version>-macos.pkg`), for the same
   plugins in Logic, GarageBand and your other music apps; it asks for Open
-  Anyway the same way the first time. It isn't signed or notarized yet, so
+  Anyway the same way the first time. It isn't signed or notarized, so
   the first time macOS says it was "Not Opened": click **Done** (not Move to
   Trash), go to **System Settings > Privacy & Security**, scroll to Security
   and click **Open Anyway**, then open the app again and click **Open Anyway**.
@@ -79,7 +79,7 @@ and laptops, **arm64** / **aarch64** for a Raspberry Pi 4 or 5 running a
   24.04 and later), or run it with `--appimage-extract-and-run`.
 
 Audio works through ALSA out of the box. JACK is supported too, and so is
-PipeWire (the standard on current Ubuntu, Fedora and Raspberry Pi OS) through
+PipeWire through
 its JACK support. For low latency, add yourself to the `audio` group
 (`sudo usermod -aG audio $USER`, then log out and back in).
 
@@ -145,11 +145,10 @@ support@encoremusic.studio directly. More at https://encoremusic.studio.
   rate, with or without the master effects, optionally normalised to -14 LUFS
   for streaming. Or zip the whole song folder.
 - **Send to ENCORE.** (File > Export): a release package for ENCORE. Music: the
-  master, stems if you want them, cover art and the song's details. Signing
-  in and uploading straight from ENCORE. Basement Studio come once the ENCORE. API is ready
-  (docs/ENCORE-API.md).
+  master, stems if you want them, cover art and the song's details, which you
+  then upload on encoremusic.studio.
 - **Safe**: songs save as one folder each, ENCORE. Basement Studio keeps an automatic copy
-  every two minutes, and offers it back if it ever closes unexpectedly.
+  as you work, and offers it back if it ever closes unexpectedly.
 - **Tuner** (T): a chromatic tuner on any input, 30 Hz to 1.5 kHz (bass
   low B to the top of a guitar), with an adjustable A4.
 - Menus like a real DAW (File, Edit, Project, Audio, MIDI, Score, Media,
@@ -171,7 +170,6 @@ Source/edit/                        the arrange view, mixer, piano roll, tuner
 Source/encore/                      creates the built-in ENCORE. plugins (Make<Name>.cpp)
 Source/bridge/                      the 32-bit plugin bridge (Windows)
 Assets/                             the ENCORE. icon
-docs/                               ENCORE-API.md (Send to ENCORE.), SHORTCUTS.md
 installer/                          Windows installer (Inno Setup), Linux .deb and AppImage
 patches/                            ENCORE.'s change to Tracktion Engine, applied by CMake
 tools/                              tuner data generator, Windows plugin window test
@@ -197,7 +195,7 @@ published release and is exactly what the folder is pinned to
 | `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.6.1` |
 | `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v1.0.1` |
 | `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE), pinned by encore-audio-processing (shown, not pinned here) | `9.0.5` |
-| `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9 yet; its latest, v3.2.0, is older than this commit. Move to the first release that does) |
+| `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9. Move to the first release that does) |
 <!-- pinned-releases:end -->
 
 Basement Studio builds the five plugins from encore-vst's own sources, with
@@ -228,40 +226,9 @@ git -C external/encore-vst/external/encore-audio-processing submodule update --i
 git add external/encore-vst README.md
 ```
 
-## How ENCORE.'s repositories fit together
-
-```
-encore-audio-processing ──▶ JUCE                        (the JUCE version for all of ENCORE.)
-encore-vst              ──▶ encore-audio-processing     (brings JUCE with it)
-encore-basement-studio  ──▶ encore-vst                  (brings the sound engine and JUCE with it)
-                        ──▶ Tracktion Engine
-encore-os               ──▶ encore-vst and encore-basement-studio releases
-Green Room (encoremusic)──▶ master.wasm from encore-audio-processing, by its SHA-256
-```
-
-- Each repository pins each thing it uses in one place, and only to a
-  published release. The Pinned releases table in the README names them, and
-  CI (`.github/pins/check.sh`) checks that each one is a release and is exactly
-  what the folder is pinned to. An exception (no usable release exists) is
-  written in the table with its reason.
-- Nothing is pinned twice. A repository that uses encore-vst uses encore-vst's
-  sound engine and JUCE, never its own copy; one that uses
-  encore-audio-processing uses its JUCE.
-- Fetch pinned folders by their paths, one level at a time
-  (`git -C <folder> submodule update --init --depth 1 <path>`), never with
-  `--recursive`: some pinned repositories have test-only folders of their own.
-- Changes travel up one repository at a time, each through a release:
-  encore-audio-processing, then encore-vst, then encore-basement-studio, then
-  encore-os (Green Room beside them). A repository moves to a new release only
-  when something changes for its own users, and picks its own version number
-  by what its users notice, not by the number of what it uses.
-- Pull request titles: "Use <repository> vX.Y.Z (was vA.B.C)" in the repository
-  that moves a pin; "Release vX.Y.Z" only for the repository's own version.
-- After this repository publishes a release: encore-os pins the new release for its next image.
-
 ## Build
 
-Needs CMake 3.22 or newer, Ninja and a C++20 compiler.
+Needs CMake (the minimum is in `CMakeLists.txt`), Ninja and a C++20 compiler.
 
 ### Windows
 
@@ -346,13 +313,13 @@ encore-audio-processing.
 ## CI
 
 `.github/workflows/ci.yml`. Each push starts one run (push for `main` and `v*`
-tags, plus pull requests, manual runs and a weekly run).
+tags, plus pull requests, manual runs and a scheduled run).
 
 | When | What runs |
 |---|---|
 | Pull request | in parallel: Linux x64, Windows x64 (with the 32-bit plugin bridge) and macOS on Apple Silicon: the app and its self-test, and on Linux ENCORE. VST's LV2 and VST3 plugins loaded in it. No installers or packages |
-| Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on Debian 12, Debian 13, Ubuntu 22.04 and Ubuntu 24.04. The files, each with a `.sha256`, are kept as workflow artifacts |
-| Every Monday, or a manual run with `checks: weekly` | the pull request checks, plus the app built with AddressSanitizer and UndefinedBehaviorSanitizer on Linux x64 running its self-test (memory errors and undefined behaviour). Undefined behaviour is reported and the run carries on, so one run lists every finding; a memory error stops it. Exceptions, each with its reason, are in `.github/sanitizers/ubsan.supp`. A failure shows as a red run under Actions |
+| Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on each system `ci.yml` lists. The files, each with a `.sha256`, are kept as workflow artifacts |
+| On the schedule in `ci.yml`, or a manual run with `checks: weekly` | the pull request checks, plus the app built with AddressSanitizer and UndefinedBehaviorSanitizer on Linux x64 running its self-test (memory errors and undefined behaviour). Undefined behaviour is reported and the run carries on, so one run lists every finding; a memory error stops it. Exceptions, each with its reason, are in `.github/sanitizers/ubsan.supp`. A failure shows as a red run under Actions |
 | `v*` tag | no build: the files from the successful `main` build of the tag's commit are attached to the Release |
 
 - A pull request or push that only changes `*.md`, `LICENSE` or
@@ -360,11 +327,11 @@ tags, plus pull requests, manual runs and a weekly run).
 - "CI passed" is the one check to require: it fails if any build or test job
   failed or was cancelled.
 - Linux builds inside Debian 12 (so the packages run on Bookworm and newer),
-  and arm64 builds on GitHub's native arm64 runner (`ubuntu-24.04-arm`).
-- Pull requests build the Mac app for Apple Silicon only (half the
-  compiling); `main` builds it universal.
+  and arm64 builds on GitHub's native arm64 runner.
+- Pull requests build the Mac app for Apple Silicon only; `main` builds it
+  universal.
 - Every action is pinned to a commit, with its version in a comment.
-  Dependabot proposes updates once a month (`.github/dependabot.yml`).
+  Dependabot proposes updates (`.github/dependabot.yml`).
 
 ### Build speed
 
@@ -397,4 +364,4 @@ to the Release, and sets its title and notes from `CHANGELOG.md`. If that commit
 successful `main` build (it's still running, or the push only changed docs and
 skipped the builds), the release job fails and says so: run CI by hand on
 `main` (Actions, CI, Run workflow), then re-run the release job. Workflow
-artifacts are kept for 90 days, so release a commit within that time.
+artifacts expire, so release a commit while its build's files are still there.
