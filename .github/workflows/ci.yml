@@ -549,7 +549,7 @@ jobs:
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict --verbose=2 "$app"
           for arch in $(lipo -archs "$app/Contents/MacOS/ENCORE Basement Studio"); do
-            codesign --display --arch "$arch" "$app" 2>&1 | grep -q "Signature=adhoc" \
+            codesign --display --verbose=2 --arch "$arch" "$app" 2>&1 | grep -q "^Signature=adhoc" \
               || { echo "::error::the $arch half of the app is not signed"; exit 1; }
             echo "$arch: signed (ad hoc)"
           done
