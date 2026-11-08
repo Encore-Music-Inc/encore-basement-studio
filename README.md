@@ -29,7 +29,11 @@ each download:
   first time: click **More info**, then **Run anyway**.
 - **Mac** (Apple Silicon and Intel, macOS 11 or newer):
   `ENCORE-Basement-Studio-<version>-macos.dmg`. Open it and drag
-  `ENCORE Basement Studio` to Applications. It isn't signed or notarized yet, so
+  `ENCORE Basement Studio` to Applications. Double-clicking a `.encore` song
+  then opens it in ENCORE. Basement Studio. The disk image also holds
+  ENCORE. VST's Mac installer (`ENCORE-VST-<version>-macos.pkg`), for the same
+  plugins in Logic, GarageBand and your other music apps; it asks for Open
+  Anyway the same way the first time. It isn't signed or notarized yet, so
   the first time macOS says it was "Not Opened": click **Done** (not Move to
   Trash), go to **System Settings > Privacy & Security**, scroll to Security
   and click **Open Anyway**, then open the app again and click **Open Anyway**.
@@ -38,7 +42,9 @@ each download:
   in Terminal.
 - **Linux and Raspberry Pi**: `encore-basement-studio_<version>_amd64.deb` and
   `_arm64.deb`, and `ENCORE-Basement-Studio-<version>-x86_64.AppImage` and
-  `-aarch64.AppImage`. See below.
+  `-aarch64.AppImage`. See below. For the ENCORE. plugins in your other music
+  apps (Ardour, Reaper, Bitwig and others), get ENCORE. VST's Linux download
+  from [its releases](https://github.com/Encore-Music-Inc/encore-vst/releases).
 
 Versions 0.4.3 and earlier were published from a different repository.
 
@@ -117,11 +123,13 @@ support@encoremusic.studio directly. More at https://encoremusic.studio.
   - **The ENCORE. plugins, built in**: ENCORE. Vox (a whole vocal chain with tune
     and harmony), Verb, Equalize, Master and Strum (the acoustic guitar fixer).
     Nothing to install.
-  - **Your plugins**: ENCORE. Basement Studio finds your VST3 and VST2 plugins by itself (in the
-    background, each checked in a separate helper process so a broken plugin
+  - **Your plugins**: ENCORE. Basement Studio finds your plugins by itself: VST3
+    and VST2 everywhere, Audio Units on a Mac, and LV2 and LADSPA on Linux (in
+    the background, each checked in a separate helper process so a broken plugin
     can't crash it, and one that stops to show a window, like an activation
-    prompt, is set aside) and lists them by maker. When a plugin is installed as
-    both, only the VST3 is listed. Add more plugin folders in Preferences.
+    prompt, is set aside) and lists them by maker. A plugin installed in several
+    formats is listed once, in the first of VST3, Audio Unit, LV2, VST2 and
+    LADSPA. Add more plugin folders in Preferences.
   - A few simple built-in effects (EQ, compressor, reverb, delay and more).
 - **Instruments and MIDI**: Project > Add Instrument Track with any of your
   instrument plugins (drums, keys, samplers) or the built-in synth, played
@@ -186,7 +194,7 @@ published release and is exactly what the folder is pinned to
 <!-- pinned-releases:start -->
 | Folder | Repository | Release |
 |---|---|---|
-| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.6.0` |
+| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.6.1` |
 | `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v1.0.1` |
 | `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE), pinned by encore-audio-processing (shown, not pinned here) | `9.0.5` |
 | `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9 yet; its latest, v3.2.0, is older than this commit. Move to the first release that does) |
@@ -322,9 +330,11 @@ on a Mac, `~/.config/ENCORE/Basement Studio` on Linux). New songs go in
   runs each built-in ENCORE. plugin, without a window or an audio device
   (exit code 0 = all good, details in `<folder>/selftest.log`). CI runs it on
   every build. On Linux without a display, run it under `xvfb-run -a`.
-- `--plugintest <report file> [folder]`: loads every VST3 and VST2 in a folder
-  (default: the standard plugin folders) the way the Effects menu does and
-  reports what happened with each one.
+- `--plugintest <report file> [folder]`: loads every plugin Basement Studio
+  looks for (VST3 and VST2; Audio Units on a Mac; LV2 and LADSPA on Linux) in a
+  folder (default: the standard plugin folders) the way the Effects menu does,
+  and reports what happened with each one. CI runs it on Linux with the ENCORE.
+  VST release the pin points to, as LV2 and VST3.
 - `--audiotest <folder>`: monitoring, meters and recording against a pretend
   four-input interface.
 - `--profile <name>`: keeps settings separately (in `ENCORE/<name>`), for
@@ -340,8 +350,8 @@ tags, plus pull requests, manual runs and a weekly run).
 
 | When | What runs |
 |---|---|
-| Pull request | in parallel: Linux x64, Windows x64 (with the 32-bit plugin bridge) and macOS on Apple Silicon: the app and its self-test. No installers or packages |
-| Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on Debian 12, Ubuntu 22.04 and Ubuntu 24.04. The files, each with a `.sha256`, are kept as workflow artifacts |
+| Pull request | in parallel: Linux x64, Windows x64 (with the 32-bit plugin bridge) and macOS on Apple Silicon: the app and its self-test, and on Linux ENCORE. VST's LV2 and VST3 plugins loaded in it. No installers or packages |
+| Push to `main`, or a manual run | in parallel: Windows x64 (installer and zip), macOS (dmg), Linux x64 and arm64 (.deb and AppImage, plus the audio test), each with the self-test; then the Linux packages installed and self-tested on Debian 12, Debian 13, Ubuntu 22.04 and Ubuntu 24.04. The files, each with a `.sha256`, are kept as workflow artifacts |
 | Every Monday, or a manual run with `checks: weekly` | the pull request checks, plus the app built with AddressSanitizer and UndefinedBehaviorSanitizer on Linux x64 running its self-test (memory errors and undefined behaviour). Undefined behaviour is reported and the run carries on, so one run lists every finding; a memory error stops it. Exceptions, each with its reason, are in `.github/sanitizers/ubsan.supp`. A failure shows as a red run under Actions |
 | `v*` tag | no build: the files from the successful `main` build of the tag's commit are attached to the Release |
 

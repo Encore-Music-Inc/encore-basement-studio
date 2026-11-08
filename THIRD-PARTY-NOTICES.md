@@ -13,7 +13,7 @@ to rebuild against a changed copy, and the rest are permissive.
   they share (`shared/`: `EncoreProcessorBase.h`, `ui/`). Basement Studio
   compiles their processors and editors in.
 - Where: git submodule at `external/encore-vst`
-  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.6.0
+  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.6.1
 - Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its
   `external/encore-audio-processing` (and that repo's `external/JUCE`) are the
   audio processing and JUCE below.

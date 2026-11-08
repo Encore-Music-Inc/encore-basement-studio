@@ -141,11 +141,25 @@ namespace selftest
         te::Engine engine { "ENCORE/Basement Studio Selftest", std::unique_ptr<te::UIBehaviour> (ui), std::unique_ptr<te::EngineBehaviour> (behaviour) };
         registerEncorePlugins (engine);
         registerBridgedPlugins (engine);   // 32-bit plugins, through the bridge
-        // plugin formats: VST3 and VST2 (through FST) are both compiled in
+        // plugin formats: VST3 and VST2 (through FST) everywhere, Audio Units on a Mac, LV2 and
+        // LADSPA on Linux; each one is compiled in and is one the plugin search looks for
         {
-            StringArray names;
-            for (auto* f : engine.getPluginManager().pluginFormatManager.getFormats()) names.add (f->getName());
-            expect ("VST3 and VST2 hosting", names.contains ("VST3") && names.contains ("VST"), names.joinIntoString (", "));
+            StringArray names, searched;
+            for (auto* f : engine.getPluginManager().pluginFormatManager.getFormats())
+            {
+                names.add (f->getName());
+                if (PluginFinder::isSearched (*f)) searched.add (f->getName());
+            }
+            StringArray want { "VST3", "VST" };
+           #if JUCE_MAC
+            want.add ("AudioUnit");
+           #elif JUCE_LINUX
+            want.add ("LV2"); want.add ("LADSPA");
+           #endif
+            bool all = true;
+            for (auto& w : want) all = all && names.contains (w) && searched.contains (w);
+            expect ("plugin formats hosted and searched: " + want.joinIntoString (", "), all,
+                    "compiled in: " + names.joinIntoString (", ") + "; searched: " + searched.joinIntoString (", "));
         }
         auto songFile = songDir.getChildFile ("Self Test.encore");
         behaviour->songFolder = [songFile] { return songFile.getParentDirectory(); };

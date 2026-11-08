@@ -1,8 +1,9 @@
 // ENCORE. Basement Studio
 // Copyright (C) 2026 Encore Music, Inc. Licensed under the GNU AGPLv3 (see LICENSE).
 //
-// "ENCORE Basement Studio.exe --plugintest <report file> [folder]" loads every VST3
-// and VST2 in a folder (default: the system plugin folders) the way the Effects button
+// "ENCORE Basement Studio.exe --plugintest <report file> [folder]" loads every plugin
+// Studio searches for (VST3 and VST2; Audio Units on a Mac; LV2 and LADSPA on Linux) in
+// a folder (default: the system plugin folders) the way the Effects button
 // does: scan it, put it on a track, wait for it to load, open its editor.
 // Writes a line per plugin with what happened and how long each step took,
 // so "the plugin never opens" turns into a specific reason.
@@ -23,7 +24,7 @@ namespace selftest
         auto& pm = engine.getPluginManager();
         Array<AudioPluginFormat*> formats;
         for (auto* f : pm.pluginFormatManager.getFormats())
-            if (f->getName() == "VST3" || f->getName() == "VST") formats.add (f);
+            if (PluginFinder::isSearched (*f) && ! f->getName().startsWith ("32-bit")) formats.add (f);
         if (formats.size() < 2) { line ("FAIL VST3 and VST2 aren't both registered (" + String (formats.size()) + ")"); return 1; }
 
         auto edit = songs::create (engine, File::getSpecialLocation (File::tempDirectory).getChildFile ("studio-plugintest.encore"));
@@ -33,6 +34,8 @@ namespace selftest
         int ok = 0, failed = 0, skipped = 0;
         for (auto* format : formats)
         {
+            // Audio Units are found by the system, not in folders: only when no folder is given
+            if (format->getName() == "AudioUnit" && folder.isDirectory()) continue;
             auto where = folder.isDirectory() ? FileSearchPath (folder.getFullPathName()) : format->getDefaultLocationsToSearch();
             if (format->getName() == "VST" && ! folder.isDirectory()) PluginFinder::addCommonVst2Folders (where);
             auto files = format->searchPathsForPlugins (where, true, false);
@@ -46,8 +49,9 @@ namespace selftest
                 auto scanMs = Time::getMillisecondCounterHiRes() - t0;
                 if (found.isEmpty())
                 {
-                    // VST2 folders hold helper .dlls too; those aren't plugins and aren't failures
-                    if (format->getName() == "VST") { line ("skip " + path + "  (not a plugin)"); ++skipped; }
+                    // VST2 and LADSPA folders hold helper .dll/.so files too (and the .so files inside VST3
+                    // and LV2 bundles look like them): those aren't plugins and aren't failures
+                    if (PluginFinder::foldersHoldOtherFiles (*format)) { line ("skip " + path + "  (not a plugin)"); ++skipped; }
                     else { line ("FAIL scan  " + path + "  (no plugin found, " + String (scanMs, 0) + " ms)"); ++failed; }
                     continue;
                 }
