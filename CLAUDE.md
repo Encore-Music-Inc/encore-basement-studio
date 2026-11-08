@@ -60,7 +60,7 @@ this file does.
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/sanitizers/` | the scheduled sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
-| `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging; on a schedule: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
+| `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging (skipped when only docs change, or only the version line and `CHANGELOG.md`); on a schedule: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
 
 ## Submodules
 
