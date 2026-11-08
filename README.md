@@ -323,7 +323,9 @@ tags, plus pull requests, manual runs and a scheduled run).
 | `v*` tag | no build: the files from the successful `main` build of the tag's commit are attached to the Release |
 
 - A pull request or push that only changes `*.md`, `LICENSE` or
-  `.github/CODEOWNERS` skips the builds (skipped counts as passing).
+  `.github/CODEOWNERS` skips the builds (skipped counts as passing). So does a
+  pull request that only changes the version line in `CMakeLists.txt` and
+  `CHANGELOG.md`; the push to `main` after merging builds everything.
 - "CI passed" is the one check to require: it fails if any build or test job
   failed or was cancelled.
 - Linux builds inside Debian 12 (so the packages run on Bookworm and newer),
