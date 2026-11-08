@@ -5,6 +5,60 @@ job puts its section on the GitHub release (see "Release notes" in
 `CLAUDE.md`). Versions 0.4.3 and earlier were published from a different
 repository; their notes are kept below as they were written.
 
+## v0.6.0
+
+ENCORE. Basement Studio finds more of your plugins (Audio Units on a Mac, LV2
+and LADSPA on Linux), Mac songs open with a double-click, and the Windows and
+Mac downloads both include ENCORE. VST's installer.
+
+### What's new
+- **More of your plugins.** Besides VST3 and VST2, ENCORE. Basement Studio now
+  finds your Audio Units on a Mac, and your LV2 and LADSPA plugins on Linux
+  (LV2 is new). A plugin installed in several formats is listed once.
+- **Mac: songs open with a double-click.** `.encore` songs open in ENCORE.
+  Basement Studio from Finder, as they already did on Windows and Linux.
+- **Mac: ENCORE. VST in the download.** The disk image holds ENCORE. VST's Mac
+  installer, for the same plugins in Logic, GarageBand and your other music
+  apps.
+- **Windows: ENCORE. VST v0.6.1 in the installer.** The "Also install ENCORE.
+  VST" option now also works on PCs without Microsoft's Visual C++ runtime.
+- **Mac:** the app is signed (ad hoc) for both Apple Silicon and Intel.
+
+### Downloads
+- **Windows** (10 and 11, 64-bit):
+  `ENCORE-Basement-Studio-0.6.0-windows-setup.exe`, the installer (Start menu,
+  desktop shortcut, opens .encore songs, and it can also install ENCORE. VST
+  v0.6.1 for your other DAWs). Or `ENCORE-Basement-Studio-0.6.0-windows-x64.zip`
+  to run it from any folder without installing. If SmartScreen warns you, click
+  **More info**, then **Run anyway**.
+- **Mac** (Apple Silicon and Intel, macOS 11 or newer):
+  `ENCORE-Basement-Studio-0.6.0-macos.dmg`. Open it and drag
+  `ENCORE Basement Studio` to Applications. It isn't signed by Apple yet: the
+  first time, macOS says it was "Not Opened". Click **Done**, go to
+  **System Settings > Privacy & Security**, click **Open Anyway**, then open
+  the app again and click **Open Anyway**. For the ENCORE. plugins in your other
+  music apps, open `ENCORE-VST-0.6.1-macos.pkg` from the same disk image (the
+  same steps the first time).
+- **Linux and Raspberry Pi** (64-bit Raspberry Pi OS Bookworm or newer,
+  Debian 12 or newer, Ubuntu 22.04 or newer):
+  `encore-basement-studio_0.6.0_amd64.deb` and
+  `ENCORE-Basement-Studio-0.6.0-x86_64.AppImage` for PCs,
+  `encore-basement-studio_0.6.0_arm64.deb` and
+  `ENCORE-Basement-Studio-0.6.0-aarch64.AppImage` for Raspberry Pi 4 and 5.
+  Install the .deb with `sudo apt install ./<file>.deb`, or make the AppImage
+  runnable (`chmod +x`) and start it. For the ENCORE. plugins in your other
+  music apps, get ENCORE. VST v0.6.1's Linux download from the encore-vst
+  releases.
+
+Each file has a `.sha256` next to it, to check the download.
+
+### Built on
+ENCORE. VST v0.6.1 (which brings ENCORE. Audio Processing v1.0.1 and JUCE
+9.0.5), and Tracktion Engine at commit `a5e4499` (no Tracktion Engine release
+supports JUCE 9 yet).
+
+Questions or problems: support@encoremusic.studio
+
 ## v0.5.0
 
 The first release of ENCORE. Basement Studio from this repository: a DAW for
@@ -34,7 +88,9 @@ Linux and Raspberry Pi.
 - **Windows** (10 and 11, 64-bit):
   `ENCORE-Basement-Studio-0.5.0-windows-setup.exe`, the installer (Start menu,
   desktop shortcut, opens .encore songs, and it can also install ENCORE. VST
-  for your other DAWs). Or `ENCORE-Basement-Studio-0.5.0-windows-x64.zip` to
+  for your other DAWs; that option needs Microsoft's Visual C++ Redistributable
+  for x64: if it says "MSVCP140.dll was not found", install it from Microsoft
+  first). Or `ENCORE-Basement-Studio-0.5.0-windows-x64.zip` to
   run it from any folder without installing. If SmartScreen warns you, click
   **More info**, then **Run anyway**.
 - **Mac** (Apple Silicon and Intel, macOS 11 or newer):

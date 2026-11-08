@@ -19,7 +19,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 # The version lives here and only here. The app (About box, start screen, update
 # check), the Windows installer, the Linux packages, the Mac disk image and CI
 # all read it from this line.
-project(EncoreBasementStudio VERSION 0.5.0)
+project(EncoreBasementStudio VERSION 0.6.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
