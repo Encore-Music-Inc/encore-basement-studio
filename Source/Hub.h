@@ -8,6 +8,7 @@
 #pragma once
 
 #include "dsp/Music.h"
+#include "dsp/Tempo.h"
 
 #include "SongInfo.h"
 
@@ -119,7 +120,7 @@ public:
         {
             auto v = bpm.getText().getDoubleValue();
             SongInfo i;
-            i.bpm = juce::jlimit (20.0, 400.0, v > 0 ? v : 120.0);
+            i.bpm = vs::tempo::clampTempo (v > 0 ? v : 120.0);
             if (bpm.getText() != i.bpmText()) { bpm.setText (i.bpmText(), false); if (onChange) onChange(); }
         };
         bpm.setTooltip ("20 to 400 BPM");
@@ -170,7 +171,7 @@ public:
         base.notes = notes.getText();
         base.key = key.getSelectedId() > 1 ? key.getText() : juce::String();
         auto b = bpm.getText().getDoubleValue();
-        base.bpm = b > 0 ? juce::jlimit (20.0, 400.0, b) : 120.0;
+        base.bpm = b > 0 ? vs::tempo::clampTempo (b) : 120.0;
         auto s = juce::StringArray::fromTokens (sig.getText(), "/", {});
         if (s.size() == 2 && s[0].getIntValue() > 0 && s[1].getIntValue() > 0) { base.sigNum = s[0].getIntValue(); base.sigDen = s[1].getIntValue(); }
         return base;

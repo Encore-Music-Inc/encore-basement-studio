@@ -83,8 +83,10 @@ JUCE also ships the AAX SDK (Avid's licence or GPLv3) and the LV2 libraries
 - What: Tracktion Engine, the audio engine (editing, playback, recording,
   rendering), at commit `a5e44996f5f08dfa6af5f5d02d900fb3cfa37422`
 - Where: git submodule at `external/tracktion_engine`
-  (https://github.com/Tracktion/tracktion_engine). `patches/tracktion-per-track-monitor.patch`
-  is ENCORE.'s change to it, applied when CMake configures.
+  (https://github.com/Tracktion/tracktion_engine). ENCORE.'s changes to it are
+  in `patches/` (per-track monitoring, and its playback calling ENCORE. Audio
+  Processing for fades, gains and pan, levels, resampling, time stretching,
+  clicks, automation curves and delay compensation), applied when CMake configures.
 - Also: `Source/edit/Components.*`, `Source/edit/Utilities.h` and
   `Source/edit/PluginWindow.h` started from Tracktion Engine's example code
   (`examples/common/`), Copyright Tracktion Software Corporation.
@@ -98,7 +100,6 @@ The ones compiled into this build:
 
 | Library | Where (under `external/tracktion_engine/modules/`) | Licence |
 |---|---|---|
-| libsamplerate | `3rd_party/libsamplerate` | BSD-2-Clause, Copyright Erik de Castro Lopo |
 | CHOC | `3rd_party/choc` | ISC, Copyright Tracktion Corporation |
 | crill | `3rd_party/crill` | Boost Software License 1.0 |
 | magic_enum | `3rd_party/magic_enum` | MIT, Copyright Daniil Goncharov |
@@ -106,10 +107,10 @@ The ones compiled into this build:
 | rpmalloc | `3rd_party/rpmalloc` | public domain (or MIT), Mattias Jansson |
 | tl::expected | `3rd_party/expected` | CC0 1.0 |
 
-Tracktion Engine's other bundled code (Airwindows, SoundTouch, its own copy of
-Signalsmith Stretch, doctest) is switched off or only used by its own tests.
-Clip time stretching uses ENCORE. Audio Processing's stretcher
-(`patches/tracktion-timestretch.patch`), whose notices cover Signalsmith Stretch.
+Tracktion Engine's other bundled code (Airwindows, SoundTouch, libsamplerate,
+its own copy of Signalsmith Stretch, doctest) is switched off or only used by
+its own tests. Clip time stretching uses ENCORE. Audio Processing's stretcher
+(`patches/tracktion-audio-processing.patch`), whose notices cover Signalsmith Stretch.
 
 ## FST
 

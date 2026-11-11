@@ -45,7 +45,7 @@ namespace fx
         auto* s = dynamic_cast<te::AuxSendPlugin*> (p.get());
         if (s == nullptr) return nullptr;
         s->busNumber = bus;
-        s->setGainDb (-100.0f);
+        s->setGainDb (vs::meters::faderFloorDb);
         // after the volume/pan, before the meter: a post-fader send
         auto list = t.pluginList.getPlugins();
         int index = list.size();
@@ -87,11 +87,9 @@ public:
     {
         fader.setSliderStyle (Slider::LinearVertical);
         fader.setTextBoxStyle (Slider::NoTextBox, false, 0, 0);
-        fader.setRange (-60.0, 6.0, 0.1);
-        fader.setSkewFactorFromMidPoint (-12.0);
-        fader.setDoubleClickReturnValue (true, 0.0);
+        faderlaw::setUp (fader, 0.0f, "-inf");
         fader.setTooltip ("Volume (double-click for 0 dB)");
-        fader.onValueChange = [this] { if (onDb) onDb ((float) fader.getValue()); updateText(); };
+        fader.onValueChange = [this] { if (onDb) onDb (faderlaw::db (fader)); updateText(); };
         addAndMakeVisible (fader);
         addAndMakeVisible (meter);
         juce::ignoreUnused (stereo);
@@ -101,7 +99,7 @@ public:
         addAndMakeVisible (db);
     }
 
-    void setDb (float v) { if (! fader.isMouseButtonDown()) { fader.setValue (v, dontSendNotification); updateText(); } }
+    void setDb (float v) { if (! fader.isMouseButtonDown()) { faderlaw::show (fader, v); updateText(); } }
     LevelMeter meter;
 
     void resized() override
@@ -116,7 +114,7 @@ public:
 private:
     Slider fader;
     Label db;
-    void updateText() { auto v = fader.getValue(); db.setText (v <= -59.9 ? String ("-inf") : String (v, 1), dontSendNotification); }
+    void updateText() { db.setText (fader.getTextFromValue (fader.getValue()).upToFirstOccurrenceOf (" dB", false, false), dontSendNotification); }
 };
 
 //==============================================================================
@@ -286,18 +284,15 @@ private:
                 s->label.setText (fxTrack->getName(), dontSendNotification);
                 s->label.setFont (FontOptions (11.0f));
                 s->label.setColour (Label::textColourId, theme::text2);
-                s->knob.setRange (-60.0, 6.0, 0.1);
-                s->knob.setSkewFactorFromMidPoint (-12.0);
-                s->knob.setDoubleClickReturnValue (true, -60.0);
+                faderlaw::setUp (s->knob, vs::meters::faderFloorDb, "off");
                 s->knob.setPopupDisplayEnabled (true, true, nullptr);
-                s->knob.textFromValueFunction = [] (double v) { return v <= -59.9 ? String ("off") : String (v, 1) + " dB"; };
                 s->knob.setTooltip ("How much of this track goes to " + fxTrack->getName());
                 auto existing = fx::sendOn (*track, s->bus);
-                s->knob.setValue (existing ? juce::jlimit (-60.0f, 6.0f, existing->getGainDb()) : -60.0, dontSendNotification);
+                faderlaw::show (s->knob, existing ? existing->getGainDb() : vs::meters::faderFloorDb);
                 s->knob.onValueChange = [this, s]
                 {
                     if (auto send = fx::ensureSend (*track, s->bus))
-                        send->setGainDb (s->knob.getValue() <= -59.9 ? -100.0f : (float) s->knob.getValue());
+                        send->setGainDb (faderlaw::db (s->knob));
                 };
                 s->addAndMakeVisible (s->label);
                 s->addAndMakeVisible (s->knob);
@@ -371,7 +366,7 @@ private:
         for (auto* s : sends)
             if (! s->knob.isMouseButtonDown())
                 if (auto send = fx::sendOn (*track, s->bus))
-                    s->knob.setValue (juce::jlimit (-60.0f, 6.0f, send->getGainDb()), dontSendNotification);
+                    faderlaw::show (s->knob, send->getGainDb());
     }
 };
 

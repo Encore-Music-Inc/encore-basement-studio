@@ -19,6 +19,7 @@ using namespace tracktion::literals;
 #include "EncorePlugins.h"
 #include "BridgedPlugins.h"
 #include "edit/Meters.h"
+#include "edit/WaveformPicture.h"
 #include "edit/Components.h"
 #include "edit/Mixer.h"
 #include "edit/PianoRoll.h"

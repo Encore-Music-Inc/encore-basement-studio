@@ -125,3 +125,23 @@ private:
         if (changed) repaint();
     }
 };
+
+//==============================================================================
+/** Volume faders and send knobs move along encore-audio-processing's fader law
+    (dsp/Meters.h), the law songs store a level in: the slider holds the fader's
+    position (0 silent .. 1 at +6 dB) and shows the level in dB */
+namespace faderlaw
+{
+    inline void setUp (Slider& s, float doubleClickDb, const String& silentText)
+    {
+        s.setRange (0.0, 1.0, 0.0);
+        s.setDoubleClickReturnValue (true, vs::meters::dbToFaderPosition (doubleClickDb));
+        s.textFromValueFunction = [silentText] (double p)
+        {
+            const float db = vs::meters::faderPositionToDb ((float) p);
+            return db <= vs::meters::faderFloorDb + 0.05f ? silentText : String (db, 1) + " dB";
+        };
+    }
+    inline float db (const Slider& s) { return vs::meters::faderPositionToDb ((float) s.getValue()); }
+    inline void show (Slider& s, float db) { s.setValue (vs::meters::dbToFaderPosition (db), dontSendNotification); }
+}

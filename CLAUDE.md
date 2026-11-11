@@ -50,7 +50,7 @@ this file does.
 |---|---|
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
-| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure (per-track monitoring; clip time stretching on ENCORE. Audio Processing's stretcher) |
+| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure: per-track monitoring, and `tracktion-audio-processing.patch`, which has its playback call ENCORE. Audio Processing (fades, gains and pan, the fader law, levels, resampling, time stretching, clicks, automation curves, delay compensation) |
 | `tools/` | `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |

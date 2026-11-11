@@ -429,13 +429,13 @@ private:
         // twice as often as a new estimate: the strobe moves smoothly in between
         if (++frame % 2 == 0)
         {
-            // the latest ~170 ms, averaged down to about 24 kHz (plenty for 28 Hz to 2.1 kHz, and cheap)
-            const int stride = jmax (1, (int) std::round (sampleRate / 24000.0)), n = 4096;
-            std::vector<float> latest ((size_t) (n * stride));
+            // the newest window of the input, as encore-audio-processing's tuner reads a stream
+            const auto w = vs::TunerPitch::window (sampleRate);
+            const int need = w.n * w.stride;
+            std::vector<float> latest ((size_t) need);
             const int size = (int) buffer.size(), end = writePos.load();
-            for (int i = 0; i < n * stride; ++i) latest[(size_t) i] = buffer[(size_t) ((end - n * stride + i + size * 8) % size)];
-            const auto x = vs::boxDownsample (latest.data(), n * stride, stride);
-            const float f = vs::TunerPitch::estimate (x.data(), n, sampleRate / stride);
+            for (int i = 0; i < need; ++i) latest[(size_t) i] = buffer[(size_t) ((end - need + i + size * 8) % size)];
+            const float f = vs::TunerPitch::estimateLatest (latest.data(), need, sampleRate);
             // the reading follows the estimates (encore-audio-processing's TunerFollow)
             const float shown = follow.push (f);
             if (f > 0)

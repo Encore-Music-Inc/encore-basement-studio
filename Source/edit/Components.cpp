@@ -565,9 +565,9 @@ void AudioClipComponent::drawWaveform (Graphics& g, te::AudioClipBase& c, te::Sm
     const auto gain = c.getGain() * jlimit (1.0f, 32.0f, editViewState.waveformZoom.get());
     const auto pan = thumb.getNumChannels() == 1 ? 0.0f : c.getPan();
 
-    const float pv = pan * gain;
-    const float gainL = (gain - pv);
-    const float gainR = (gain + pv);
+    // the picture follows the clip's gain and pan as playback applies them (encore-audio-processing's pan law)
+    const auto panned = vs::mix::panGains (gain, pan, vs::mix::PanLaw::linear);
+    const float gainL = panned.left, gainR = panned.right;
 
     const bool usesTimeStretchedProxy = c.usesTimeStretchedProxy();
 
@@ -912,14 +912,11 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
     {
         if (auto vp = at->getVolumePlugin())
         {
-            volume.setRange (-60.0, 6.0, 0.1);
-            volume.setSkewFactorFromMidPoint (-12.0);
-            volume.setValue (vp->getVolumeDb(), dontSendNotification);
-            volume.setDoubleClickReturnValue (true, 0.0);
-            volume.textFromValueFunction = [] (double v) { return v <= -59.9 ? String ("-inf dB") : String (v, 1) + " dB"; };
+            faderlaw::setUp (volume, 0.0f, "-inf dB");
+            faderlaw::show (volume, vp->getVolumeDb());
             volume.setPopupDisplayEnabled (true, true, nullptr);
             volume.setTooltip ("Volume (double-click for 0 dB)");
-            volume.onValueChange = [this, vp] { vp->setVolumeDb ((float) volume.getValue()); };
+            volume.onValueChange = [this, vp] { vp->setVolumeDb (faderlaw::db (volume)); };
 
             pan.setRange (-1.0, 1.0, 0.01);
             pan.setValue (vp->getPan(), dontSendNotification);

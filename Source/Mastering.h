@@ -14,6 +14,7 @@
 // between them at the same loudness.
 
 #include "dsp/Mastering.h"
+#include "dsp/AbCompare.h"
 #include "dsp/Channels.h"
 #include "dsp/Dither.h"
 
@@ -44,8 +45,15 @@ namespace mastering
         for (int i = 0; i < offeredStyles; ++i) s.add (MC::style (i).blurb);
         return s;
     }
-    inline juce::StringArray targetNames() { return { "Streaming (-14 LUFS)", "Balanced (-11 LUFS)", "Loud (-9 LUFS)" }; }
-    inline float targetLufs (int target) { const float t[] { -14.0f, -11.0f, -9.0f }; return t[juce::jlimit (0, 2, target)]; }
+    /** The loudness targets offered: encore-audio-processing's (MasterChain's targets), named here */
+    inline juce::StringArray targetNames()
+    {
+        const char* const words[] { "Streaming", "Balanced", "Loud" };
+        juce::StringArray s;
+        for (int i = 0; i < MC::numTargets; ++i) s.add (juce::String (words[i]) + " (" + juce::String (MC::targetLufs (i), 0) + " LUFS)");
+        return s;
+    }
+    inline float targetLufs (int target) { return MC::targetLufs (target); }
 
     inline bool isEncoreMaster (te::Plugin& p)
     {
@@ -181,8 +189,9 @@ namespace mastering
             };
             const float la = lufs (a), lb = lufs (b);
             const bool measurable = la > -70.0f && lb > -70.0f;
-            matchGain = measurable ? vs::dbToGain (lb - la) : 1.0f;
+            matchDb = measurable ? lb - la : 0.0f;
             loudnessDifferenceDb = measurable ? la - lb : 0.0f;
+            prepareCompare();
         }
 
         bool hasAudio() const { const juce::ScopedLock sl (lock); return a.getNumSamples() > 0; }
@@ -197,24 +206,50 @@ namespace mastering
                 if (out[c] != nullptr) juce::FloatVectorOperations::clear (out[c], n);
             const juce::ScopedTryLock sl (lock);
             if (! sl.isLocked() || ! playing || a.getNumSamples() == 0 || std::abs (fileRate - deviceRate) > 1.0) return;
-            const auto& src = original ? b : a;
-            const float g = (! original && sameLoudness) ? matchGain : 1.0f;
+            // the main pair (outputs 1 and 2): both renders read in step, encore-audio-processing's
+            // A/B (dsp/AbCompare.h) plays one, crossfading when the choice changes, with the
+            // mastered one at the original's loudness when "same loudness" is on
+            if ((int) work[0].size() < n) return;   // a block longer than the device said it would send
             for (int i = 0; i < n; ++i)
             {
-                if (pos >= src.getNumSamples()) pos = 0;   // loops
-                for (int c = 0; c < juce::jmin (2, numOut); ++c)   // the main pair (outputs 1 and 2)
-                    if (out[c] != nullptr) out[c][i] = g * src.getSample (juce::jmin (c, src.getNumChannels() - 1), pos);
+                if (pos >= a.getNumSamples()) pos = 0;   // loops
+                for (int c = 0; c < 2; ++c)
+                {
+                    work[c][(size_t) i] = a.getSample (juce::jmin (c, a.getNumChannels() - 1), pos);
+                    orig[c][(size_t) i] = pos < b.getNumSamples() ? b.getSample (juce::jmin (c, b.getNumChannels() - 1), pos) : 0.0f;
+                }
                 ++pos;
             }
+            if (sameLoudness) compare.setFixedMatch (matchDb); else compare.setNoMatch();
+            compare.setHearOriginal (original);
+            compare.takeOriginal (orig[0].data(), orig[1].data(), n);
+            compare.mix (work[0].data(), work[1].data(), n);
+            for (int c = 0; c < juce::jmin (2, numOut); ++c)
+                if (out[c] != nullptr) juce::FloatVectorOperations::copy (out[c], work[c].data(), n);
         }
-        void audioDeviceAboutToStart (juce::AudioIODevice* d) override { deviceRate = d->getCurrentSampleRate(); }
+        void audioDeviceAboutToStart (juce::AudioIODevice* d) override
+        {
+            const juce::ScopedLock sl (lock);
+            deviceRate = d->getCurrentSampleRate();
+            maxBlock = juce::jmax (maxBlock, d->getCurrentBufferSizeSamples());
+            prepareCompare();
+        }
         void audioDeviceStopped() override {}
 
     private:
         juce::CriticalSection lock;
         juce::AudioBuffer<float> a, b;
         double fileRate = 0, deviceRate = 0;
-        int pos = 0;
-        float matchGain = 1.0f;
+        int pos = 0, maxBlock = 4096;
+        float matchDb = 0.0f;
+        vs::AbCompare compare;
+        std::vector<float> work[2], orig[2];
+
+        void prepareCompare()   // with the lock held
+        {
+            for (auto* v : { &work[0], &work[1], &orig[0], &orig[1] }) v->assign ((size_t) maxBlock, 0.0f);
+            compare.setFixedMatch (matchDb);
+            compare.prepare (fileRate > 0 ? fileRate : 48000.0, maxBlock, 0);
+        }
     };
 }

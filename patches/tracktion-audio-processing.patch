@@ -1,0 +1,1608 @@
+diff --git a/modules/tracktion_core/utilities/tracktion_Bezier.h b/modules/tracktion_core/utilities/tracktion_Bezier.h
+index 27a14b5..db00950 100644
+--- a/modules/tracktion_core/utilities/tracktion_Bezier.h
++++ b/modules/tracktion_core/utilities/tracktion_Bezier.h
+@@ -13,60 +13,24 @@
+ #include <cstddef>
+ #include <cmath>
+ 
++// ENCORE. Basement Studio: automation and tempo curves are ENCORE. Audio
++// Processing's (dsp/Ramp.h, vs::curve, number for number as before).
++#include "dsp/Ramp.h"
++
+ namespace tracktion::inline core {
+ 
+ inline std::pair<double /*x*/, double /*y*/> getBezierPoint (double x1, double y1, double x2, double y2,
+                                                              double c)
+ {
+-    if (y2 > y1)
+-    {
+-        auto run  = x2 - x1;
+-        auto rise = y2 - y1;
+-
+-        auto xc = x1 + run / 2;
+-        auto yc = y1 + rise / 2;
+-
+-        auto x = xc - run  / 2 * -c;
+-        auto y = yc + rise / 2 * -c;
+-
+-        return { x, y };
+-    }
+-
+-    auto run  = x2 - x1;
+-    auto rise = y1 - y2;
+-
+-    auto xc = x1 + run / 2;
+-    auto yc = y2 + rise / 2;
+-
+-    auto x = xc - run  / 2 * -c;
+-    auto y = yc - rise / 2 * -c;
+-
+-    return { x, y };
++    const auto p = vs::curve::bezierPoint (x1, y1, x2, y2, c);
++    return { p.x, p.y };
+ }
+ 
+ inline void getBezierEnds (const double x1, const double y1, const double x2, const double y2, const double c,
+                            double& x1out, double& y1out, double& x2out, double& y2out) noexcept
+ {
+-    auto minic = (std::abs (c) - 0.5f) * 2.0f;
+-    auto run   = minic * (x2 - x1);
+-    auto rise  = minic * ((y2 > y1) ? (y2 - y1) : (y1 - y2));
+-
+-    if (c > 0)
+-    {
+-        x1out = x1 + run;
+-        y1out = (float) y1;
+-
+-        x2out = x2;
+-        y2out = (float) (y1 < y2 ? (y2 - rise) : (y2 + rise));
+-    }
+-    else
+-    {
+-        x1out = x1;
+-        y1out = (float) (y1 < y2 ? (y1 + rise) : (y1 - rise));
+-
+-        x2out = x2 - run;
+-        y2out = (float) y2;
+-    }
++    const auto e = vs::curve::bezierEnds (x1, y1, x2, y2, c);
++    x1out = e.x1; y1out = e.y1; x2out = e.x2; y2out = e.y2;
+ }
+ 
+ struct BezierEnds
+@@ -76,79 +40,18 @@ struct BezierEnds
+ 
+ inline BezierEnds getBezierEnds (const double x1, const double y1, const double x2, const double y2, const double c) noexcept
+ {
+-    BezierEnds ends;
+-
+-    auto minic = (std::abs (c) - 0.5f) * 2.0f;
+-    auto run   = minic * (x2 - x1);
+-    auto rise  = minic * ((y2 > y1) ? (y2 - y1) : (y1 - y2));
+-
+-    if (c > 0)
+-    {
+-        ends.x1 = x1 + run;
+-        ends.y1 = (float) y1;
+-
+-        ends.x2 = x2;
+-        ends.y2 = (float) (y1 < y2 ? (y2 - rise) : (y2 + rise));
+-    }
+-    else
+-    {
+-        ends.x1 = x1;
+-        ends.y1 = (float) (y1 < y2 ? (y1 + rise) : (y1 - rise));
+-
+-        ends.x2 = x2 - run;
+-        ends.y2 = (float) y2;
+-    }
+-
+-    return ends;
++    const auto e = vs::curve::bezierEnds (x1, y1, x2, y2, c);
++    return { e.x1, e.y1, e.x2, e.y2 };
+ }
+ 
+ inline double getBezierYFromX (double x, double x1, double y1, double xb, double yb, double x2, double y2) noexcept
+ {
+-    // test for straight lines and bail out
+-    if (x1 == x2 || y1 == y2)
+-        return y1;
+-
+-    // test for endpoints
+-    if (x <= x1)  return y1;
+-    if (x >= x2)  return y2;
+-
+-    // ok, we have a bezier curve with one control point,
+-    // we know x, we need to find y
+-
+-    // flip the bezier equation around so its an quadratic equation
+-    auto a = x1 - 2 * xb + x2;
+-    auto b = -2 * x1 + 2 * xb;
+-    auto c = x1 - x;
+-
+-    // solve for t, [0..1]
+-    double t;
+-
+-    if (a == 0)
+-    {
+-        t = -c / b;
+-    }
+-    else
+-    {
+-        t = (-b + std::sqrt (b * b - 4 * a * c)) / (2 * a);
+-
+-        if (t < 0.0f || t > 1.0f)
+-            t = (-b - std::sqrt (b * b - 4 * a * c)) / (2 * a);
+-    }
+-
+-    jassert (t >= 0.0f && t <= 1.0f);
+-
+-    // find y using the t we just found
+-    auto y = (std::pow (1 - t, 2) * y1) + 2 * t * (1 - t) * yb + std::pow (t, 2) * y2;
+-    return y;
++    return vs::curve::bezierYFromX (x, x1, y1, xb, yb, x2, y2);
+ }
+ 
+ inline double getBezierXfromT (double t, double x1, double xb, double x2)
+ {
+-    // test for straight lines and bail out
+-    if (x1 == x2)
+-        return (x1 + x2) / 2.0 * t + x1;
+-
+-    return (std::pow (1.0 - t, 2.0) * x1) + 2 * t * (1 - t) * xb + std::pow (t, 2.0) * x2;
++    return vs::curve::bezierXFromT (t, x1, xb, x2);
+ }
+ 
+ }
+diff --git a/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp b/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
+index 7d578c3..6b8dd6f 100644
+--- a/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
++++ b/modules/tracktion_engine/model/automation/tracktion_AutomationCurve.cpp
+@@ -171,37 +171,14 @@ float AutomationCurve::getValueAt (EditPosition editPos, float defaultValue) con
+     auto p1 = state.getChild (index - 1);
+     auto p2 = state.getChild (index);
+ 
++    // ENCORE. Basement Studio: the segment is read by ENCORE. Audio Processing's
++    // automation curves (dsp/Ramp.h, vs::curve, number for number as before)
+     const double time1 = p1.getProperty (IDs::t);
+     const float curve1 = p1.getProperty (IDs::c);
+     const float value1 = p1.getProperty (IDs::v);
+-
+     const double time2 = p2.getProperty (IDs::t);
+     const float value2 = p2.getProperty (IDs::v);
+-
+-    if (curve1 == 0.0f)
+-    {
+-        auto alpha = (float) ((time - time1) / (time2 - time1));
+-        return value1 + alpha * (value2 - value1);
+-    }
+-
+-    if (curve1 >= -0.5f && curve1 <= 0.5f)
+-    {
+-        auto bezierPoint = getBezierPoint (index - 1);
+-        return static_cast<float> (getBezierYFromX (time, time1, value1, toUnderlying (bezierPoint.time), bezierPoint.value, time2, value2));
+-    }
+-
+-    double x1, x2;
+-    float y1, y2;
+-    getBezierEnds (index - 1, x1, y1, x2, y2);
+-
+-    if (time >= time1 && time <= x1)
+-        return value1;
+-
+-    if (time >= x2 && time <= time2)
+-        return value2;
+-
+-    auto bezierPoint = getBezierPoint (index - 1);
+-    return static_cast<float> (getBezierYFromX (time, x1, y1, toUnderlying (bezierPoint.time), bezierPoint.value, x2, y2));
++    return vs::curve::valueAt (time, time1, value1, curve1, time2, value2);
+ }
+ 
+ float AutomationCurve::getValueAt (TimePosition timePos, float defaultValue) const
+@@ -231,11 +208,11 @@ float AutomationCurve::getValueAt (TimePosition timePos, float defaultValue) con
+ 
+     auto& ts = getTempoSequence (edit);
+ 
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's curve math (a beat-based
++    // curve's control point is placed in time first, so the Bezier parts below
++    // call it through tracktion_Bezier.h)
+     if (curve1 == 0.0f)
+-    {
+-        auto alpha = (float) ((time - time1) / (time2 - time1));
+-        return value1 + alpha * (value2 - value1);
+-    }
++        return vs::curve::valueAt (time, time1, value1, 0.0f, time2, value2);
+ 
+     if (curve1 >= -0.5f && curve1 <= 0.5f)
+     {
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp
+index 48805df..9f6c43a 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp
+@@ -13,39 +13,37 @@ namespace tracktion::inline engine {
+ 
+ namespace
+ {
+-    juce::AudioBuffer<float> loadWavDataIntoMemory (const void* data, size_t size, double targetSampleRate)
++    // A click sound, its first channel, at the playback rate (ENCORE. Audio Processing's resampler)
++    std::shared_ptr<const vs::metronome::Buffer> loadWavDataIntoMemory (const void* data, size_t size, double targetSampleRate)
+     {
+         auto in = new juce::MemoryInputStream (data, size, false);
+ 
+         juce::WavAudioFormat wavFormat;
+         std::unique_ptr<juce::AudioFormatReader> r (wavFormat.createReaderFor (in, true));
+ 
+-        if (r == nullptr)
++        if (r == nullptr || r->lengthInSamples <= 0)
+             return {};
+ 
+-        auto ratio = r->sampleRate / targetSampleRate;
+-        auto targetLength = (int) (static_cast<double> (r->lengthInSamples) / ratio);
+-
+-        juce::AudioBuffer<float> buf ((int) r->numChannels, targetLength);
++        juce::AudioBuffer<float> file (1, (int) r->lengthInSamples);
++        r->read (&file, 0, (int) r->lengthInSamples, 0, true, false);
++        vs::metronome::Buffer sound;
+ 
++        if (std::abs (r->sampleRate - targetSampleRate) < 0.5)
+         {
+-            juce::AudioFormatReaderSource readerSource (r.get(), false);
+-
+-            juce::ResamplingAudioSource resamplerSource (&readerSource, false, (int) r->numChannels);
+-            resamplerSource.setResamplingRatio (ratio);
+-            resamplerSource.prepareToPlay (targetLength, targetSampleRate);
+-
+-            juce::AudioSourceChannelInfo info;
+-            info.buffer = &buf;
+-            info.startSample = 0;
+-            info.numSamples = targetLength;
+-            resamplerSource.getNextAudioBlock (info);
++            sound.assign (file.getReadPointer (0), file.getReadPointer (0) + file.getNumSamples());
++        }
++        else
++        {
++            sound.resize ((size_t) vs::resampledLength (file.getNumSamples(), r->sampleRate, targetSampleRate));
++            const float* src[1] { file.getReadPointer (0) };
++            float* dst[1] { sound.data() };
++            vs::resample (src, 1, file.getNumSamples(), r->sampleRate, targetSampleRate, dst);
+         }
+ 
+-        return buf;
++        return std::make_shared<const vs::metronome::Buffer> (std::move (sound));
+     }
+ 
+-    juce::AudioBuffer<float> loadWavDataIntoMemory (const juce::File& file, double targetSampleRate)
++    std::shared_ptr<const vs::metronome::Buffer> loadWavDataIntoMemory (const juce::File& file, double targetSampleRate)
+     {
+         juce::MemoryBlock mb;
+         file.loadFileAsData (mb);
+@@ -69,6 +67,7 @@ void ClickGenerator::prepareToPlay (double newSampleRate, TimePosition startTime
+         sampleRate = newSampleRate;
+         bigClick = {};
+         littleClick = {};
++        voices.clear();
+     }
+ 
+     if (midi)
+@@ -78,25 +77,25 @@ void ClickGenerator::prepareToPlay (double newSampleRate, TimePosition startTime
+     }
+     else
+     {
+-        if (bigClick.getNumSamples() == 0)
++        if (bigClick == nullptr || bigClick->empty())
+         {
+             juce::File file (Click::getClickWaveFile (edit.engine, true));
+ 
+             if (file.existsAsFile())
+                 bigClick = loadWavDataIntoMemory (file, sampleRate);
+ 
+-            if (bigClick.getNumSamples() == 0)
++            if (bigClick == nullptr || bigClick->empty())
+                 bigClick = loadWavDataIntoMemory (TracktionBinaryData::bigclick_wav, TracktionBinaryData::bigclick_wavSize, sampleRate);
+         }
+ 
+-        if (littleClick.getNumSamples() == 0)
++        if (littleClick == nullptr || littleClick->empty())
+         {
+             juce::File file (Click::getClickWaveFile (edit.engine, false));
+ 
+             if (file.existsAsFile())
+                 littleClick = loadWavDataIntoMemory (file, sampleRate);
+ 
+-            if (littleClick.getNumSamples() == 0)
++            if (littleClick == nullptr || littleClick->empty())
+                 littleClick = loadWavDataIntoMemory (TracktionBinaryData::littleclick_wav, TracktionBinaryData::littleclick_wavSize, sampleRate);
+         }
+     }
+@@ -163,38 +162,38 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
+         if (destBuffer == nullptr)
+             return;
+ 
+-        if (isPlaying())
+-        {
+-            auto num = std::min (samplesRemaining(), int (destBuffer->getNumFrames()));
+-            auto dstView = destBuffer->getFrameRange ({ 0, (choc::buffer::FrameCount) num });
+-
+-            render (dstView);
+-        }
+-
++        const auto n = (int) destBuffer->getNumFrames();
++        const auto gain = edit.getClickTrackVolume();
+         auto t = beatInfo.time;
+ 
+         while (t < editTime.getEnd())
+         {
+-            auto b = (emphasis && beatInfo.isFirstBeatOfBar) ? &bigClick : &littleClick;
++            const auto& b = (emphasis && beatInfo.isFirstBeatOfBar) ? bigClick : littleClick;
+ 
+-            if (b->getNumSamples() > 0 && t >= editTime.getStart() && ! isMutedAtTime (t))
++            if (b != nullptr && ! b->empty() && t >= editTime.getStart() && ! isMutedAtTime (t))
+             {
+-                const auto clickStartTime = t - editTime.getStart();
+-                const auto clickStartOffset = static_cast<int> (toSamples (clickStartTime, sampleRate));
+-
+-                trigger (b);
+-                isMutedAtTime (t);
+-
+-                auto num = std::min (samplesRemaining(), int (destBuffer->getNumFrames()) - int (clickStartOffset));
+-                auto dstView = destBuffer->getFrameRange ({ choc::buffer::FrameCount (clickStartOffset), choc::buffer::FrameCount (clickStartOffset + num) });
+-
+-                render (dstView);
++                const auto clickStartOffset = static_cast<int> (toSamples (t - editTime.getStart(), sampleRate));
++                voices.add (b, framesDone + clickStartOffset, gain);
+             }
+ 
+             tempoPosition.add (1_bd);
+             beatInfo = getBeatInfo (sequence, tempoPosition);
+             t = beatInfo.time;
+         }
++
++        if (! voices.empty())
++        {
++            if ((int) scratch.size() < n)
++                scratch.resize ((size_t) n);
++
++            std::fill (scratch.begin(), scratch.begin() + n, 0.0f);
++            voices.mix (scratch.data(), n, framesDone);
++
++            for (choc::buffer::ChannelCount c = 0; c < destBuffer->getNumChannels(); ++c)
++                std::copy (scratch.begin(), scratch.begin() + n, destBuffer->getChannel (c).data.data);
++        }
++
++        framesDone += n;
+     }
+ }
+ 
+@@ -215,41 +214,6 @@ bool ClickGenerator::isMutedAtTime (TimePosition time) const
+     return ! clickEnabled;
+ }
+ 
+-bool ClickGenerator::isPlaying()
+-{
+-    return currentSample != nullptr && samplePos >= 0;
+-}
+-
+-void ClickGenerator::trigger (juce::AudioBuffer<float>* s)
+-{
+-    currentSample = s;
+-    samplePos = 0;
+-}
+-
+-int ClickGenerator::samplesRemaining()
+-{
+-    return currentSample->getNumSamples() - samplePos;
+-}
+-
+-void ClickGenerator::render (choc::buffer::ChannelArrayView<float>& view)
+-{
+-    auto todo = view.getNumFrames();
+-    auto gain = edit.getClickTrackVolume();
+-
+-    copyRemappingChannels (view, toBufferView (*currentSample).getFrameRange ({ choc::buffer::FrameCount (samplePos), choc::buffer::FrameCount (samplePos) + todo }));
+-    applyGain (view, gain);
+-
+-    samplePos += static_cast<int> (todo);
+-    if (samplePos >= currentSample->getNumSamples())
+-        reset();
+-}
+-
+-void ClickGenerator::reset()
+-{
+-    currentSample = nullptr;
+-    samplePos = -1;
+-}
+-
+ //==============================================================================
+ //==============================================================================
+ ClickNode::ClickNode (Edit& e, int numAudioChannels, bool isMidi, tracktion::graph::PlayHead& playHeadToUse)
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.h b/modules/tracktion_engine/playback/graph/tracktion_ClickNode.h
+index 826be8a..70703d1 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.h
++++ b/modules/tracktion_engine/playback/graph/tracktion_ClickNode.h
+@@ -46,18 +46,14 @@ private:
+     tempo::Sequence::Position tempoPosition { sequence };
+ 
+     double sampleRate = 44100.0;
+-    juce::AudioBuffer<float> bigClick, littleClick;
++    // ENCORE. Basement Studio: the clicks are played by ENCORE. Audio
++    // Processing's click voices (dsp/Metronome.h) at the beats this timeline
++    // finds, and loaded at the playback rate by its resampler
++    std::shared_ptr<const vs::metronome::Buffer> bigClick, littleClick;
+     int bigClickMidiNote = 37, littleClickMidiNote = 76;
+-
+-    //==============================================================================
+-    bool isPlaying();
+-    void trigger (juce::AudioBuffer<float>*);
+-    void render (choc::buffer::ChannelArrayView<float>&);
+-    void reset();
+-    int samplesRemaining();
+-
+-    juce::AudioBuffer<float>* currentSample = nullptr;
+-    int samplePos = -1;
++    vs::metronome::ClickVoices voices;
++    std::vector<float> scratch;
++    std::int64_t framesDone = 0;
+ 
+     //==============================================================================
+     bool isMutedAtTime (TimePosition) const;
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
+index dab58c5..44ae271 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
+@@ -135,10 +135,12 @@ void RackInstanceNode::process (ProcessContext& pc)
+         }
+         else
+         {
+-            juce::SmoothedValue<float> smoother (lastGain[channel]);
+-            smoother.setTargetValue (gain);
+-            smoother.reset ((int) dest.getNumFrames());
+-            applyGainPerFrame (dest, [&] { return smoother.getNextValue(); });
++            // ENCORE. Basement Studio: ENCORE. Audio Processing's ramp (number for number as JUCE's smoother)
++            vs::Ramp<false> smoother;
++            smoother.setCurrentAndTarget (lastGain[channel]);
++            smoother.setTarget (gain);
++            smoother.reset ((double) dest.getNumFrames(), 1.0);
++            applyGainPerFrame (dest, [&] { return smoother.next(); });
+ 
+             lastGain[channel] = gain;
+         }
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
+index a9012a7..eddf380 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
+@@ -17,7 +17,7 @@ struct SpeedRampWaveNode::PerChannelState
+ {
+     PerChannelState()    { resampler.reset(); }
+ 
+-    juce::LagrangeInterpolator resampler;
++    LiveInterpolator resampler;
+     float lastSample = 0;
+     bool resamplerNeedsPriming = true;
+ };
+@@ -207,7 +207,7 @@ void SpeedRampWaveNode::processSection (ProcessContext& pc, juce::Range<int64_t>
+     // The resampler's output lags its input by its base latency, so read that many extra
+     // frames and feed the resampler from that far in. After a reset, the skipped frames
+     // prime its history so the first output frame lines up with fileStart
+-    constexpr int resamplerLatency = static_cast<int> (juce::LagrangeInterpolator::getBaseLatency());
++    const int resamplerLatency = LiveInterpolator::getBaseLatency();   // ENCORE. Audio Processing's live resampler
+     const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
+ 
+     AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp
+index eb32318..784a731 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp
+@@ -185,8 +185,9 @@ void TrackMutingNode::rampBlock (choc::buffer::ChannelArrayView<float> view, flo
+     if (view.getNumChannels() == 0)
+         return;
+ 
+-    auto buffer = tracktion::graph::toAudioBuffer (view);
+-    buffer.applyGainRamp (0, buffer.getNumSamples(), start, end);
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's gain ramp (dsp/Mix.h)
++    for (choc::buffer::ChannelCount c = 0; c < view.getNumChannels(); ++c)
++        vs::mix::applyGainRamp (view.getChannel (c).data.data, (int) view.getNumFrames(), start, end);
+ }
+ 
+ } // namespace tracktion::inline engine
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
+index 1993f02..9646482 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
+@@ -330,7 +330,7 @@ public:
+ 
+         if (std::exchange (hasBeenReset, false))
+         {
+-            constexpr auto baseLatencyNumSamples = static_cast<FrameCount> (juce::LagrangeInterpolator::getBaseLatency());
++            const auto baseLatencyNumSamples = static_cast<FrameCount> (LiveInterpolator::getBaseLatency());   // ENCORE. Audio Processing's live resampler
+             timeSourceIsAheadDueToLatency = TimeDuration::fromSamples (baseLatencyNumSamples, destSampleRate);
+             const auto modifiedNumSourceFramesToRead = numSourceFramesToRead + static_cast<int> (baseLatencyNumSamples);
+             const auto numFramesToDrop = static_cast<FrameCount> (std::lround (baseLatencyNumSamples / ratio));
+@@ -356,14 +356,14 @@ public:
+     const double sourceSampleRate { source->getSampleRate() };
+     const double sampleRatio { sourceSampleRate / destSampleRate  };
+     double speedRatio = 1.0;
+-    std::vector<juce::LagrangeInterpolator> resamplers;
++    std::vector<LiveInterpolator> resamplers;
+     float gains[2] = { 1.0f, 1.0f };
+     TimeDuration timeSourceIsAheadDueToLatency;
+     bool hasBeenReset = true;
+ 
+     static bool readResampling (choc::buffer::ChannelArrayView<float> destBuffer,
+                                 AudioReader& sourceReader, int numSourceFramesToRead,
+-                                std::vector<juce::LagrangeInterpolator>& resamplers_,
++                                std::vector<LiveInterpolator>& resamplers_,
+                                 const std::array<float, 2> gains)
+     {
+         const auto numChannels = destBuffer.getNumChannels();
+@@ -396,186 +396,8 @@ public:
+ };
+ 
+ 
+-class HighQualityResamplerReader final  : public ResamplerReader
+-{
+-public:
+-    HighQualityResamplerReader (std::unique_ptr<AudioReader> input,
+-                                double sampleRateToConvertTo, ResamplingQuality resamplingQuality)
+-        : ResamplerReader (std::move (input)),
+-          numChannels ((int) source->getNumChannels()),
+-          destSampleRate (sampleRateToConvertTo)
+-    {
+-        const int converterType = [&]
+-            {
+-                switch (resamplingQuality)
+-                {
+-                    case ResamplingQuality::sincFast:   return src::SRC_SINC_FASTEST;
+-                    case ResamplingQuality::sincMedium: return src::SRC_SINC_MEDIUM_QUALITY;
+-                    case ResamplingQuality::sincBest:   return src::SRC_SINC_BEST_QUALITY;
+-                    case ResamplingQuality::lagrange:   [[ fallthrough ]];
+-                    default: assert (false); return src::SRC_SINC_FASTEST;
+-                }
+-            }();
+-
+-        int error = 0;
+-        src_state = src::src_callback_new (srcReadCallback,
+-                                           converterType, numChannels, &error, this);
+-        assert (error == 0);
+-    }
+-
+-    ~HighQualityResamplerReader() override
+-    {
+-        src_delete (src_state);
+-    }
+-
+-    SampleCount getPosition() override
+-    {
+-        return getReadPosition();
+-    }
+-
+-    void setPosition (SampleCount t) override
+-    {
+-        if (std::abs (t - getReadPosition()) <= 1)
+-            return;
+-
+-        readPosition = (double) t;
+-
+-        source->setPosition (TimePosition::fromSamples (t, destSampleRate));
+-
+-        src_reset (src_state);
+-    }
+-
+-    void setPosition (TimePosition t) override
+-    {
+-        setPosition (toSamples (t, destSampleRate));
+-    }
+-
+-    double getSampleRate() override
+-    {
+-        return destSampleRate;
+-    }
+-
+-    /** Sets a ratio to increase or decrease playback speed. */
+-    void setSpeedRatio (double newSpeedRatio) override
+-    {
+-        assert (newSpeedRatio > 0);
+-        speedRatio = newSpeedRatio;
+-    }
+-
+-    /** Sets a l/r gain to apply to channels. */
+-    void setGains (float leftGain, float rightGain) override
+-    {
+-        gains[0] = leftGain;
+-        gains[1] = rightGain;
+-    }
+-
+-    void reset() override
+-    {
+-    }
+-
+-    bool readSamples (choc::buffer::ChannelArrayView<float>& destBuffer) override
+-    {
+-        const auto numFramesToDo = destBuffer.getNumFrames();
+-        choc::buffer::FrameCount startFrame = 0;
+-        auto framesRemaining = numFramesToDo;
+-
+-        for (;;)
+-        {
+-            const auto numFramesThisChunk = std::min (framesRemaining, chunkSize);
+-
+-            if (! readChunk (destBuffer.getFrameRange ({ startFrame, startFrame + numFramesThisChunk })))
+-                return false;
+-
+-            startFrame += numFramesThisChunk;
+-            framesRemaining -= numFramesThisChunk;
+-
+-            if (startFrame == numFramesToDo)
+-                break;
+-        }
+-
+-        if (gains[0] != 1.0f || gains[1] != 1.0f)
+-        {
+-            choc::buffer::applyGain (destBuffer.getChannel (0), gains[0]);
+-
+-            if (destBuffer.getNumChannels() > 1)
+-                choc::buffer::applyGain (destBuffer.getChannel (1), gains[1]);
+-        }
+-
+-        return true;
+-    }
+-
+-    static constexpr choc::buffer::FrameCount chunkSize = 256;
+-    const int numChannels;
+-    const double destSampleRate;
+-    const double sourceSampleRate { source->getSampleRate() };
+-    const double sampleRatio { sourceSampleRate / destSampleRate  };
+-
+-    src::SRC_STATE* src_state = nullptr;
+-
+-    choc::buffer::ChannelArrayBuffer<float> scratchBuffer                   { choc::buffer::createChannelArrayBuffer (numChannels, chunkSize, [] { return 0.0f; }) };
+-    choc::buffer::InterleavedBuffer<float> interleavedInputScratchBuffer    { choc::buffer::createInterleavedBuffer (numChannels, chunkSize, [] { return 0.0f; }) };
+-    choc::buffer::InterleavedBuffer<float> interleavedOutputScratchBuffer   { interleavedInputScratchBuffer };
+-
+-    double speedRatio = 1.0, readPosition = 0.0;
+-    float gains[2] = { 1.0f, 1.0f };
+-    bool failedToRead = false;
+-
+-    SampleCount getReadPosition() const
+-    {
+-        return static_cast<SampleCount> (readPosition + 0.5);
+-    }
+-
+-    static long srcReadCallback (void* data, float** destInterleavedSampleData)
+-    {
+-        return static_cast<HighQualityResamplerReader*> (data)->srcReadCallback (destInterleavedSampleData);
+-    }
+-
+-    long srcReadCallback (float** destInterleavedSampleData)
+-    {
+-        const auto numFramesToRead = interleavedInputScratchBuffer.getSize().numFrames;
+-
+-        // Read data in to temp buffer
+-        auto scratchView = scratchBuffer.getView();
+-
+-        // If the reader fails, we can't bail out or SRC will hang so just give it an empty buffer and pass the fail via a flag
+-
+-
+-        if (failedToRead = ! source->readSamples (scratchView); failedToRead)
+-            scratchView.clear();
+-
+-        // Interleave
+-        choc::buffer::copy (interleavedInputScratchBuffer, scratchBuffer);
+-        *destInterleavedSampleData = interleavedInputScratchBuffer.getView().data.data;
+-
+-        return static_cast<long> (numFramesToRead);
+-    }
+-
+-    bool readChunk (const choc::buffer::ChannelArrayView<float>& destBuffer)
+-    {
+-        assert (destBuffer.getNumFrames() > 0);
+-        assert (destBuffer.getNumFrames() <= chunkSize);
+-        assert (numChannels == (int) destBuffer.getNumChannels());
+-        const auto numFramesToDo = destBuffer.getNumFrames();
+-        const auto ratio = sampleRatio * speedRatio;
+-        assert (ratio > 0.0);
+-
+-        const auto numRead = src_callback_read (src_state, 1.0 / ratio,
+-                                                static_cast<long> (numFramesToDo),
+-                                                interleavedOutputScratchBuffer.getView().data.data);
+-
+-        if (failedToRead
+-            || static_cast<decltype (numFramesToDo)> (numRead) != numFramesToDo)
+-        {
+-            destBuffer.clear();
+-            return false;
+-        }
+-
+-        choc::buffer::copy (destBuffer, interleavedOutputScratchBuffer.getStart (numFramesToDo));
+-        readPosition += numFramesToDo;
+-
+-        return true;
+-    }
+-};
++// ENCORE. Basement Studio: every resampling quality plays through ENCORE. Audio
++// Processing's live resampler (LagrangeResamplerReader), so libsamplerate is not built.
+ 
+ class TimeStretchReaderBase : public SingleInputAudioReader
+ 
+@@ -999,6 +821,7 @@ inline WarpedTime warpTime (const WarpMap& map, TimePosition time)
+     return { sourcePosition, ratio };
+ }
+ 
++
+ //==============================================================================
+ class WarpReader final  : public SingleInputAudioReader
+ {
+@@ -1462,7 +1285,7 @@ public:
+     {
+         for (int i = (int) getNumChannels(); --i >= 0;)
+         {
+-            resamplers.emplace_back (juce::LagrangeInterpolator());
++            resamplers.emplace_back (LiveInterpolator());
+             resamplers.back().reset();
+         }
+     }
+@@ -1527,7 +1350,7 @@ private:
+ 
+     SpeedFadeDescription fadeDesc;
+     std::optional<tempo::Sequence::Position> tempoPosition;
+-    std::vector<juce::LagrangeInterpolator> resamplers;
++    std::vector<LiveInterpolator> resamplers;
+ 
+     bool shouldWarp() const
+     {
+@@ -1600,7 +1423,7 @@ struct WaveNode::PerChannelState
+ {
+     PerChannelState()    { resampler.reset(); }
+ 
+-    juce::LagrangeInterpolator resampler;
++    LiveInterpolator resampler;
+     float lastSample = 0;
+     bool resamplerNeedsPriming = true;
+ };
+@@ -1797,7 +1620,7 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+     // The resampler's output lags its input by its base latency, so read that many extra
+     // frames and feed the resampler from that far in. After a reset, the skipped frames
+     // prime its history so the first output frame lines up with fileStart
+-    constexpr int resamplerLatency = static_cast<int> (juce::LagrangeInterpolator::getBaseLatency());
++    const int resamplerLatency = LiveInterpolator::getBaseLatency();   // ENCORE. Audio Processing's live resampler
+     const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
+ 
+     AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
+@@ -2237,10 +2060,8 @@ bool WaveNodeRealTime::buildAudioReaderGraph()
+     const bool timestretchDisabled = timeStretcherMode == TimeStretcher::Mode::disabled;
+     std::unique_ptr<ResamplerReader> resamplerAudioReader;
+ 
+-    if (resamplingQuality == ResamplingQuality::lagrange)
+-        resamplerAudioReader    = std::make_unique<LagrangeResamplerReader> (std::move (loopReader), outputSampleRate);
+-    else
+-        resamplerAudioReader    = std::make_unique<HighQualityResamplerReader> (std::move (loopReader), outputSampleRate, resamplingQuality);
++    juce::ignoreUnused (resamplingQuality);
++    resamplerAudioReader = std::make_unique<LagrangeResamplerReader> (std::move (loopReader), outputSampleRate);
+ 
+     resamplerReader = resamplerAudioReader.get();
+     std::unique_ptr<TimeStretchReaderBase> timeStretchReader;
+diff --git a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
+index a75ca78..08d2db7 100644
+--- a/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
++++ b/modules/tracktion_engine/playback/tracktion_EditPlaybackContext.cpp
+@@ -461,7 +461,7 @@ private:
+     std::atomic<double> pendingPosition { 0.0 }, pendingPositionJumpTime { 0.0 };
+     std::atomic<bool> positionUpdatePending { false }, pendingRollInToLoop { false }, pendingPositionJumpTimeValid { false }, playPending { false };
+     double speedCompensation = 0.0, blockLengthScaleFactor = 1.0;
+-    std::vector<std::unique_ptr<juce::LagrangeInterpolator>> interpolators;
++    std::vector<std::unique_ptr<LiveInterpolator>> interpolators;
+     bool isUsingInterpolator = false;
+ 
+     struct TempoState
+@@ -481,7 +481,7 @@ private:
+     void ensureNumInterpolators (int numRequired)
+     {
+         for (size_t i = interpolators.size(); i < (size_t) numRequired; ++i)
+-            interpolators.push_back (std::make_unique<juce::LagrangeInterpolator>());
++            interpolators.push_back (std::make_unique<LiveInterpolator>());
+     }
+ };
+ 
+diff --git a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
+index 65aa698..c99c468 100644
+--- a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
++++ b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
+@@ -29,7 +29,8 @@ static void getSumAndDiff (const juce::AudioBuffer<FloatType>& buffer,
+ 
+         for (int i = buffer.getNumChannels(); --i >= 0;)
+         {
+-            auto mag = buffer.getMagnitude (i, startIndex, numSamples);
++            const float* ch[1] { buffer.getReadPointer (i, startIndex) };
++            auto mag = (FloatType) vs::channels::peakOf (ch, 1, numSamples);   // ENCORE. Audio Processing's sample peak
+             s += mag;
+             lo = juce::jmin (lo, mag);
+             hi = juce::jmax (hi, mag);
+@@ -210,9 +211,11 @@ void LevelMeasurer::processBuffer (juce::AudioBuffer<float>& buffer, int start,
+ 
+         for (int i = 0; i < resultNumChans; ++i)
+         {
++            // ENCORE. Basement Studio: the reading is ENCORE. Audio Processing's peak or RMS (dsp/Channels.h)
++            const float* ch[1] { buffer.getReadPointer (i, start) };
+             auto gain = (mode == LevelMeasurer::peakMode)
+-                            ? buffer.getMagnitude (i, start, numSamples)
+-                            : buffer.getRMSLevel (i, start, numSamples);
++                            ? vs::channels::peakOf (ch, 1, numSamples)
++                            : vs::channels::rmsOf (ch[0], numSamples);
+ 
+             channelLevels[(size_t) i] = { { now, gainToDb (gain) }, gain > 0.999f };
+         }
+diff --git a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
+index 85a7fa9..2d1230a 100644
+--- a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
++++ b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
+@@ -218,8 +218,8 @@ void VolumeAndPanPlugin::setSmoothedValueTargets (TimePosition time, bool update
+         gainR = -gainR;
+     }
+ 
+-    smoothedGainL.setTargetValue (gainL);
+-    smoothedGainR.setTargetValue (gainR);
++    smoothedGainL.setTarget (gainL);
++    smoothedGainR.setTarget (gainR);
+ 
+     if (updateGain)
+     {
+@@ -228,7 +228,7 @@ void VolumeAndPanPlugin::setSmoothedValueTargets (TimePosition time, bool update
+         if (polarity)
+             gain = -gain;
+ 
+-        smoothedGain.setTargetValue (gain);
++        smoothedGain.setTarget (gain);
+     }
+ }
+ 
+@@ -247,11 +247,15 @@ void VolumeAndPanPlugin::applyToBuffer (const PluginRenderContext& fc)
+ 
+             setSmoothedValueTargets (fc.editTime.getStart(), numChansIn > 2);
+ 
+-            smoothedGainL.applyGain (buffer->getWritePointer (0, fc.bufferStartSample), fc.bufferNumSamples);
++            {
++                float* ch[1] { buffer->getWritePointer (0, fc.bufferStartSample) };
++                vs::mix::applyGain (smoothedGainL, ch, 1, fc.bufferNumSamples);
++            }
+ 
+             if (numChansIn > 1)
+             {
+-                smoothedGainR.applyGain (buffer->getWritePointer (1, fc.bufferStartSample), fc.bufferNumSamples);
++                float* ch[1] { buffer->getWritePointer (1, fc.bufferStartSample) };
++                vs::mix::applyGain (smoothedGainR, ch, 1, fc.bufferNumSamples);
+ 
+                 // If the number of channels is greater than two, apply volume to the rest
+                 if (numChansIn > 2)
+@@ -261,7 +265,8 @@ void VolumeAndPanPlugin::applyToBuffer (const PluginRenderContext& fc)
+                     for (int i = 2; i < numChansIn; ++i)
+                     {
+                         smoothedGain = originalGain;
+-                        smoothedGain.applyGain (buffer->getWritePointer (i, fc.bufferStartSample), fc.bufferNumSamples);
++                        float* chI[1] { buffer->getWritePointer (i, fc.bufferStartSample) };
++                        vs::mix::applyGain (smoothedGain, chI, 1, fc.bufferNumSamples);
+                     }
+                 }
+             }
+diff --git a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
+index 12a877a..64cd100 100644
+--- a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
++++ b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.h
+@@ -79,7 +79,8 @@ public:
+ 
+ private:
+     float lastVolumeBeforeMute = 0.0f;
+-    juce::SmoothedValue<float> smoothedGainL, smoothedGainR, smoothedGain;
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's ramp (dsp/Ramp.h, number for number as JUCE's smoother)
++    vs::Ramp<false> smoothedGainL, smoothedGainR, smoothedGain;
+ 
+     RealTimeSpinLock vcaTrackLock;
+     juce::ReferenceCountedObjectPtr<AudioTrack> vcaTrack;
+diff --git a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp b/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
+index 26fd3d1..d87fe5d 100644
+--- a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
++++ b/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
+@@ -864,59 +864,22 @@ private:
+ //==============================================================================
+ #if TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH
+ 
+-#ifdef __GNUC__
+- #pragma GCC diagnostic push
+- #pragma GCC diagnostic ignored "-Wsign-conversion"
+- #pragma GCC diagnostic ignored "-Wconversion"
+- #pragma GCC diagnostic ignored "-Wshadow"
+- #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+- #pragma GCC diagnostic ignored "-Wunused-parameter"
+- #pragma GCC diagnostic ignored "-Wfloat-conversion"
+- #if __clang__
+-  #pragma GCC diagnostic ignored "-Wimplicit-float-conversion"
+-  #pragma GCC diagnostic ignored "-Wimplicit-int-float-conversion"
+-  #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+- #endif
+-#endif
+-
+-#if JUCE_WINDOWS
+- #pragma warning (push)
+- #pragma warning (disable: 4127 4244 4267 4305 4456)
+-#endif
+-
++// ENCORE. Basement Studio: clip time stretching runs on ENCORE. Audio Processing's
++// stretcher (dsp/TimeStretch.h, Signalsmith Stretch on that repository's FFT), so
++// the build carries one copy of the stretch library and Signalsmith's licence is
++// listed in THIRD-PARTY-NOTICES.md instead of here.
+ } // namespace tracktion::inline engine
+-#if __has_include(<signalsmith-stretch/signalsmith-stretch.h>)
+- #include <signalsmith-stretch/signalsmith-stretch.h>
+-#elif __has_include("../3rd_party/signalsmith-stretch/signalsmith-stretch.h")
+- #include "../3rd_party/signalsmith-stretch/signalsmith-stretch.h"
+-#else
+- #error "TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH enabled but not found in the search path!"
+-#endif
++#include "dsp/TimeStretch.h"
+ namespace tracktion::inline engine {
+ 
+-#if JUCE_WINDOWS
+- #pragma warning (pop)
+-#endif
+-
+-#ifdef __GNUC__
+- #pragma GCC diagnostic pop
+-#endif
+-
+ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+ {
+-    SignalsmithStretcher (double sourceSampleRate, int samplesPerBlock, int numChannels_,
+-                          TimeStretcher::Mode mode, bool realtime)
+-        : numChannels (numChannels_),
+-          samplesPerOutputBuffer (samplesPerBlock)
++    SignalsmithStretcher (double sourceSampleRate, int samplesPerBlock, int numChannels,
++                          TimeStretcher::Mode, bool)
++        : samplesPerOutputBuffer (samplesPerBlock)
+     {
+         CRASH_TRACER
+-
+-        const bool splitComputation = realtime;
+-
+-        if (mode == TimeStretcher::signalsmithCheaper)
+-            stretch.presetCheaper (numChannels, static_cast<float> (sourceSampleRate), splitComputation);
+-        else
+-            stretch.presetDefault (numChannels, static_cast<float> (sourceSampleRate), splitComputation);
++        stretch.prepare (sourceSampleRate, numChannels, samplesPerBlock);
+     }
+ 
+     bool isOk() const override      { return true; }
+@@ -930,7 +893,7 @@ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+     bool setSpeedAndPitch (float speedRatio_, float semitonesUp) override
+     {
+         speedRatio = speedRatio_;
+-        stretch.setTransposeSemitones (semitonesUp);
++        stretch.setSemitones (semitonesUp);
+         return true;
+     }
+ 
+@@ -967,8 +930,7 @@ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+     }
+ 
+ private:
+-    signalsmith::stretch::SignalsmithStretch<float> stretch;
+-    int numChannels = 0;
++    vs::TimeStretch stretch;
+     const int samplesPerOutputBuffer;
+     float speedRatio = 1.0f;
+     bool hasDoneFinalBlock = false;
+@@ -976,40 +938,6 @@ private:
+     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SignalsmithStretcher)
+ };
+ 
+-// Registers Signalsmith Stretch's licence with the list the host app shows in
+-// its about box. MIT only asks that the notice ships with the binary.
+-} // namespace tracktion::inline engine
+-#include "../../3rd_party/choc/choc/text/choc_OpenSourceLicenseList.h"
+-
+-CHOC_REGISTER_OPEN_SOURCE_LICENCE (SignalsmithStretch, R"LICENCE(
+-Signalsmith Stretch - https://signalsmith-audio.co.uk/code/stretch/
+-
+-MIT License
+-
+-Copyright (c) 2022 Geraint Luff / Signalsmith Audio Ltd.
+-Copyright (c) 2025 Signalsmith Audio (signalsmith-linear)
+-
+-Permission is hereby granted, free of charge, to any person obtaining a copy
+-of this software and associated documentation files (the "Software"), to deal
+-in the Software without restriction, including without limitation the rights
+-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-copies of the Software, and to permit persons to whom the Software is
+-furnished to do so, subject to the following conditions:
+-
+-The above copyright notice and this permission notice shall be included in all
+-copies or substantial portions of the Software.
+-
+-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-SOFTWARE.
+-)LICENCE")
+-
+-namespace tracktion::inline engine {
+-
+ #endif // TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH
+ 
+ //==============================================================================
+diff --git a/modules/tracktion_engine/tracktion_engine.h b/modules/tracktion_engine/tracktion_engine.h
+index d15012d..69def1c 100644
+--- a/modules/tracktion_engine/tracktion_engine.h
++++ b/modules/tracktion_engine/tracktion_engine.h
+@@ -54,6 +54,16 @@
+ #include <juce_dsp/juce_dsp.h>
+ #include <juce_osc/juce_osc.h>
+ 
++// ENCORE. Basement Studio: the audio processing Tracktion Engine's playback
++// calls (fades, gains and pan, the fader law, levels, resampling, clicks) is
++// ENCORE. Audio Processing's, on the include path as "dsp/..."
++#include "dsp/Channels.h"
++#include "dsp/Meters.h"
++#include "dsp/Metronome.h"
++#include "dsp/Mix.h"
++#include "dsp/Ramp.h"
++#include "dsp/Resampler.h"
++
+ #if __has_include(<choc/audio/choc_SampleBuffers.h>)
+  #include <choc/audio/choc_SampleBuffers.h>
+  #include <choc/audio/choc_MIDI.h>
+diff --git a/modules/tracktion_engine/tracktion_engine_playback.cpp b/modules/tracktion_engine/tracktion_engine_playback.cpp
+index 3228281..f5d5246 100644
+--- a/modules/tracktion_engine/tracktion_engine_playback.cpp
++++ b/modules/tracktion_engine/tracktion_engine_playback.cpp
+@@ -137,17 +137,8 @@ extern "C"
+  #pragma GCC diagnostic ignored "-Wpedantic"
+ #endif
+ 
+-namespace tracktion
+-{
+-    namespace src
+-    {
+-        #include "../3rd_party/libsamplerate/samplerate.h"
+-        #include "../3rd_party/libsamplerate/src_linear.c"
+-        #include "../3rd_party/libsamplerate/src_sinc.c"
+-        #include "../3rd_party/libsamplerate/src_zoh.c"
+-        #include "../3rd_party/libsamplerate/samplerate.c"
+-    }
+-}
++// ENCORE. Basement Studio: libsamplerate is not built; resampling is ENCORE.
++// Audio Processing's (LiveInterpolator in tracktion_AudioUtilities.h)
+ 
+ #undef PACKAGE
+ #undef VERSION
+diff --git a/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h b/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
+index 7da7643..ec57eb1 100644
+--- a/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
++++ b/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
+@@ -12,36 +12,9 @@ namespace tracktion::inline engine {
+ 
+ struct AudioFadeCurve
+ {
+-    /** A linear fade curve. */
+-    struct Linear
+-    {
+-        inline static double preadjust (double alpha) noexcept  { return alpha; }
+-        inline static float get (float alpha) noexcept          { return alpha; }
+-    };
+-
+-    /** A convex sine-shaped curve. */
+-    struct Convex
+-    {
+-        inline static double preadjust (double alpha) noexcept  { return alpha * (0.5 * juce::MathConstants<double>::pi); }
+-        inline static float get (float alpha) noexcept          { return std::sin (alpha); }
+-    };
+-
+-    /** A concave sine-shaped curve. */
+-    struct Concave
+-    {
+-        inline static double preadjust (double alpha) noexcept  { return alpha * (0.5 * juce::MathConstants<double>::pi); }
+-        inline static float get (float alpha) noexcept          { return 1.0f - std::cos (alpha); }
+-    };
+-
+-    /** An S-shaped curve. */
+-    struct SCurve
+-    {
+-        inline static double preadjust (double alpha) noexcept  { return alpha; }
+-        inline static float get (float alpha) noexcept          { return (1.0f - alpha) * (1.0f - std::cos (alpha * (0.5f * juce::MathConstants<float>::pi)))
+-                                                                            + alpha * std::sin (alpha * (0.5f * juce::MathConstants<float>::pi)); }
+-    };
+-
+-    /** A enumeration of the curve classes available. */
++    // ENCORE. Basement Studio: the curves and their rendering are ENCORE. Audio
++    // Processing's fade module (dsp/Channels.h, number for number as before),
++    // so the build keeps one set of fade curves.
+     enum Type
+     {
+         linear  = 1,
+@@ -50,65 +23,63 @@ struct AudioFadeCurve
+         sCurve  = 4
+     };
+ 
++    static vs::channels::FadeCurve toCurve (Type type) noexcept
++    {
++        switch (type)
++        {
++            case convex:  return vs::channels::FadeCurve::quarterSine;
++            case concave: return vs::channels::FadeCurve::concave;
++            case sCurve:  return vs::channels::FadeCurve::sCurve;
++            case linear:  break;
++        }
++        return vs::channels::FadeCurve::linear;
++    }
++
++    /** The curve classes, each naming its type. */
++    struct Linear  { static constexpr Type type = linear;  };
++    struct Convex  { static constexpr Type type = convex;  };
++    struct Concave { static constexpr Type type = concave; };
++    struct SCurve  { static constexpr Type type = sCurve;
++                     static float get (float alpha) noexcept { return vs::channels::fadeGainFloat (vs::channels::FadeCurve::sCurve, alpha); } };
++
+     /** Converts an alpha position along the curve (0 to 1.0) into the gain at that point. */
+     template <typename CurveClass>
+     static float alphaToGain (float alpha) noexcept
+     {
+         jassert (alpha >= 0 && alpha <= 1.0f);
+-        return CurveClass::get ((float) CurveClass::preadjust (alpha));
++        return vs::channels::fadeGainFloat (toCurve (CurveClass::type), alpha);
+     }
+ 
+     /** Converts an alpha position along the curve (0 to 1.0) into the gain at that point. */
+     static float alphaToGainForType (Type type, float alpha) noexcept
+     {
+-        if (type == convex)    return alphaToGain<Convex>  (alpha);
+-        if (type == concave)   return alphaToGain<Concave> (alpha);
+-        if (type == sCurve)    return alphaToGain<SCurve>  (alpha);
+-
+-        jassert (type == linear);
+-        return alpha;
++        return vs::channels::fadeGainFloat (toCurve (type), alpha);
+     }
+ 
+     /** Multiplies a block of samples by the curve shape between two alpha-positions.
+         The DestSamplePointer object must be a class that implements an apply() method that
+         gets called with each gain level.
+     */
+-    template <typename CurveClass, typename DestSamplePointer>
+-    static void renderBlock (DestSamplePointer& dest, int numSamples,
+-                             float startAlpha, float endAlpha) noexcept
++    template <typename DestSamplePointer>
++    static void renderBlockForType (DestSamplePointer& dest, int numSamples,
++                                    float startAlpha, float endAlpha, Type type) noexcept
+     {
+-        jassert (numSamples > 0); // can only be used on non-empty blocks!
+-
+-        const double a1 = CurveClass::preadjust (startAlpha);
+-        const double a2 = CurveClass::preadjust (endAlpha);
+-        const double delta = (a2 - a1) / numSamples;
+-        double alpha = a1;
++        jassert (numSamples > 0);
++        const auto curve = toCurve (type);
++        const double delta = ((double) endAlpha - (double) startAlpha) / numSamples;
++        double alpha = startAlpha;
+ 
+         while (--numSamples >= 0)
+         {
+-            dest.apply (CurveClass::get ((float) alpha));
++            dest.apply (vs::channels::fadeGainFloat (curve, alpha));
+             alpha += delta;
+         }
+     }
+ 
+-    /** Multiplies a block of samples by the curve shape between two alpha-positions.
+-        The DestSamplePointer object must be a class that implements an apply() method that
+-        gets called with each gain level.
+-    */
+-    template <typename DestSamplePointer>
+-    static void renderBlockForType (DestSamplePointer& dest, int numSamples,
+-                                    float startAlpha, float endAlpha, Type type) noexcept
++    template <typename CurveClass, typename DestSamplePointer>
++    static void renderBlock (DestSamplePointer& dest, int numSamples, float startAlpha, float endAlpha) noexcept
+     {
+-        jassert (numSamples > 0);
+-
+-        switch (type)
+-        {
+-            case linear:    renderBlock<Linear>  (dest, numSamples, startAlpha, endAlpha); break;
+-            case convex:    renderBlock<Convex>  (dest, numSamples, startAlpha, endAlpha); break;
+-            case concave:   renderBlock<Concave> (dest, numSamples, startAlpha, endAlpha); break;
+-            case sCurve:    renderBlock<SCurve>  (dest, numSamples, startAlpha, endAlpha); break;
+-            default:        jassertfalse; break;
+-        }
++        renderBlockForType (dest, numSamples, startAlpha, endAlpha, CurveClass::type);
+     }
+ 
+     /** Calculates the two gain multipliers to use for mixing between two sources, given a position
+@@ -124,8 +95,8 @@ struct AudioFadeCurve
+             and alpha values in-between will be calculated based on a pair of overlapping convex sine curves.
+         */
+         CrossfadeLevels (float alpha) noexcept
+-            : gain1 (alphaToGain<AudioFadeCurve::Convex> (alpha)),
+-              gain2 (alphaToGain<AudioFadeCurve::Convex> (1.0f - alpha))
++            : gain1 (vs::channels::crossfadeGains (alpha).first),
++              gain2 (vs::channels::crossfadeGains (alpha).second)
+         {
+         }
+ 
+diff --git a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
+index 3b8c193..33d34ef 100644
+--- a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
++++ b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
+@@ -122,37 +122,23 @@ void addAntiDenormalisationNoise (juce::AudioBuffer<float>& buffer, int start, i
+ }
+ 
+ //==============================================================================
++// ENCORE. Basement Studio: decibels, the volume fader's law, the silence test,
++// a block's magnitude and the pan laws are ENCORE. Audio Processing's
++// (dsp/Util.h, dsp/Meters.h, dsp/Channels.h, dsp/Mix.h), number for number as before.
+ float dbToGain (float db) noexcept
+ {
+-    return std::pow (10.0f, db * (1.0f / 20.0f));
++    return vs::dbToGain (db);
+ }
+ 
+ float gainToDb (float gain) noexcept
+ {
+-    return (gain > 0.0f) ? 20.0f * std::log10 (gain) : -100.0f;
++    return (gain > 0.0f) ? vs::ampToDb (gain, 0.0f) : vs::meters::faderFloorDb;
+ }
+ 
+-static const float volScaleFactor = 20.0f;
+-
+-float decibelsToVolumeFaderPosition (float db) noexcept
+-{
+-    return (db > -100.0f) ? std::exp ((db - 6.0f) * (1.0f / volScaleFactor)) : 0.0f;
+-}
+-
+-float volumeFaderPositionToDB (float pos) noexcept
+-{
+-    return (pos > 0.0f) ? (volScaleFactor * std::log (pos)) + 6.0f : -100.0f;
+-}
+-
+-float volumeFaderPositionToGain (float pos) noexcept
+-{
+-    return (pos > 0.0f) ? std::pow (10.0f, ((volScaleFactor * logf (pos)) + 6.0f) * (1.0f / 20.0f)) : 0.0f;
+-}
+-
+-float gainToVolumeFaderPosition (float gain) noexcept
+-{
+-    return (gain > 0.0f) ? std::exp (((20.0f * std::log10 (gain)) - 6.0f) * (1.0f / volScaleFactor)) : 0.0f;
+-}
++float decibelsToVolumeFaderPosition (float db) noexcept     { return vs::meters::dbToFaderPosition (db); }
++float volumeFaderPositionToDB (float pos) noexcept          { return vs::meters::faderPositionToDb (pos); }
++float volumeFaderPositionToGain (float pos) noexcept        { return vs::meters::faderPositionToGain (pos); }
++float gainToVolumeFaderPosition (float gain) noexcept       { return vs::meters::gainToFaderPosition (gain); }
+ 
+ juce::String gainToDbString (float gain, float infLevel, int decPlaces)
+ {
+@@ -206,71 +192,30 @@ juce::String getSemitonesAsString (double semitones)
+     return TRANS("1 semitone").replace ("1", t);
+ }
+ 
+-static bool isNotSilent (float v) noexcept
+-{
+-    const float zeroThresh = 1.0f / 8000.0f;
+-    return v < -zeroThresh || v > zeroThresh;
+-}
+-
+ bool isAudioDataAlmostSilent (const float* data, int num)
+ {
+-    return ! (isNotSilent (data[0])
+-               || isNotSilent (data[num / 2])
+-               || isNotSilent (getAudioDataMagnitude (data, num)));
++    return vs::channels::isNearlySilent (data, num);
+ }
+ 
+ float getAudioDataMagnitude (const float* data, int num)
+ {
+-    auto range = juce::FloatVectorOperations::findMinAndMax (data, num);
+-
+-    return std::max (std::abs (range.getStart()),
+-                     std::abs (range.getEnd()));
++    const float* one[1] { data };
++    return vs::channels::peakOf (one, 1, num);
+ }
+ 
+ //==============================================================================
+ void getGainsFromVolumeFaderPositionAndPan (float volSliderPos, float pan, const PanLaw panLaw,
+                                             float& leftGain, float& rightGain) noexcept
+ {
+-    const float gain = volumeFaderPositionToGain (volSliderPos);
+-
+-    if (panLaw == PanLawLinear)
+-    {
+-        const float pv = pan * gain;
+-
+-        leftGain  = gain - pv;
+-        rightGain = gain + pv;
+-    }
+-    else
+-    {
+-        const float halfPi = juce::MathConstants<float>::pi * 0.5f;
+-
+-        pan = (pan + 1.0f) * 0.5f; // Scale to range (0.0f, 1.0f) from (-1.0f, 1.0f) for simplicity
+-
+-        leftGain    = std::sin ((1.0f - pan) * halfPi);
+-        rightGain   = std::sin (pan * halfPi);
+-
+-        float ratio = 1.0f;
+-
+-        switch (panLaw)
+-        {
+-            case PanLaw3dBCenter:       ratio = 1.0f;         break;
+-            case PanLaw2point5dBCenter: ratio = 2.5f / 3.0f;  break;
+-            case PanLaw4point5dBCenter: ratio = 1.5f;         break;
+-            case PanLaw6dBCenter:       ratio = 2.0f;         break;
+-
+-            case PanLawDefault:
+-            case PanLawLinear:
+-                jassertfalse; // should have alread been handled?
+-                break;
+-
+-            default:
+-                jassertfalse; // New pan law?
+-                break;
+-        }
+-
+-        leftGain  = std::pow (leftGain,  ratio) * gain;
+-        rightGain = std::pow (rightGain, ratio) * gain;
+-    }
++    const auto law = panLaw == PanLaw3dBCenter       ? vs::mix::PanLaw::centre3dB
++                   : panLaw == PanLaw2point5dBCenter ? vs::mix::PanLaw::centre2_5dB
++                   : panLaw == PanLaw4point5dBCenter ? vs::mix::PanLaw::centre4_5dB
++                   : panLaw == PanLaw6dBCenter       ? vs::mix::PanLaw::centre6dB
++                   : vs::mix::PanLaw::linear;
++    jassert (panLaw != PanLawDefault);
++    const auto g = vs::mix::panGains (volumeFaderPositionToGain (volSliderPos), pan, law);
++    leftGain = g.left;
++    rightGain = g.right;
+ }
+ 
+ static PanLaw defaultPanLaw = PanLawLinear;
+diff --git a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h
+index 814d5ac..701b1e7 100644
+--- a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h
++++ b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h
+@@ -253,19 +253,47 @@ inline void clearChannels (juce::AudioBuffer<float>& buffer, int startChannel, i
+ 
+ 
+ //==============================================================================
+-template<typename SampleType>
+-inline SampleType getRMS (choc::buffer::MonoView<SampleType> view)
++/** ENCORE. Basement Studio: playback that converts as it plays (a clip at
++    another sample rate or speed, the output at another device rate) runs on
++    ENCORE. Audio Processing's live resampler (dsp/Resampler.h), in the shape
++    of the interpolator it replaces: each call reads as many input samples as
++    the ratio moves through (the caller provides them) and returns how many.
++*/
++class LiveInterpolator
+ {
+-    auto numSamples = view.getNumFrames();
+-    double sum = 0.0;
++public:
++    LiveInterpolator()                                  { resampler.prepare (1.0); }
++
++    /** How far the output runs behind the input, in input samples */
++    static int getBaseLatency() noexcept
++    {
++        static const int latency = [] { vs::LiveResampler r; r.prepare (1.0); return r.latency(); }();
++        return latency;
++    }
++
++    void reset() noexcept                               { resampler.reset(); }
++
++    int process (double ratio, const float* in, float* out, int numOut) noexcept
++    {
++        return resampler.process (ratio, in, std::numeric_limits<int>::max(), out, numOut);
++    }
+ 
+-    for (choc::buffer::FrameCount i = 0; i < numSamples; ++i)
++    int processAdding (double ratio, const float* in, float* out, int numOut, float gain) noexcept
+     {
+-        auto sample = view.getSample (0, i);
+-        sum += sample * sample;
++        return resampler.process (ratio, in, std::numeric_limits<int>::max(), out, numOut, gain, true);
+     }
+ 
+-    return static_cast<SampleType> (std::sqrt (sum / numSamples));
++private:
++    vs::LiveResampler resampler;
++};
++
++//==============================================================================
++template<typename SampleType>
++inline SampleType getRMS (choc::buffer::MonoView<SampleType> view)
++{
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's RMS (dsp/Channels.h)
++    static_assert (std::is_same_v<SampleType, float>);
++    return vs::channels::rmsOf (view.data.data, (int) view.getNumFrames(), (int) view.data.stride);
+ }
+ 
+ 
+diff --git a/modules/tracktion_graph/tracktion_graph.h b/modules/tracktion_graph/tracktion_graph.h
+index a71deec..46211af 100644
+--- a/modules/tracktion_graph/tracktion_graph.h
++++ b/modules/tracktion_graph/tracktion_graph.h
+@@ -98,6 +98,12 @@
+ #include <juce_audio_basics/juce_audio_basics.h>
+ #include "../tracktion_core/tracktion_core.h"
+ 
++// ENCORE. Basement Studio: the ramps and the delay line Tracktion's graph uses
++// are ENCORE. Audio Processing's (on the include path as "dsp/...")
++#include "dsp/DelayLine.h"
++#include "dsp/Mix.h"
++#include "dsp/Ramp.h"
++
+ #ifdef __GNUC__
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wfloat-equal"
+diff --git a/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h b/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
+index 9a282a6..2bfb7e7 100644
+--- a/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
++++ b/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
+@@ -439,10 +439,12 @@ public:
+         }
+         else
+         {
+-            juce::SmoothedValue<float> smoother (lastGain);
+-            smoother.setTargetValue (gain);
+-            smoother.reset ((int) pc.buffers.audio.getNumFrames());
+-            applyGainPerFrame (pc.buffers.audio, [&] { return smoother.getNextValue(); });
++            // ENCORE. Basement Studio: ENCORE. Audio Processing's ramp (number for number as JUCE's smoother)
++            vs::Ramp<false> smoother;
++            smoother.setCurrentAndTarget (lastGain);
++            smoother.setTarget (gain);
++            smoother.reset ((double) pc.buffers.audio.getNumFrames(), 1.0);
++            applyGainPerFrame (pc.buffers.audio, [&] { return smoother.next(); });
+         }
+ 
+         lastGain = gain;
+diff --git a/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h b/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h
+index f1a497f..7866f74 100644
+--- a/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h
++++ b/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h
+@@ -23,7 +23,7 @@ struct LatencyProcessor
+     {
+         return latencyNumSamples == o.latencyNumSamples
+             && sampleRate == o.sampleRate
+-            && fifo.getNumChannels() == o.fifo.getNumChannels();
++            && numChannels == o.numChannels;
+     }
+ 
+     /** Returns ture if the the sample rate, channels etc. are those specified. */
+@@ -31,7 +31,7 @@ struct LatencyProcessor
+     {
+         return latencyNumSamples == numLatencySamples
+             && sampleRate == preparedSampleRate
+-            && fifo.getNumChannels() == (choc::buffer::ChannelCount) numberOfChannels;
++            && numChannels == numberOfChannels;
+     }
+ 
+     int getLatencyNumSamples() const
+@@ -45,23 +45,41 @@ struct LatencyProcessor
+         latencyNumSamples = numLatencySamples;
+     }
+ 
+-    void prepareToPlay (double sampleRateToUse, int blockSize, int numChannels)
++    void prepareToPlay (double sampleRateToUse, int blockSize, int numChannelsToUse)
+     {
+         sampleRate = sampleRateToUse;
+         latencyTimeSeconds = sampleToTime (latencyNumSamples, sampleRate);
+ 
+-        fifo.setSize ((choc::buffer::ChannelCount) numChannels, (choc::buffer::FrameCount) (latencyNumSamples + blockSize + 1));
+-        fifo.writeSilence ((choc::buffer::FrameCount) latencyNumSamples);
+-        jassert (fifo.getNumReady() == latencyNumSamples);
++        // ENCORE. Basement Studio: the delay that keeps tracks in time is
++        // ENCORE. Audio Processing's delay line (dsp/DelayLine.h), one per channel
++        numChannels = numChannelsToUse;
++        lines.assign ((size_t) numChannels, {});
++        for (auto& l : lines) l.prepare (latencyNumSamples + 1);
++        capacity = 2 * blockSize + 1;
++        pending.assign ((size_t) numChannels, std::vector<float> ((size_t) capacity, 0.0f));
++        numPending = 0;
+     }
+ 
+     void writeAudio (choc::buffer::ChannelArrayView<float> src)
+     {
+-        if (fifo.getNumChannels() == 0)
++        if (numChannels == 0)
+             return;
+ 
+-        jassert (fifo.getNumChannels() >= src.getNumChannels());
+-        fifo.write (src);
++        jassert ((choc::buffer::ChannelCount) numChannels >= src.getNumChannels());
++        const int n = (int) src.getNumFrames();
++        ensureRoom (n);
++        for (int c = 0; c < numChannels; ++c)
++        {
++            auto& line = lines[(size_t) c];
++            float* out = pending[(size_t) c].data() + numPending;
++            const bool has = c < (int) src.getNumChannels();
++            for (int i = 0; i < n; ++i)
++            {
++                line.write (has ? src.getSample ((choc::buffer::ChannelCount) c, (choc::buffer::FrameCount) i) : 0.0f);
++                out[i] = line.at (latencyNumSamples + 1);
++            }
++        }
++        numPending += n;
+     }
+ 
+     void writeMIDI (const tracktion_engine::MidiMessageArray& src)
+@@ -71,20 +89,18 @@ struct LatencyProcessor
+ 
+     void readAudioAdding (choc::buffer::ChannelArrayView<float> dst)
+     {
+-        if (fifo.getNumChannels() == 0)
++        if (numChannels == 0)
+             return;
+ 
+-        jassert (fifo.getNumReady() >= (int) dst.getNumFrames());
+-        fifo.readAdding (dst);
++        read (dst, true);
+     }
+ 
+     void readAudioOverwriting (choc::buffer::ChannelArrayView<float> dst)
+     {
+-        if (fifo.getNumChannels() == 0)
++        if (numChannels == 0)
+             return;
+ 
+-        jassert (fifo.getNumReady() >= (int) dst.getNumFrames());
+-        fifo.readOverwriting (dst);
++        read (dst, false);
+     }
+ 
+     void readMIDI (tracktion_engine::MidiMessageArray& dst, int numSamples)
+@@ -117,7 +133,7 @@ struct LatencyProcessor
+ 
+     void clearAudio (int numSamples)
+     {
+-        fifo.removeSamples (numSamples);
++        consume (numSamples);
+     }
+ 
+     void clearMIDI (int numSamples)
+@@ -145,7 +161,38 @@ private:
+     int latencyNumSamples = 0;
+     double sampleRate = 44100.0;
+     double latencyTimeSeconds = 0.0;
+-    AudioFifo fifo { 1, 32 };
++    int numChannels = 0, capacity = 0, numPending = 0;
++    std::vector<vs::DelayLine> lines;
++    std::vector<std::vector<float>> pending;   // delayed samples written but not yet read
++
++    void ensureRoom (int n)
++    {
++        if (numPending + n <= capacity) return;
++        capacity = numPending + n;   // only when a block is larger than prepared for
++        for (auto& p : pending) p.resize ((size_t) capacity, 0.0f);
++    }
++
++    void read (choc::buffer::ChannelArrayView<float> dst, bool adding)
++    {
++        const int n = (int) dst.getNumFrames();
++        jassert (numPending >= n);
++        for (choc::buffer::ChannelCount c = 0; c < dst.getNumChannels(); ++c)
++        {
++            float* d = dst.getChannel (c).data.data;
++            const float* p = pending[(size_t) std::min ((int) c, numChannels - 1)].data();
++            if ((int) c >= numChannels) { if (! adding) std::fill (d, d + n, 0.0f); continue; }
++            if (adding) vs::mix::addWithGain (p, d, std::min (n, numPending), 1.0f);
++            else std::copy (p, p + std::min (n, numPending), d);
++        }
++        consume (n);
++    }
++
++    void consume (int n)
++    {
++        n = std::min (n, numPending);
++        for (auto& p : pending) std::copy (p.begin() + n, p.begin() + numPending, p.begin());
++        numPending -= n;
++    }
+     tracktion_engine::MidiMessageArray midi;
+ };
+ 

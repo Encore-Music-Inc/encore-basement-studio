@@ -16,6 +16,7 @@
 #include "Theme.h"
 #include "dsp/Metronome.h"
 #include "dsp/Channels.h"
+#include "dsp/Tempo.h"
 
 
 //==============================================================================
@@ -218,6 +219,13 @@ inline std::shared_ptr<SongExport> exportSong (te::Engine& engine, const juce::F
     (the self-test) we just run them. */
 struct HeadlessUIBehaviour : public te::UIBehaviour
 {
+
+    // the waveform pictures: encore-audio-processing's (edit/WaveformPicture.h)
+    std::unique_ptr<juce::AudioThumbnailBase> createAudioThumbnail (int samplesPerBlock, juce::AudioFormatManager& formats,
+                                                                   juce::AudioThumbnailCache& cache) override
+    {
+        return std::make_unique<WaveformPicture> (samplesPerBlock, formats, cache);
+    }
     void runTaskWithProgressBar (te::ThreadPoolJobWithProgress& t) override
     {
         while (t.runJob() == juce::ThreadPoolJob::jobNeedsRunningAgain) {}
@@ -2948,7 +2956,7 @@ private:
                         r->read (&buf, 0, n, at, true, true);
                         peak = juce::jmax (peak, vs::channels::peakOf (buf.getArrayOfReadPointers(), ch, n));
                     }
-                    if (peak > 0.00001f) { w->setGainDB (juce::jlimit (-60.0f, 24.0f, -0.3f - vs::ampToDb (peak, 0.0f))); ++done; }
+                    if (peak > 0.00001f) { w->setGainDB (vs::channels::gainToPeakDb (peak, -0.3f)); ++done; }
                 }
         status (done ? "Normalized " + juce::String (done) + (done == 1 ? " clip" : " clips") + " to -0.3 dB" : juce::String ("Nothing to normalize"));
     }
@@ -3420,7 +3428,7 @@ private:
     {
         if (! edit) return;
         auto& tempo = edit->tempoSequence.getTempoAt (edit->getTransport().getPosition());   // the tempo where the playhead is
-        if (bpm >= 20 && bpm <= 400) tempo.setBpm (bpm);
+        if (vs::tempo::isTempo (bpm)) tempo.setBpm (bpm);
         SongInfo i;
         i.bpm = tempo.getBpm();
         tempoLabel.setText (i.bpmText(), juce::dontSendNotification);
@@ -3553,7 +3561,7 @@ private:
         {
             const double bpm = text.getDoubleValue();
             auto* clip = dynamic_cast<te::WaveAudioClip*> (keep.get());
-            if (clip == nullptr || bpm < 20 || bpm > 400) return;
+            if (clip == nullptr || ! vs::tempo::isTempo (bpm)) return;
             edit->getUndoManager().beginNewTransaction ("Follow tempo");
             stretch::follow (*clip, bpm);
             status (clip->getName() + " follows the song's tempo now (played as " + juce::String (bpm, 1) + " BPM audio)");
