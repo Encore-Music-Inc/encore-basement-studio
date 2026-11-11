@@ -2528,13 +2528,12 @@ private:
                               : "Piano roll: click to add a note, drag to move, drag a note's end to resize, double-click to delete");
     }
 
-    /** Project > Add Drum Track: the Studio Kit on a Sampler, and a 4-bar pattern to fill in */
+    /** Project > Add Drum Track: the Studio kit on ENCORE. Sampler, and a 4-bar pattern to fill in */
     void addDrumTrack()
     {
         if (! edit) return;
-        auto plugin = edit->getPluginCache().createNewPlugin (te::SamplerPlugin::xmlTypeName, {});
-        auto* sampler = dynamic_cast<te::SamplerPlugin*> (plugin.get());
-        if (sampler == nullptr) return;
+        auto plugin = drums::kit::newSampler (*edit);
+        if (plugin == nullptr) return;
         auto tracks = te::getAudioTracks (*edit);
         auto t = edit->insertNewAudioTrack (te::TrackInsertPoint (nullptr, tracks.isEmpty() ? nullptr : tracks.getLast()), &selectionManager);
         if (t == nullptr) return;
@@ -2542,7 +2541,7 @@ private:
         t->setColour (theme::trackColour (tracks.size()));
         t->state.setProperty ("basementRole", "drums", nullptr);
         instruments::makeInstrumentTrack (*t, plugin, false);
-        drums::kit::load (*sampler, songFile.getParentDirectory());
+        if (auto* sampler = drums::kit::samplerOn (*t)) drums::kit::load (*sampler, songFile.getParentDirectory());
         // 4 bars from the bar the playhead is in
         auto& ts = edit->tempoSequence;
         const int bar = ts.toBarsAndBeats (edit->getTransport().getPosition()).bars;
@@ -3576,11 +3575,11 @@ private:
     }
     std::unique_ptr<TunerWindow> tunerWindow;
 
-    /** Built-in synth first, then your instrument plugins by maker */
+    /** ENCORE. Synth first, then your instrument plugins by maker */
     juce::PopupMenu instrumentMenu()
     {
         juce::PopupMenu m;
-        m.addItem ("Built-in synth (4OSC)", [this] { addInstrumentTrack (edit->getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}), "Synth"); });
+        m.addItem ("ENCORE. Synth", [this] { addInstrumentTrack (edit->getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))), "Synth"); });
         m.addSeparator();
         std::map<juce::String, juce::PopupMenu> byMaker;
         for (auto& d : pluginsForMenus (engine))
@@ -3728,7 +3727,7 @@ private:
             if (! f.existsAsFile() || ! edit) return;
             auto t = selectedTrack();
             if (t == nullptr || ! instruments::isInstrumentTrack (*t))
-                t = addInstrumentTrack (edit->getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}), f.getFileNameWithoutExtension());
+                t = addInstrumentTrack (edit->getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))), f.getFileNameWithoutExtension());
             if (t == nullptr) return;
             if (auto clip = te::createClipFromFile (f, *t, false))
                 status ("Imported " + f.getFileName() + " (" + juce::String (clip->getSequence().getNumNotes()) + " notes) onto " + t->getName());

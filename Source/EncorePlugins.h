@@ -8,6 +8,8 @@
 // while they load instantly: there's nothing to scan and no file to find.
 #pragma once
 
+#include "encore/StudioEffects.h"
+
 juce::AudioPluginInstance* makeEncoreVox();
 juce::AudioPluginInstance* makeEncoreVerb();
 juce::AudioPluginInstance* makeEncoreEQ();
@@ -17,7 +19,7 @@ juce::AudioPluginInstance* makeEncoreStrum();
 class EncorePluginFormat : public juce::AudioPluginFormat
 {
 public:
-    struct Entry { const char* id; const char* name; juce::AudioPluginInstance* (*make)(); const char* category; };
+    struct Entry { const char* id; const char* name; juce::AudioPluginInstance* (*make)(); const char* category; bool instrument = false; };
 
     /** Which plugin an identifier means: "encore:vox", "encore:equalize"... (what songs save).
         The plugins' own EncoreProcessorBase makes the same identifier from their name. */
@@ -28,14 +30,25 @@ public:
         return nullptr;
     }
 
-    static const std::array<Entry, 5>& entries()
+    // The ENCORE. plugins, then the effects and instruments hosted here
+    // (encore/StudioEffects.h), every one encore-audio-processing's
+    static const std::array<Entry, 14>& entries()
     {
-        static const std::array<Entry, 5> list { {
-            { "encore:vox",      "ENCORE. Vox",      &makeEncoreVox,    "Vocal chain" },
-            { "encore:verb",     "ENCORE. Verb",     &makeEncoreVerb,   "Reverb" },
-            { "encore:equalize", "ENCORE. Equalize", &makeEncoreEQ,     "EQ" },
-            { "encore:master",   "ENCORE. Master",   &makeEncoreMaster, "Mastering" },
-            { "encore:strum",    "ENCORE. Strum",    &makeEncoreStrum,  "Acoustic guitar" },
+        static const std::array<Entry, 14> list { {
+            { "encore:vox",        "ENCORE. Vox",           &makeEncoreVox,    "Vocal chain" },
+            { "encore:verb",       "ENCORE. Verb",          &makeEncoreVerb,   "Reverb" },
+            { "encore:equalize",   "ENCORE. Equalize",      &makeEncoreEQ,     "EQ" },
+            { "encore:master",     "ENCORE. Master",        &makeEncoreMaster, "Mastering" },
+            { "encore:strum",      "ENCORE. Strum",         &makeEncoreStrum,  "Acoustic guitar" },
+            { "encore:compressor", "ENCORE. Compressor",    [] () -> juce::AudioPluginInstance* { return new studiofx::Compressor(); },   "Dynamics" },
+            { "encore:limiter",    "ENCORE. Limiter",       [] () -> juce::AudioPluginInstance* { return new studiofx::Limiter(); },      "Dynamics" },
+            { "encore:delay",      "ENCORE. Delay",         [] () -> juce::AudioPluginInstance* { return new studiofx::Delay(); },        "Delay" },
+            { "encore:chorus",     "ENCORE. Chorus",        [] () -> juce::AudioPluginInstance* { return new studiofx::Chorus(); },       "Modulation" },
+            { "encore:phaser",     "ENCORE. Phaser",        [] () -> juce::AudioPluginInstance* { return new studiofx::Phaser(); },       "Modulation" },
+            { "encore:pitch",      "ENCORE. Pitch Shifter", [] () -> juce::AudioPluginInstance* { return new studiofx::PitchShifter(); }, "Pitch" },
+            { "encore:filter",     "ENCORE. Filter",        [] () -> juce::AudioPluginInstance* { return new studiofx::Filter(); },       "Filter" },
+            { "encore:synth",      "ENCORE. Synth",         [] () -> juce::AudioPluginInstance* { return new studiofx::Synth(); },        "Instrument", true },
+            { "encore:sampler",    "ENCORE. Sampler",       [] () -> juce::AudioPluginInstance* { return new studiofx::Sampler(); },      "Instrument", true },
         } };
         return list;
     }
@@ -50,8 +63,9 @@ public:
         d.version = ProjectInfo::versionString;
         d.fileOrIdentifier = e.id;
         d.uniqueId = d.deprecatedUid = juce::String (e.id).hashCode();
-        d.isInstrument = false;
-        d.numInputChannels = d.numOutputChannels = 2;
+        d.isInstrument = e.instrument;
+        d.numInputChannels = e.instrument ? 0 : 2;
+        d.numOutputChannels = 2;
         return d;
     }
 

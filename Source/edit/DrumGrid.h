@@ -19,6 +19,7 @@
 
 #include "dsp/DrumSynth.h"
 #include "dsp/Music.h"
+#include "dsp/NoteEdit.h"
 
 namespace drums
 {
@@ -49,8 +50,8 @@ namespace drums
         namespace ds = vs::drumsynth;
         constexpr double fs = 48000.0;
 
-        /** The kits the drum grid offers: the ones with a drum of their own on every
-            row (a pad kit leaves some of the grid's rows to stand-ins) */
+        /** The kits the drum grid offers: the ones with a drum for every row
+            (its own, or the nearest drum of the same kind) */
         inline const std::vector<ds::Kit>& styles()
         {
             static const std::vector<ds::Kit> k = []
@@ -59,12 +60,7 @@ namespace drums
                 for (const auto& kit : ds::kits())
                 {
                     bool every = true;
-                    for (int note : vs::music::drumLanes)
-                    {
-                        bool has = false;
-                        for (const auto& p : kit.pads) has = has || (p.note == note && p.sound[0] != 0);
-                        every = every && has;
-                    }
+                    for (int note : vs::music::drumLanes) every = every && ds::kitSound (kit, note) != nullptr;
                     if (every) out.push_back (kit);
                 }
                 return out;
@@ -135,23 +131,44 @@ namespace drums
             return folder;
         }
 
-        /** Loads a kit into a Sampler: each sound on its own key, played to the end of the
-            sample, at the kit's own levels (the hats, toms and cymbals spread a little) */
-        inline void load (te::SamplerPlugin& sampler, const juce::File& songFolder, int style = defaultStyle())
+        /** The pad a row's drum is on in a kit (its choke group: the hats cut each other) */
+        inline int chokeFor (int style, int note)
+        {
+            const auto& k = styles()[(size_t) juce::jlimit (0, (int) styles().size() - 1, style)];
+            for (const auto& p : k.pads) if (p.note == note) return p.choke;
+            return note == 42 || note == 46 ? 1 : 0;
+        }
+
+        /** Loads a kit into ENCORE. Sampler: each sound on its own key, played to
+            its end, at the kit's own levels (the hats, toms and cymbals spread a little) */
+        inline void load (studiofx::Sampler& sampler, const juce::File& songFolder, int style = defaultStyle())
         {
             auto folder = ensure (folderFor (songFolder, style), style);
-            while (sampler.getNumSounds() > 0) sampler.removeSound (0);
+            std::vector<studiofx::Sampler::SoundFile> sounds;
             for (auto& l : lanes())
             {
                 auto f = folder.getChildFile (fileName (l.note) + ".wav");
-                if (! f.existsAsFile() || sampler.addSound (f.getFullPathName(), l.name, 0.0, 0.0, 0.0f).isNotEmpty()) continue;
-                const int i = sampler.getNumSounds() - 1;
-                sampler.setSoundParams (i, l.note, l.note, l.note);
-                sampler.setSoundOpenEnded (i, true);
+                if (! f.existsAsFile()) continue;
                 const float pan = l.note == 42 || l.note == 46 ? 0.25f : l.note == 41 ? -0.3f : l.note == 48 ? 0.3f : l.note == 51 ? 0.35f : l.note == 49 ? -0.35f : 0.0f;
-                sampler.setSoundGains (i, 0.0f, pan);
+                sounds.push_back ({ f, l.name, l.note, l.note, l.note, 0.0f, pan, true, chokeFor (style, l.note) });
             }
-            sampler.flushPendingUpdates();
+            sampler.setSounds (sounds);
+        }
+
+        /** The track's ENCORE. Sampler, if it has one */
+        inline studiofx::Sampler* samplerOn (te::AudioTrack& t)
+        {
+            for (auto p : t.pluginList.getPlugins())
+                if (auto* ext = dynamic_cast<te::ExternalPlugin*> (p))
+                    if (auto* s = dynamic_cast<studiofx::Sampler*> (ext->getAudioPluginInstance())) return s;
+            return nullptr;
+        }
+
+        /** A new ENCORE. Sampler, ready to load a kit into */
+        inline te::Plugin::Ptr newSampler (te::Edit& edit)
+        {
+            return edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName,
+                                                          EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:sampler")));
         }
     }
 }
@@ -231,7 +248,7 @@ public:
                     const float v = n->getVelocity() / 127.0f;
                     g.setColour (theme::accent.withAlpha (0.35f + 0.65f * v));
                     g.fillRoundedRectangle (cell.reduced (2.5f), 3.0f);
-                    if (n->getVelocity() >= 120) { g.setColour (theme::paper); g.fillEllipse (cell.getCentreX() - 2.5f, cell.getCentreY() - 2.5f, 5.0f, 5.0f); }
+                    if (n->getVelocity() >= vs::noteedit::accentFrom) { g.setColour (theme::paper); g.fillEllipse (cell.getCentreX() - 2.5f, cell.getCentreY() - 2.5f, 5.0f, 5.0f); }
                 }
             }
         }
@@ -298,12 +315,13 @@ public:
         if (e.mods.isShiftDown())
         {
             painting = Paint::none;
-            if (existing != nullptr) existing->setVelocity (existing->getVelocity() >= 120 ? 100 : 127, &clip->edit.getUndoManager());
-            else addHit (row, s, 127);
-            audition (rows[row].note, 127);
+            namespace ne = vs::noteedit;
+            if (existing != nullptr) existing->setVelocity (existing->getVelocity() >= ne::accentFrom ? ne::normalVelocity : ne::accentVelocity, &clip->edit.getUndoManager());
+            else addHit (row, s, ne::accentVelocity);
+            audition (rows[row].note, ne::accentVelocity);
         }
         else if (existing != nullptr) { painting = Paint::erase; removeHit (row, s); }
-        else { painting = Paint::add; addHit (row, s, 100); audition (rows[row].note, 100); }
+        else { painting = Paint::add; addHit (row, s, vs::noteedit::normalVelocity); audition (rows[row].note, vs::noteedit::normalVelocity); }
         lastCell = { row, s };
         repaint();
     }
@@ -314,7 +332,7 @@ public:
         const int row = rowAt (e.y), s = stepAt (e.x);
         if (row < 0 || s < 0 || juce::Point<int> (row, s) == lastCell) return;
         lastCell = { row, s };
-        if (painting == Paint::add && noteAt (rows[row].note, s) == nullptr) { addHit (row, s, 100); audition (rows[row].note, 100); }
+        if (painting == Paint::add && noteAt (rows[row].note, s) == nullptr) { addHit (row, s, vs::noteedit::normalVelocity); audition (rows[row].note, vs::noteedit::normalVelocity); }
         if (painting == Paint::erase) removeHit (row, s);
         repaint();
     }
@@ -345,13 +363,15 @@ private:
         if (clip == nullptr) return;
         auto* t = dynamic_cast<te::AudioTrack*> (clip->getTrack());
         if (t == nullptr || ! clip->edit.editFileRetriever) return;
-        for (auto p : t->pluginList.getPlugins())
-            if (auto* s = dynamic_cast<te::SamplerPlugin*> (p))
-            {
-                drums::kit::load (*s, clip->edit.editFileRetriever().getParentDirectory(), style);
-                t->state.setProperty ("drumKit", juce::String (drums::kit::styles()[(size_t) style].name), nullptr);
-                return;
-            }
+        // a song made before ENCORE. Sampler plays its kit on Tracktion's sampler: that is swapped for ENCORE.'s here
+        if (drums::kit::samplerOn (*t) == nullptr)
+            for (auto p : t->pluginList.getPlugins())
+                if (dynamic_cast<te::SamplerPlugin*> (p) != nullptr) { instruments::makeInstrumentTrack (*t, drums::kit::newSampler (clip->edit), false); break; }
+        if (auto* s = drums::kit::samplerOn (*t))
+        {
+            drums::kit::load (*s, clip->edit.editFileRetriever().getParentDirectory(), style);
+            t->state.setProperty ("drumKit", juce::String (drums::kit::styles()[(size_t) style].name), nullptr);
+        }
     }
     juce::TextButton pianoButton { "Piano roll" }, closeButton { "X" };
     struct Row { int note; juce::String name; };
@@ -369,7 +389,9 @@ private:
     juce::Rectangle<int> gridArea() const { return getLocalBounds().withTrimmedTop (headerH + rulerH).withTrimmedLeft (nameW).withTrimmedBottom (4); }
     // the bar length where the clip starts, by the time signature there
     int beatsPerBar() const { return clip != nullptr ? clip->edit.tempoSequence.getTimeSigAt (clip->getPosition().getStart()).numerator.get() : 4; }
-    int numSteps() const { return clip != nullptr ? juce::jmax (1, (int) std::ceil (clip->getLengthInBeats().inBeats() / gridBeats() - 1.0e-6)) : 16; }
+    // the step grid over the clip (encore-audio-processing's, dsp/NoteEdit.h)
+    vs::noteedit::StepGrid steps() const { return { gridBeats(), clip != nullptr ? (clip->getStartBeat() - clip->getContentStartBeat()).inBeats() : 0.0 }; }
+    int numSteps() const { return clip != nullptr ? steps().steps (clip->getLengthInBeats().inBeats()) : 16; }
     float cellX (int s) const { return gridArea().getX() + (s - firstStep) * cellW; }
     juce::Rectangle<float> cellBounds (int row, int s) const { return { cellX (s), (float) (gridArea().getY() + row * rowH), cellW, (float) rowH }; }
     int rowAt (int y) const { const int r = (y - gridArea().getY()) / rowH; return y >= gridArea().getY() && r < rows.size() ? r : -1; }
@@ -381,7 +403,7 @@ private:
     }
 
     /** Steps are counted from the start of the clip; notes from its content start */
-    double stepBeat (int s) const { return s * gridBeats() + (clip->getStartBeat() - clip->getContentStartBeat()).inBeats(); }
+    double stepBeat (int s) const { return steps().stepBeat (s); }
 
     te::MidiNote* noteAt (int pitch, int s) const
     {
@@ -393,7 +415,7 @@ private:
 
     void addHit (int row, int s, int velocity)
     {
-        clip->getSequence().addNote (rows[row].note, te::BeatPosition::fromBeats (stepBeat (s)), te::BeatDuration::fromBeats (gridBeats() * 0.9),
+        clip->getSequence().addNote (rows[row].note, te::BeatPosition::fromBeats (stepBeat (s)), te::BeatDuration::fromBeats (steps().hitLength()),
                                      velocity, 0, &clip->edit.getUndoManager());
     }
 
@@ -427,7 +449,7 @@ private:
             return [this, row, every, what]
             {
                 clip->edit.getUndoManager().beginNewTransaction (what);
-                for (int s = 0; s < numSteps(); ++s) { removeHit (row, s); if (every > 0 && s % every == 0) addHit (row, s, 100); }
+                for (int s = 0; s < numSteps(); ++s) { removeHit (row, s); if (every > 0 && s % every == 0) addHit (row, s, vs::noteedit::normalVelocity); }
                 repaint();
             };
         };
@@ -443,8 +465,9 @@ private:
     {
         juce::PopupMenu m;
         auto* n = noteAt (rows[row].note, s);
-        for (auto [v, name] : std::initializer_list<std::pair<int, const char*>> { { 127, "Accent (127)" }, { 100, "Normal (100)" }, { 70, "Soft (70)" }, { 40, "Ghost (40)" } })
-            m.addItem (name, true, n != nullptr && n->getVelocity() == v, [this, row, s, v = v]
+        namespace ne = vs::noteedit;
+        for (auto [v, word] : std::initializer_list<std::pair<int, const char*>> { { ne::accentVelocity, "Accent" }, { ne::normalVelocity, "Normal" }, { ne::softVelocity, "Soft" }, { ne::ghostVelocity, "Ghost" } })
+            m.addItem (juce::String (word) + " (" + juce::String (v) + ")", true, n != nullptr && n->getVelocity() == v, [this, row, s, v = v]
             {
                 clip->edit.getUndoManager().beginNewTransaction ("Drum hit velocity");
                 if (auto* x = noteAt (rows[row].note, s)) x->setVelocity (v, &clip->edit.getUndoManager());

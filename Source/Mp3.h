@@ -8,14 +8,12 @@
 // same), then this turns that file into an MP3.
 
 #include <lame.h>
+#include "dsp/Resampler.h"
 
 namespace mp3
 {
-    /** The rates an MP3 can carry that are closest to the song's (44.1 kHz family or 48 kHz family) */
-    inline double rateFor (double songRate)
-    {
-        return std::fmod (songRate, 48000.0) == 0.0 || songRate == 32000.0 ? 48000.0 : 44100.0;
-    }
+    /** The rate an MP3 of the song is made at (encore-audio-processing's rule, dsp/Resampler.h) */
+    inline double rateFor (double songRate) { return vs::mp3Rate (songRate); }
 
     /** "TIT2" etc. as UTF-16 with a byte order mark, which is what LAME wants for non-English titles */
     inline void setText (lame_t gf, const char* frame, const juce::String& text)

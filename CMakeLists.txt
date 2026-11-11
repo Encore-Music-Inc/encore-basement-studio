@@ -196,7 +196,7 @@ target_compile_definitions(EncoreBasementStudio PRIVATE
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
-    TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=1)
+    TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH=1)
 
 target_link_libraries(EncoreBasementStudio PRIVATE
     StudioAssets

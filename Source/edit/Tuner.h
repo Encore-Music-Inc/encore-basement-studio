@@ -325,15 +325,14 @@ private:
     bool hasCourses = false;
     std::vector<int> strings;          // the pills' notes, what a pitch is matched against (empty: chromatic)
     std::vector<bool> tuned;           // pills that have been in tune
-    int inTuneFrames = 0, lastString = -1;
 
     std::atomic<int> channel { -1 };
     std::vector<float> buffer;
     std::atomic<int> writePos { 0 };
     double sampleRate = 48000.0;
-    float hz = 0, smoothedHz = 0, strobePhase = 0;
+    float hz = 0, strobePhase = 0;
     vs::TunerReading reading;
-    int quietFrames = 0;
+    vs::TunerFollow follow;
 
     int transpose() const { return instrument != nullptr ? instrument->transpose : 0; }
 
@@ -437,22 +436,17 @@ private:
             for (int i = 0; i < n * stride; ++i) latest[(size_t) i] = buffer[(size_t) ((end - n * stride + i + size * 8) % size)];
             const auto x = vs::boxDownsample (latest.data(), n * stride, stride);
             const float f = vs::TunerPitch::estimate (x.data(), n, sampleRate / stride);
+            // the reading follows the estimates (encore-audio-processing's TunerFollow)
+            const float shown = follow.push (f);
             if (f > 0)
             {
-                quietFrames = 0;
-                smoothedHz = (smoothedHz > 0 && std::abs (f / smoothedHz - 1.0f) < 0.03f) ? smoothedHz * 0.6f + f * 0.4f : f;
-                hz = smoothedHz;
+                hz = shown;
                 auto& temper = vs::tunings::temperaments()[(size_t) jmax (0, temperament.getSelectedItemIndex())];
                 reading = vs::TunerReading::of (hz, reference.getValue(), strings, temper.cents, jmax (0, root.getSelectedItemIndex()));
                 // a string counts as tuned after a moment within 3 cents
-                if (reading.string >= 0 && std::abs (reading.cents) <= 3.0f && reading.string == lastString)
-                {
-                    if (++inTuneFrames >= 6) tuned[(size_t) reading.string] = true;
-                }
-                else inTuneFrames = 0;
-                lastString = reading.string;
+                if (follow.steady (reading, 3.0f) >= 6) tuned[(size_t) reading.string] = true;
             }
-            else if (++quietFrames > 8) { hz = 0; smoothedHz = 0; reading = {}; }
+            else if (! follow.hasNote()) { hz = 0; reading = {}; }
         }
         if (reading.note >= 0) strobePhase += reading.cents * 0.35f;
         repaint();

@@ -98,7 +98,6 @@ The ones compiled into this build:
 
 | Library | Where (under `external/tracktion_engine/modules/`) | Licence |
 |---|---|---|
-| SoundTouch 2.1 (time stretching, `TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=1`) | `tracktion_engine/3rd_party/soundtouch` | GNU LGPL 2.1 or later, Copyright Olli Parviainen |
 | libsamplerate | `3rd_party/libsamplerate` | BSD-2-Clause, Copyright Erik de Castro Lopo |
 | CHOC | `3rd_party/choc` | ISC, Copyright Tracktion Corporation |
 | crill | `3rd_party/crill` | Boost Software License 1.0 |
@@ -107,8 +106,10 @@ The ones compiled into this build:
 | rpmalloc | `3rd_party/rpmalloc` | public domain (or MIT), Mattias Jansson |
 | tl::expected | `3rd_party/expected` | CC0 1.0 |
 
-Tracktion Engine's other bundled code (Airwindows, Signalsmith Stretch,
-doctest) is switched off or only used by its own tests.
+Tracktion Engine's other bundled code (Airwindows, SoundTouch, its own copy of
+Signalsmith Stretch, doctest) is switched off or only used by its own tests.
+Clip time stretching uses ENCORE. Audio Processing's stretcher
+(`patches/tracktion-timestretch.patch`), whose notices cover Signalsmith Stretch.
 
 ## FST
 

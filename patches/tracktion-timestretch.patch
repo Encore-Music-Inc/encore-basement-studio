@@ -1,0 +1,133 @@
+diff --git a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp b/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
+index 26fd3d1..d87fe5d 100644
+--- a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
++++ b/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
+@@ -864,59 +864,22 @@ private:
+ //==============================================================================
+ #if TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH
+ 
+-#ifdef __GNUC__
+- #pragma GCC diagnostic push
+- #pragma GCC diagnostic ignored "-Wsign-conversion"
+- #pragma GCC diagnostic ignored "-Wconversion"
+- #pragma GCC diagnostic ignored "-Wshadow"
+- #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+- #pragma GCC diagnostic ignored "-Wunused-parameter"
+- #pragma GCC diagnostic ignored "-Wfloat-conversion"
+- #if __clang__
+-  #pragma GCC diagnostic ignored "-Wimplicit-float-conversion"
+-  #pragma GCC diagnostic ignored "-Wimplicit-int-float-conversion"
+-  #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+- #endif
+-#endif
+-
+-#if JUCE_WINDOWS
+- #pragma warning (push)
+- #pragma warning (disable: 4127 4244 4267 4305 4456)
+-#endif
+-
++// ENCORE. Basement Studio: clip time stretching runs on ENCORE. Audio Processing's
++// stretcher (dsp/TimeStretch.h, Signalsmith Stretch on that repository's FFT), so
++// the build carries one copy of the stretch library and Signalsmith's licence is
++// listed in THIRD-PARTY-NOTICES.md instead of here.
+ } // namespace tracktion::inline engine
+-#if __has_include(<signalsmith-stretch/signalsmith-stretch.h>)
+- #include <signalsmith-stretch/signalsmith-stretch.h>
+-#elif __has_include("../3rd_party/signalsmith-stretch/signalsmith-stretch.h")
+- #include "../3rd_party/signalsmith-stretch/signalsmith-stretch.h"
+-#else
+- #error "TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH enabled but not found in the search path!"
+-#endif
++#include "dsp/TimeStretch.h"
+ namespace tracktion::inline engine {
+ 
+-#if JUCE_WINDOWS
+- #pragma warning (pop)
+-#endif
+-
+-#ifdef __GNUC__
+- #pragma GCC diagnostic pop
+-#endif
+-
+ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+ {
+-    SignalsmithStretcher (double sourceSampleRate, int samplesPerBlock, int numChannels_,
+-                          TimeStretcher::Mode mode, bool realtime)
+-        : numChannels (numChannels_),
+-          samplesPerOutputBuffer (samplesPerBlock)
++    SignalsmithStretcher (double sourceSampleRate, int samplesPerBlock, int numChannels,
++                          TimeStretcher::Mode, bool)
++        : samplesPerOutputBuffer (samplesPerBlock)
+     {
+         CRASH_TRACER
+-
+-        const bool splitComputation = realtime;
+-
+-        if (mode == TimeStretcher::signalsmithCheaper)
+-            stretch.presetCheaper (numChannels, static_cast<float> (sourceSampleRate), splitComputation);
+-        else
+-            stretch.presetDefault (numChannels, static_cast<float> (sourceSampleRate), splitComputation);
++        stretch.prepare (sourceSampleRate, numChannels, samplesPerBlock);
+     }
+ 
+     bool isOk() const override      { return true; }
+@@ -930,7 +893,7 @@ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+     bool setSpeedAndPitch (float speedRatio_, float semitonesUp) override
+     {
+         speedRatio = speedRatio_;
+-        stretch.setTransposeSemitones (semitonesUp);
++        stretch.setSemitones (semitonesUp);
+         return true;
+     }
+ 
+@@ -967,8 +930,7 @@ struct SignalsmithStretcher  : public TimeStretcher::Stretcher
+     }
+ 
+ private:
+-    signalsmith::stretch::SignalsmithStretch<float> stretch;
+-    int numChannels = 0;
++    vs::TimeStretch stretch;
+     const int samplesPerOutputBuffer;
+     float speedRatio = 1.0f;
+     bool hasDoneFinalBlock = false;
+@@ -976,40 +938,6 @@ private:
+     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SignalsmithStretcher)
+ };
+ 
+-// Registers Signalsmith Stretch's licence with the list the host app shows in
+-// its about box. MIT only asks that the notice ships with the binary.
+-} // namespace tracktion::inline engine
+-#include "../../3rd_party/choc/choc/text/choc_OpenSourceLicenseList.h"
+-
+-CHOC_REGISTER_OPEN_SOURCE_LICENCE (SignalsmithStretch, R"LICENCE(
+-Signalsmith Stretch - https://signalsmith-audio.co.uk/code/stretch/
+-
+-MIT License
+-
+-Copyright (c) 2022 Geraint Luff / Signalsmith Audio Ltd.
+-Copyright (c) 2025 Signalsmith Audio (signalsmith-linear)
+-
+-Permission is hereby granted, free of charge, to any person obtaining a copy
+-of this software and associated documentation files (the "Software"), to deal
+-in the Software without restriction, including without limitation the rights
+-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-copies of the Software, and to permit persons to whom the Software is
+-furnished to do so, subject to the following conditions:
+-
+-The above copyright notice and this permission notice shall be included in all
+-copies or substantial portions of the Software.
+-
+-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-SOFTWARE.
+-)LICENCE")
+-
+-namespace tracktion::inline engine {
+-
+ #endif // TRACKTION_ENABLE_TIMESTRETCH_SIGNALSMITH
+ 
+ //==============================================================================

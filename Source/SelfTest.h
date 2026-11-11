@@ -643,7 +643,10 @@ namespace selftest
         {
             expect ("a tempo in a file name is read", stretch::tempoInName ("Beat 92bpm") == 92 && stretch::tempoInName ("loop_120_BPM") == 120
                                                          && stretch::tempoInName ("Drums - 140 bpm take 2") == 140 && stretch::tempoInName ("Take 3") == 0);
-            auto e = songs::create (engine, dir.getChildFile ("Stretch Song").getChildFile (String ("Stretch Song") + songfile::ext));
+            const auto stretchSong = dir.getChildFile ("Stretch Song").getChildFile (String ("Stretch Song") + songfile::ext);
+            stretchSong.getParentDirectory().deleteRecursively();
+            stretchSong.getParentDirectory().createDirectory();
+            auto e = songs::create (engine, stretchSong);
             e->tempoSequence.getTempo (0)->setBpm (120.0);
             e->ensureNumberOfAudioTracks (1);
             te::AudioFile af (engine, a);
@@ -654,6 +657,29 @@ namespace selftest
             const double at60 = clip->getPosition().getLength().inSeconds();
             expect ("a following clip plays in time with the song's tempo", std::abs (at120 - 3.0) < 0.05 && std::abs (at60 - 6.0) < 0.05,
                     String (at120, 2) + " s at 120, " + String (at60, 2) + " s at 60");
+
+            // played at 60 BPM the 220 Hz loop lasts twice as long and keeps its pitch (ENCORE. Audio Processing's stretcher)
+            expect ("a following clip uses ENCORE. Audio Processing's stretcher", clip->getTimeStretchMode() == te::TimeStretcher::signalsmithDefault);
+            te::EditFileOperations (*e).save (true, true, false);
+            e.reset();
+            auto out = stretchSong.getSiblingFile ("stretch.wav");
+            ExportOptions o; o.tail = false;
+            std::atomic<bool> done { false };
+            juce::File r; juce::String err;
+            auto job = exportSong (engine, stretchSong, out, o, [&] (juce::File f, juce::String x) { r = f; err = x; done = true; });
+            for (int i = 0; i < 1200 && ! done; ++i) juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            AudioFormatManager fm; fm.registerBasicFormats();
+            std::unique_ptr<AudioFormatReader> rr (r.existsAsFile() ? fm.createReaderFor (r) : nullptr);
+            double hz = 0, seconds = 0;
+            if (rr)
+            {
+                seconds = (double) rr->lengthInSamples / rr->sampleRate;
+                AudioBuffer<float> mid (1, 4096);
+                rr->read (&mid, 0, mid.getNumSamples(), (juce::int64) (rr->sampleRate * 3.0), true, false);
+                hz = vs::Yin().analyse (mid.getReadPointer (0), mid.getNumSamples(), rr->sampleRate).hz;
+            }
+            expect ("a stretched clip renders twice as long at the same pitch", rr != nullptr && std::abs (seconds - 6.0) < 0.1 && std::abs (hz - 220.0) < 2.0,
+                    rr ? String (seconds, 2) + " s, " + String (hz, 1) + " Hz" : err);
         }
 
         // the kits: every one makes all ten drums, and they sound different (the 808 kick booms longer)
@@ -662,7 +688,7 @@ namespace selftest
             for (int k = 0; k < (int) drums::kit::styles().size(); ++k)
                 for (auto& l : drums::lanes()) { auto x = drums::kit::make (l.note, k); all = all && x.size() > 1000 && *std::max_element (x.begin(), x.end()) > 0.3f; }
             const auto studio = drums::kit::make (36, drums::kit::styleIndex ("Studio")), boom = drums::kit::make (36, drums::kit::styleIndex ("808"));
-            expect ("the drum kits (Studio, 808, Rock, Lo-fi) each have all 10 drums", all && drums::kit::styles().size() == 4, String ((int) drums::kit::styles().size()) + " kits");
+            expect ("every drum kit offered has a drum for all 10 rows", all && drums::kit::styles().size() >= 6, String ((int) drums::kit::styles().size()) + " kits");
             expect ("the 808 kick is longer than the Studio kick", boom.size() > studio.size() * 1.4, String (boom.size() / 48000.0, 2) + " s");
         }
 
@@ -677,12 +703,11 @@ namespace selftest
                 e->ensureNumberOfAudioTracks (1);
                 auto t = te::getAudioTracks (*e)[0];
                 t->state.setProperty ("basementRole", "drums", nullptr);
-                auto plugin = e->getPluginCache().createNewPlugin (te::SamplerPlugin::xmlTypeName, {});
-                instruments::makeInstrumentTrack (*t, plugin, false);
-                if (auto* sampler = dynamic_cast<te::SamplerPlugin*> (plugin.get()))
+                instruments::makeInstrumentTrack (*t, drums::kit::newSampler (*e), false);
+                if (auto* sampler = drums::kit::samplerOn (*t))
                 {
                     drums::kit::load (*sampler, drumSong.getParentDirectory());
-                    sounds = sampler->getNumSounds();
+                    sounds = (int) sampler->getSounds().size();
                 }
                 auto clip = t->insertMIDIClip ({ 0_tp, te::TimePosition::fromSeconds (2.0) }, nullptr);
                 clip->getSequence().addNote (36, te::BeatPosition::fromBeats (0.0), te::BeatDuration::fromBeats (0.25), 110, 0, nullptr);
@@ -720,7 +745,7 @@ namespace selftest
                 auto e = songs::create (engine, synthSong);
                 e->ensureNumberOfAudioTracks (1);
                 auto t = te::getAudioTracks (*e)[0];
-                instruments::makeInstrumentTrack (*t, e->getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}));
+                instruments::makeInstrumentTrack (*t, e->getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))));
                 auto clip = t->insertMIDIClip ({ 0_tp, te::TimePosition::fromSeconds (2.0) }, nullptr);
                 for (int i = 0; i < 4; ++i) clip->getSequence().addNote (60 + i * 4, te::BeatPosition::fromBeats (i), te::BeatDuration::fromBeats (0.9), 100, 0, nullptr);
                 expect ("instrument track has its synth first", instruments::isInstrumentTrack (*t));

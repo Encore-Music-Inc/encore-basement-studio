@@ -130,9 +130,11 @@ support@encoremusic.studio directly. More at https://encoremusic.studio.
     prompt, is set aside) and lists them by maker. A plugin installed in several
     formats is listed once, in the first of VST3, Audio Unit, LV2, VST2 and
     LADSPA. Add more plugin folders in Preferences.
-  - A few simple built-in effects (EQ, compressor, reverb, delay and more).
+  - ENCORE.'s own effects, built in: Compressor, Limiter, Delay, Chorus,
+    Phaser, Pitch Shifter and Filter. Songs made with an earlier version that
+    use Tracktion's built-in effects still open and play them.
 - **Instruments and MIDI**: Project > Add Instrument Track with any of your
-  instrument plugins (drums, keys, samplers) or the built-in synth, played
+  instrument plugins (drums, keys, samplers) or ENCORE. Synth, played
   and recorded from your MIDI keyboard or pads; import MIDI files too.
   A piano roll (double-click a MIDI clip): click to add notes, drag to move or
   resize, a velocity strip, grid snap, quantize, transpose and velocity
@@ -171,7 +173,7 @@ Source/encore/                      creates the built-in ENCORE. plugins (Make<N
 Source/bridge/                      the 32-bit plugin bridge (Windows)
 Assets/                             the ENCORE. icon
 installer/                          Windows installer (Inno Setup), Linux .deb and AppImage
-patches/                            ENCORE.'s change to Tracktion Engine, applied by CMake
+patches/                            ENCORE.'s changes to Tracktion Engine, applied by CMake
 tools/                              Windows plugin window test
 external/encore-vst                 the ENCORE. plugins (submodule), with the audio processing and JUCE it pins
 external/tracktion_engine           Tracktion Engine (submodule)

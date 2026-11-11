@@ -19,16 +19,26 @@
 #pragma once
 
 #include "dsp/Music.h"
+#include "dsp/NoteEdit.h"
 
 /** Note edits shared by the piano roll and the MIDI menu */
 namespace midiedit
 {
-    /** Grid sizes in beats (quarter notes) */
-    struct Grid { const char* name; double beats; };
-    inline const std::array<Grid, 6>& grids()
+    /** Grid sizes in beats (quarter notes): encore-audio-processing's list (dsp/NoteEdit.h), with their names here */
+    struct Grid { juce::String name; double beats; };
+    inline const std::vector<Grid>& grids()
     {
-        static const std::array<Grid, 6> g { { { "1/4", 1.0 }, { "1/8", 0.5 }, { "1/16", 0.25 }, { "1/32", 0.125 },
-                                               { "1/8 triplet", 1.0 / 3.0 }, { "1/16 triplet", 1.0 / 6.0 } } };
+        static const std::vector<Grid> g = []
+        {
+            std::vector<Grid> out;
+            for (const auto& x : vs::noteedit::grids)
+            {
+                juce::String n (x.id);
+                if (n.endsWith ("T")) n = n.dropLastCharacters (1) + " triplet";
+                out.push_back ({ n, x.beats });
+            }
+            return out;
+        }();
         return g;
     }
 
@@ -41,7 +51,7 @@ namespace midiedit
         const double content = c.getContentStartBeat().inBeats();
         for (auto* n : notes)
         {
-            const double snapped = std::round ((content + n->getStartBeat().inBeats()) / grid) * grid;
+            const double snapped = vs::noteedit::quantize (content + n->getStartBeat().inBeats(), grid);
             n->setStartAndLength (te::BeatPosition::fromBeats (snapped - content), n->getLengthBeats(), um);
         }
     }
@@ -49,14 +59,14 @@ namespace midiedit
     inline void transpose (te::MidiClip& c, const juce::Array<te::MidiNote*>& notes, int semitones)
     {
         auto* um = &c.edit.getUndoManager();
-        for (auto* n : notes) n->setNoteNumber (juce::jlimit (0, 127, n->getNoteNumber() + semitones), um);
+        for (auto* n : notes) n->setNoteNumber (vs::noteedit::transpose (n->getNoteNumber(), semitones), um);
     }
 
     /** to >= 0 sets every velocity to it; otherwise each one changes by delta */
     inline void velocity (te::MidiClip& c, const juce::Array<te::MidiNote*>& notes, int to, int delta = 0)
     {
         auto* um = &c.edit.getUndoManager();
-        for (auto* n : notes) n->setVelocity (juce::jlimit (1, 127, to >= 0 ? to : n->getVelocity() + delta), um);
+        for (auto* n : notes) n->setVelocity (vs::noteedit::velocity (n->getVelocity(), to, delta), um);
     }
 
     inline juce::Array<te::MidiNote*> allNotes (te::MidiClip& c)

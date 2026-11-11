@@ -377,7 +377,7 @@ namespace tempos
 
 //==============================================================================
 /** Audio that follows the song's tempo: a loop made at another tempo plays in time, and a
-    following clip speeds up or slows down with every tempo change (SoundTouch keeps the pitch). */
+    following clip speeds up or slows down with every tempo change (ENCORE. Audio Processing's stretcher keeps the pitch). */
 namespace stretch
 {
     /** A tempo written in a file's name ("Beat 92bpm", "loop_120_BPM", "Drums - 140 bpm"), else 0 */
@@ -405,7 +405,7 @@ namespace stretch
         auto li = c.getLoopInfo();
         li.setBpm (sourceBpm, info);
         c.setLoopInfo (li);
-        c.setTimeStretchMode (te::TimeStretcher::soundtouchBetter);
+        c.setTimeStretchMode (te::TimeStretcher::signalsmithDefault);
         c.setAutoTempo (true);
         // that much audio is sourceSeconds * bpm / 60 beats: the clip lasts that many of the song's beats
         auto& ts = c.edit.tempoSequence;

@@ -50,7 +50,7 @@ this file does.
 |---|---|
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
-| `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
+| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure (per-track monitoring; clip time stretching on ENCORE. Audio Processing's stretcher) |
 | `tools/` | `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |
@@ -85,12 +85,16 @@ this file does.
 - All audio processing lives in encore-audio-processing; Basement Studio keeps
   none of its own, not even a small helper: the tuner and its tunings list,
   mastering, export loudness and dither, the metronome's clicks, the drum kits,
-  levels and note and key names all come from its headers. JUCE's processing
-  classes and Tracktion's export loudness and dither don't stand in for them.
+  the built-in effects and instruments (`Source/encore/StudioEffects.h` only
+  wraps them as plugins), clip time stretching, how meters move, the piano
+  roll's grids and note edits, and note and key names all come from its
+  headers. JUCE's processing classes and Tracktion's effects, instruments,
+  export loudness and dither don't stand in for them, and the menus offer
+  only ENCORE.'s (songs that already use a Tracktion effect still open it).
   When something is missing there, add it there first.
   `.github/no-audio-processing.sh` (in CI) fails on processing-shaped code in
-  `Source/`. Tracktion's playback engine (mixing, plugin hosting, its meters)
-  is the DAW itself.
+  `Source/`. Tracktion's playback engine (mixing, volume and pan, clip gain,
+  fades and reverse, plugin hosting, its level readings) is the DAW itself.
 - `ReferenceTests` (a target in `CMakeLists.txt`) builds encore-audio-processing's
   `tests/ReferenceTests.cpp` the way this repository compiles the headers; CI
   runs it on every system and it checks every result in that repo's

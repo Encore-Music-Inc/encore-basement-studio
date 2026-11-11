@@ -163,14 +163,6 @@ void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
 {
     addInternalPlugin<te::VolumeAndPanPlugin> (*this, num);
     addInternalPlugin<te::LevelMeterPlugin> (*this, num);
-    addInternalPlugin<te::EqualiserPlugin> (*this, num);
-    addInternalPlugin<te::ReverbPlugin> (*this, num);
-    addInternalPlugin<te::DelayPlugin> (*this, num);
-    addInternalPlugin<te::ChorusPlugin> (*this, num);
-    addInternalPlugin<te::PhaserPlugin> (*this, num);
-    addInternalPlugin<te::CompressorPlugin> (*this, num);
-    addInternalPlugin<te::PitchShiftPlugin> (*this, num);
-    addInternalPlugin<te::LowPassPlugin> (*this, num);
     addInternalPlugin<te::MidiModifierPlugin> (*this, num);
     addInternalPlugin<te::MidiPatchBayPlugin> (*this, num);
     addInternalPlugin<te::PatchBayPlugin> (*this, num);
@@ -182,12 +174,6 @@ void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
    #if TRACKTION_ENABLE_REWIRE
     addInternalPlugin<te::ReWirePlugin> (*this, num, true);
    #endif
-
-    if (types == te::Plugin::Type::allPlugins)
-    {
-        addInternalPlugin<te::SamplerPlugin> (*this, num, true);
-        addInternalPlugin<te::FourOscPlugin> (*this, num, true);
-    }
 
     addInternalPlugin<te::InsertPlugin> (*this, num);
 
@@ -312,8 +298,10 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
     {
         auto maker = d.manufacturerName.trim().isEmpty() ? String ("Other") : d.manufacturerName.trim();
         auto item = [&edit, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); };
-        if (d.pluginFormatName == "Encore")
+        if (d.pluginFormatName == "Encore" && ! d.isInstrument)
             encore.addItem (d.name + "  (" + d.category + ")", item);
+        else if (d.pluginFormatName == "Encore")
+            continue;   // ENCORE.'s instruments: the synth is offered below; the sampler plays the drum kits
         else if (maker.containsIgnoreCase ("Encore"))
             continue; // installed VST3 copies of the same plugins: the built-in ones replace them
         else if (d.isInstrument)
@@ -331,26 +319,12 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
     if (byMaker.empty()) m.addItem ("None found yet", false, false, nullptr);
     for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);
     instruments.addSeparator();
-    instruments.addItem ("Built-in synth (4OSC)", [&edit, track]
+    instruments.addItem ("ENCORE. Synth", [&edit, track]
     {
         if (auto at = dynamic_cast<te::AudioTrack*> (track.get()))
-            instruments::makeInstrumentTrack (*at, edit.getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}));
+            instruments::makeInstrumentTrack (*at, edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))));
     });
     m.addSubMenu ("Instrument (plays this track from MIDI)", instruments, true);
-
-    m.addSectionHeader ("Built in");
-    auto builtIn = [&m, &edit, add] (const char* name, const char* type)
-    {
-        m.addItem (name, [&edit, add, t = String (type)] { add (edit.getPluginCache().createNewPlugin (t, {})); });
-    };
-    builtIn ("EQ (4-band)", te::EqualiserPlugin::xmlTypeName);
-    builtIn ("Compressor / Limiter", te::CompressorPlugin::xmlTypeName);
-    builtIn ("Reverb", te::ReverbPlugin::xmlTypeName);
-    builtIn ("Delay", te::DelayPlugin::xmlTypeName);
-    builtIn ("Chorus", te::ChorusPlugin::xmlTypeName);
-    builtIn ("Phaser", te::PhaserPlugin::xmlTypeName);
-    builtIn ("Pitch Shifter", te::PitchShiftPlugin::xmlTypeName);
-    builtIn ("Low / High-Pass Filter", te::LowPassPlugin::xmlTypeName);
 
     m.addSeparator();
     auto scanning = StudioHooks::pluginScanStatus ? StudioHooks::pluginScanStatus() : String();
