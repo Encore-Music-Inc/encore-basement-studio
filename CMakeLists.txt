@@ -211,6 +211,16 @@ target_link_libraries(EncoreBasementStudio PRIVATE
     juce::juce_recommended_config_flags
     encore_lto)
 
+# encore-audio-processing's reference set (its data/reference.json), built with
+# this repository's compiler, flags and JUCE: proves the headers Basement Studio
+# compiles give the results that repository checked (CI runs it)
+juce_add_console_app(ReferenceTests PRODUCT_NAME "ReferenceTests")
+target_sources(ReferenceTests PRIVATE ${ENCORE_AUDIO_PROCESSING_DIR}/tests/ReferenceTests.cpp)
+target_include_directories(ReferenceTests PRIVATE ${ENCORE_AUDIO_PROCESSING_DIR})
+target_compile_definitions(ReferenceTests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    ENCORE_AUDIO_ROOT_DIR="${ENCORE_AUDIO_PROCESSING_DIR}")
+target_link_libraries(ReferenceTests PRIVATE juce::juce_dsp PUBLIC juce::juce_recommended_config_flags)
+
 if (MSVC)
     target_compile_options(EncoreBasementStudio PRIVATE /bigobj)
     # /MP only for Visual Studio's own builds (Ninja already compiles in parallel)

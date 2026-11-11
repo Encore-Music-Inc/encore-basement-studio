@@ -461,7 +461,8 @@ public:
     /** The grid step in beats (a beat when snap is off, for nudging) */
     double gridBeats() const
     {
-        const int num = jmax (1, edit.tempoSequence.getTimeSig (0)->numerator.get());
+        // a bar: the one the playhead is in, by the time signature there
+        const int num = jmax (1, edit.tempoSequence.getTimeSigAt (edit.getTransport().getPosition()).numerator.get());
         switch (snapMode.get()) { case 1: return num; case 3: return 0.5; case 4: return 0.25; default: return 1.0; }
     }
 

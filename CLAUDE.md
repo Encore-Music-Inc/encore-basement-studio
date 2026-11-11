@@ -51,13 +51,14 @@ this file does.
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
 | `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
-| `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
+| `tools/` | `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |
 | `CHANGELOG.md` | every release's notes, newest first; the release job copies the version's section onto the GitHub release |
 | `.github/release-notes.sh` | prints a version's notes from `CHANGELOG.md`, and fails if they're missing (CI runs it on every build) |
 | `.github/encore-vst-release.sh` | downloads a file of the ENCORE. VST release the pin points to and checks its SHA-256 (the Windows installer and the Mac disk image bundle it; Linux CI loads its plugins) |
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
+| `.github/no-audio-processing.sh` | CI's check that Basement Studio keeps no audio processing of its own (its exceptions are listed in it, each with its reason) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/sanitizers/` | the scheduled sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
 | `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging (skipped when only docs change, or only the version line and `CHANGELOG.md`); on a schedule: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
@@ -81,6 +82,19 @@ this file does.
   Linux, Windows and macOS proves that in the pull request that moves the pin.
 - `tools/sync-encore-plugins.ps1` and the copied `encore/` folder are gone on
   purpose.
+- All audio processing lives in encore-audio-processing; Basement Studio keeps
+  none of its own, not even a small helper: the tuner and its tunings list,
+  mastering, export loudness and dither, the metronome's clicks, the drum kits,
+  levels and note and key names all come from its headers. JUCE's processing
+  classes and Tracktion's export loudness and dither don't stand in for them.
+  When something is missing there, add it there first.
+  `.github/no-audio-processing.sh` (in CI) fails on processing-shaped code in
+  `Source/`. Tracktion's playback engine (mixing, plugin hosting, its meters)
+  is the DAW itself.
+- `ReferenceTests` (a target in `CMakeLists.txt`) builds encore-audio-processing's
+  `tests/ReferenceTests.cpp` the way this repository compiles the headers; CI
+  runs it on every system and it checks every result in that repo's
+  `data/reference.json`.
 
 ## Pins
 

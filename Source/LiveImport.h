@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "dsp/Channels.h"
+
 // File > Import > Live Recording: an ENCORE. Live session (session.json beside
 // the raw recording), or any multichannel WAV from a live recorder or a mixing
 // desk's card. Every input becomes its own track; ENCORE. Live's song marks
@@ -105,7 +107,7 @@ namespace liveimport
             for (int c = 0; c < channels; ++c)
             {
                 const float* p = buf.getReadPointer (c);
-                out.getReference (c).peak = juce::jmax (out.getReference (c).peak, buf.getMagnitude (c, 0, n));
+                out.getReference (c).peak = juce::jmax (out.getReference (c).peak, vs::channels::peakOf (&p, 1, n));
                 writers[(size_t) c]->writeFromFloatArrays (&p, 1, n);
             }
             if (progress) progress ((float) ((at + n) / (double) r->lengthInSamples));
@@ -113,7 +115,7 @@ namespace liveimport
         writers.clear();
         if (leaveOutSilent)
             for (int c = out.size(); --c >= 0;)
-                if (out[c].peak < juce::Decibels::decibelsToGain (-60.0f)) { out[c].file.deleteFile(); out.remove (c); }
+                if (out[c].peak < vs::dbToGain (-60.0f)) { out[c].file.deleteFile(); out.remove (c); }
         return out;
     }
 

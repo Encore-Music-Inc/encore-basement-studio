@@ -7,6 +7,8 @@
 // are right from the start.
 #pragma once
 
+#include "dsp/Music.h"
+
 #include "SongInfo.h"
 
 namespace hubui
@@ -62,12 +64,25 @@ namespace hubui
         return juce::String ((int) s / 60) + ":" + juce::String ((int) s % 60).paddedLeft ('0', 2);
     }
 
+    /** Every key, by ENCORE.'s one list (encore-audio-processing's dsp/Music.h), in
+        order of the tonic: C, then C# and Db, then D... each major then minor */
     inline juce::StringArray keys()
     {
+        namespace mu = vs::music;
         juce::StringArray k;
-        for (auto n : { "C", "C#/Db", "D", "Eb", "E", "F", "F#/Gb", "G", "Ab", "A", "Bb", "B" })
-            for (auto m : { " major", " minor" }) k.add (juce::String (n) + m);
+        for (int pc = 0; pc < 12; ++pc)
+            for (auto mode : { mu::Mode::major, mu::Mode::minor })
+                for (auto* name : mode == mu::Mode::major ? mu::majorKeys : mu::minorKeys)
+                    if (auto n = mu::parseNote (name); n && mu::pcOf (*n) == pc)
+                        k.add (juce::String (mu::keyName ({ *n, mode })));
         return k;
+    }
+
+    /** A saved key in the list's words ("C#/Db major", from older versions, is "C# major") */
+    inline juce::String keyFromSaved (const juce::String& saved)
+    {
+        if (auto key = vs::music::parseKey (saved.toStdString())) return juce::String (vs::music::keyName (*key));
+        return saved;
     }
 
     inline juce::StringArray genres()
@@ -141,7 +156,7 @@ public:
         bpm.setText (i.bpmText(), false);
         sig.setText (i.sigText(), juce::dontSendNotification);
         if (sig.getSelectedId() == 0) sig.setText (i.sigText(), juce::dontSendNotification);
-        key.setSelectedId (juce::jmax (1, hubui::keys().indexOf (i.key) + 2), juce::dontSendNotification);
+        key.setSelectedId (juce::jmax (1, hubui::keys().indexOf (hubui::keyFromSaved (i.key)) + 2), juce::dontSendNotification);
         notes.setText (i.notes, false);
     }
 

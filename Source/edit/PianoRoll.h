@@ -18,6 +18,8 @@
 // Every change goes through the song's undo, so Ctrl+Z works as everywhere else.
 #pragma once
 
+#include "dsp/Music.h"
+
 /** Note edits shared by the piano roll and the MIDI menu */
 namespace midiedit
 {
@@ -64,11 +66,8 @@ namespace midiedit
         return out;
     }
 
-    inline juce::String noteName (int n)
-    {
-        static const char* names[] { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-        return juce::String (names[n % 12]) + juce::String (n / 12 - 1);
-    }
+    /** A note's name by ENCORE.'s one rule (encore-audio-processing's dsp/Music.h) */
+    inline juce::String noteName (int n) { return juce::String (vs::music::noteName (n)); }
 
     inline bool isBlackKey (int n) { const int k = n % 12; return k == 1 || k == 3 || k == 6 || k == 8 || k == 10; }
 }
@@ -585,13 +584,13 @@ private:
         g.fillRect (juce::Rectangle<float> ((float) area.getX(), (float) area.getY(), juce::jmax (0.0f, cx1 - area.getX()), (float) area.getHeight()));
         g.fillRect (juce::Rectangle<float> (cx2, (float) area.getY(), juce::jmax (0.0f, (float) area.getRight() - cx2), (float) area.getHeight()));
         // vertical lines: grid, beats, bars
-        const int beatsPerBar = juce::jmax (1, clip->edit.tempoSequence.getTimeSig (0)->numerator.get());
+        auto& ts = clip->edit.tempoSequence;
         const double grid = gridBeats();
         const double first = std::floor (beatAtX (area.getX()) / grid) * grid;
         for (double b = first; xOfBeat (b) < area.getRight(); b += grid)
         {
             const bool beat = std::abs (b - std::round (b)) < 1.0e-6;
-            const bool bar = beat && ((int) std::round (b)) % beatsPerBar == 0;
+            const bool bar = beat && ts.toBarsAndBeats (ts.toTime (te::BeatPosition::fromBeats (b))).beats.inBeats() < 1.0e-3;
             g.setColour (bar ? theme::muted.withAlpha (0.8f) : beat ? theme::strong.brighter (0.15f) : theme::strong.withAlpha (0.6f));
             g.drawVerticalLine ((int) xOfBeat (b), (float) area.getY(), (float) area.getBottom());
         }

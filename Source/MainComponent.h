@@ -14,6 +14,8 @@
 #pragma once
 
 #include "Theme.h"
+#include "dsp/Metronome.h"
+#include "dsp/Channels.h"
 
 
 //==============================================================================
@@ -96,7 +98,7 @@ struct SongExport
 {
     std::unique_ptr<te::Edit> edit;
     std::shared_ptr<te::EditRenderer::Handle> handle;
-    std::atomic<int> finishing { 0 };   // rendered, now 1 mastering or 2 making the MP3
+    std::atomic<int> finishing { 0 };   // rendered, now 1 mastering, 2 making the MP3 or 3 writing the file
     float progress() const { return finishing > 0 ? 1.0f : handle ? handle->getProgress() : 0.0f; }
 };
 
@@ -112,7 +114,7 @@ struct ExportOptions
     int trackIndex = -1;               // one audio track (a stem), or -1 for the mix
     bool masterEffects = true;
     bool tail = true;                  // let reverbs and delays ring out (2 s)
-    bool loudness = false;             // normalise to -14 LUFS (streaming level)
+    bool loudness = false;             // normalise to -14 LUFS (streaming level), never past -1 dBFS peak
     mastering::Settings mastering;     // through ENCORE. Master on the way out (the mix only)
 };
 
@@ -123,40 +125,35 @@ inline std::shared_ptr<SongExport> exportSong (te::Engine& engine, const juce::F
     job->edit = songs::open (engine, songFile, te::Edit::EditRole::forRendering);
     if (job->edit == nullptr || job->edit->getLength() <= 0s) { done ({}, "There's nothing in the song to export yet."); return {}; }
 
-    // mastering and MP3 happen after the render: Tracktion writes a float WAV next to the
-    // file, then a background thread masters and/or encodes it into the real one
-    const bool master = o.mastering.on() && o.trackIndex < 0;
-    if (master || o.mp3Kbps > 0)
+    // Tracktion renders a float WAV next to the file; then a background thread
+    // finishes it into the real one: mastering or loudness, then the bit depth
+    // (with encore-audio-processing's dither) or the MP3 encode
     {
         const auto finalFile = dest;
         const auto want = o;
+        const bool master = want.mastering.on() && want.trackIndex < 0;
         dest = dest.getSiblingFile (dest.getFileNameWithoutExtension() + " (finishing).wav");
         o.flac = false;
         o.bitDepth = 32;
         if (o.mp3Kbps > 0) o.sampleRate = mp3::rateFor (o.sampleRate);
-        if (master) o.loudness = false;   // ENCORE. Master sets the loudness itself
         std::weak_ptr<SongExport> weak = job;
         done = [weak, finalFile, want, master, done] (juce::File wav, juce::String err)
         {
             auto j = weak.lock();
             if (! wav.existsAsFile() || j == nullptr) { wav.deleteFile(); done ({}, err); return; }
-            j->finishing = master ? 1 : 2;
+            j->finishing = master ? 1 : want.mp3Kbps > 0 ? 2 : 3;
             std::thread ([weak, wav, finalFile, want, master, done]
             {
-                juce::String problem;
-                auto source = wav;
-                const auto mastered = wav.getSiblingFile (wav.getFileNameWithoutExtension() + " mastered.wav");
-                if (master)
-                {
-                    const bool toMp3 = want.mp3Kbps > 0;
-                    problem = mastering::masterFile (wav, toMp3 ? mastered : finalFile, want.mastering, toMp3 ? 32 : want.bitDepth, ! toMp3 && want.flac);
-                    source = mastered;
-                    if (auto j2 = weak.lock()) j2->finishing = 2;
-                }
-                if (problem.isEmpty() && want.mp3Kbps > 0)
-                    problem = mp3::encode (source, finalFile, want.mp3Kbps, want.tags);
+                const bool toMp3 = want.mp3Kbps > 0;
+                const auto finished = toMp3 ? wav.getSiblingFile (wav.getFileNameWithoutExtension() + " finished.wav") : finalFile;
+                mastering::Settings m = master ? want.mastering : mastering::Settings {};
+                auto problem = mastering::finishFile (wav, finished, m, want.loudness && ! master,
+                                                      toMp3 ? 32 : want.bitDepth, ! toMp3 && want.flac);
+                if (auto j2 = weak.lock(); j2 != nullptr && toMp3) j2->finishing = 2;
+                if (problem.isEmpty() && toMp3)
+                    problem = mp3::encode (finished, finalFile, want.mp3Kbps, want.tags);
                 wav.deleteFile();
-                mastered.deleteFile();
+                if (toMp3) finished.deleteFile();
                 juce::MessageManager::callAsync ([weak, finalFile, problem, done]
                 {
                     if (weak.expired()) return;   // the app closed meanwhile
@@ -195,8 +192,7 @@ inline std::shared_ptr<SongExport> exportSong (te::Engine& engine, const juce::F
     p.usePlugins = true;
     p.useMasterPlugins = o.masterEffects && o.trackIndex < 0;
     p.canRenderInMono = false;
-    p.ditheringEnabled = p.bitDepth < 32;
-    if (o.loudness) { p.shouldNormaliseByLUFS = true; p.normaliseToLevelDb = -14.0f; }
+    p.ditheringEnabled = false;   // the finishing step quantizes, with encore-audio-processing's dither
     dest.deleteFile();
     std::weak_ptr<SongExport> weak = job;
     auto start = [weak, p, done]
@@ -558,9 +554,19 @@ private:
     "Click sounds" in Studio's settings folder and handed to the engine. */
 namespace clicks
 {
+    // The click sounds are encore-audio-processing's (dsp/Metronome.h): its
+    // catalogue, its synthesis and its levels. Tracktion's click plays one sample
+    // on beat 1 and another on the other beats, so each "Beat 1" choice picks
+    // which of a set's sounds those are.
+    namespace mt = vs::metronome;
     inline const juce::StringArray& sounds()
     {
-        static const juce::StringArray s { "Classic", "Woodblock", "Cowbell", "Clave", "Hi-hat", "Rimshot", "Beep", "Soft tick" };
+        static const juce::StringArray s = []
+        {
+            juce::StringArray names;
+            for (auto& set : mt::soundSets) names.add (set.name);
+            return names;
+        }();
         return s;
     }
     inline const juce::StringArray& accents()
@@ -569,71 +575,56 @@ namespace clicks
         return a;
     }
     constexpr double fs = 48000.0;
+    // A soft count's level, of a normal one's (the engine's own)
+    constexpr float softLevel = 0.4f;
 
-    /** One click: big is the beat-one version (higher, when the accent is "higher") */
-    inline juce::AudioBuffer<float> make (int sound, bool higher)
+    inline juce::String soundId (int sound) { return mt::soundSets[(size_t) juce::jlimit (0, sounds().size() - 1, sound)].id; }
+    inline int soundIndex (const juce::String& id)
     {
-        const double up = higher ? 1.5 : 1.0;
-        const int n = (int) (fs * 0.25);
-        juce::AudioBuffer<float> b (1, n);
+        for (int i = 0; i < sounds().size(); ++i) if (id == mt::soundSets[(size_t) i].id) return i;
+        return 0;
+    }
+    // The saved sound: its id, or (from versions that saved a position in their
+    // own list) that list's sound
+    inline int savedSound (juce::PropertiesFile& props)
+    {
+        if (props.containsKey ("clickSet")) return soundIndex (props.getValue ("clickSet"));
+        static const char* older[] { "classic", "woodblock", "cowbell", "clave", "hihat", "rim", "beep", "softtick" };
+        return soundIndex (older[juce::jlimit (0, 7, props.getIntValue ("clickSound", 0))]);
+    }
+
+    inline juce::AudioBuffer<float> toBuffer (const mt::Buffer& x)
+    {
+        juce::AudioBuffer<float> b (1, juce::jmax (1, (int) x.size()));
         b.clear();
-        auto* d = b.getWritePointer (0);
-        juce::Random r (sound * 7 + (higher ? 1 : 0));
-        double hp = 0, last = 0;
-        for (int i = 0; i < n; ++i)
-        {
-            const double t = i / fs, tau = juce::MathConstants<double>::twoPi * t;
-            double v = 0;
-            switch (sound)
-            {
-                case 0: v = std::sin (tau * 1000.0 * up) * std::exp (-t / 0.012); break;                                          // classic blip
-                case 1: v = (std::sin (tau * 820.0 * up) + 0.5 * std::sin (tau * 2210.0 * up)) * std::exp (-t / 0.022)          // woodblock
-                            + (r.nextFloat() * 2 - 1) * 0.3 * std::exp (-t / 0.002); break;
-                case 2:                                                                                                           // cowbell
-                {
-                    auto sq = [&] (double f) { return std::sin (tau * f) > 0 ? 1.0 : -1.0; };
-                    v = 0.5 * (sq (545.0 * up) + sq (815.0 * up)) * (0.75 * std::exp (-t / 0.035) + 0.25 * std::exp (-t / 0.18));
-                    hp = 0.6 * (hp + v - last); last = v; v = hp;   // takes the boom out
-                    break;
-                }
-                case 3: v = std::sin (tau * 2500.0 * up) * std::exp (-t / 0.018); break;                                         // clave
-                case 4:                                                                                                           // hi-hat
-                {
-                    const double x = r.nextFloat() * 2 - 1;
-                    hp = 0.7 * (hp + x - last); last = x;
-                    v = hp * std::exp (-t / (higher ? 0.06 : 0.03));
-                    break;
-                }
-                case 5: v = 0.6 * (r.nextFloat() * 2 - 1) * std::exp (-t / 0.008) + std::sin (tau * 1700.0 * up) * std::exp (-t / 0.03); break; // rimshot
-                case 6: v = std::sin (tau * 880.0 * up) * juce::jlimit (0.0, 1.0, std::min (t / 0.003, (0.07 - t) / 0.01)); break;        // beep
-                default: v = std::sin (tau * 1300.0 * up) * std::exp (-t / 0.006) * 0.6; break;                                        // soft tick
-            }
-            d[i] = (float) v;
-        }
-        // same loudness for every sound
-        const float peak = b.getMagnitude (0, n);
-        if (peak > 0) b.applyGain (0.8f / peak);
-        // trim the silent tail
-        int end = n;
-        while (end > 64 && std::abs (d[end - 1]) < 0.0005f) --end;
-        b.setSize (1, end, true);
+        if (! x.empty()) b.copyFrom (0, 0, x.data(), (int) x.size());
         return b;
     }
 
+    /** A set's sounds at the click's rate */
+    inline mt::Sounds make (int sound) { return mt::makeSounds (soundId (sound).toStdString(), fs); }
+
     inline juce::File folder() { return settingsFolder().getChildFile ("Click sounds"); }
 
-    inline juce::File write (const juce::String& name, const juce::AudioBuffer<float>& audio, float gain)
+    /** Writes a sound for Tracktion's click as a float WAV; a level under 1 brings its
+        peak down that far (encore-audio-processing's peak setting) */
+    inline juce::File write (const juce::String& name, mt::Buffer sound, float level)
     {
+        if (level < 1.0f && ! sound.empty())
+        {
+            const float* ch[1] { sound.data() };
+            vs::channels::toPeakWithEndFade (sound, vs::channels::peakOf (ch, 1, (int) sound.size()) * level, 256);
+        }
         auto f = folder().getChildFile (name + ".wav");
         folder().createDirectory();
-        juce::AudioBuffer<float> copy (audio);
-        copy.applyGain (gain);
         f.deleteFile();
+        auto audio = toBuffer (sound);
         juce::WavAudioFormat wav;
         std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
         if (os != nullptr)
-            if (auto w = wav.createWriterFor (os, juce::AudioFormatWriterOptions().withSampleRate (fs).withNumChannels (1).withBitsPerSample (24)))
-                w->writeFromAudioSampleBuffer (copy, 0, copy.getNumSamples());
+            if (auto w = wav.createWriterFor (os, juce::AudioFormatWriterOptions().withSampleRate (fs).withNumChannels (1).withBitsPerSample (32)
+                                                      .withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint)))
+                w->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples());
         return f;
     }
 
@@ -642,11 +633,14 @@ namespace clicks
     {
         sound = juce::jlimit (0, sounds().size() - 1, sound);
         accent = juce::jlimit (0, accents().size() - 1, accent);
-        const auto base = sounds()[sound].retainCharacters ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-        auto small = write (base + " beat", make (sound, false), accent == 1 ? 0.5f : 1.0f);
-        auto big = accent == 0 ? write (base + " bar", make (sound, true), 1.0f)
-                 : accent == 1 ? write (base + " bar", make (sound, false), 1.0f)
-                 : accent == 2 ? write (base + " bar", make (2, true), 1.0f)
+        const auto base = soundId (sound);
+        const auto set = make (sound);
+        // a set with a sound of its own for the off beats (Kick and hat) plays it on every beat after the first
+        const auto& offBeat = set.alt.empty() ? set.beat : set.alt;
+        auto small = write (base + " beat", offBeat, accent == 1 ? softLevel : 1.0f);
+        auto big = accent == 0 ? write (base + " bar", set.accent, 1.0f)
+                 : accent == 1 ? write (base + " bar", set.beat, 1.0f)
+                 : accent == 2 ? write (base + " bar", mt::makeSounds ("cowbell", fs).accent, 1.0f)
                                : small;
         engine.getPropertyStorage().setProperty (te::SettingID::clickTrackSampleBig, big.getFullPathName());
         engine.getPropertyStorage().setProperty (te::SettingID::clickTrackSampleSmall, small.getFullPathName());
@@ -663,12 +657,12 @@ public:
         setLookAndFeel (&look.get());
         for (auto* l : { &soundL, &accentL, &volumeL, &countL, &whenL }) { prefs::styleRowLabel (*l); addAndMakeVisible (l); }
         sound.addItemList (clicks::sounds(), 1);
-        sound.setSelectedItemIndex (props.getIntValue ("clickSound", 0), juce::dontSendNotification);
+        sound.setSelectedItemIndex (clicks::savedSound (props), juce::dontSendNotification);
         accent.addItemList (clicks::accents(), 1);
         accent.setSelectedItemIndex (edit.clickTrackEmphasiseBars.get() ? props.getIntValue ("clickAccent", 0) : 3, juce::dontSendNotification);
         auto changed = [this]
         {
-            props.setValue ("clickSound", sound.getSelectedItemIndex());
+            props.setValue ("clickSet", clicks::soundId (sound.getSelectedItemIndex()));
             const int a = accent.getSelectedItemIndex();
             if (a != 3) props.setValue ("clickAccent", a);
             edit.clickTrackEmphasiseBars = a != 3;
@@ -1077,7 +1071,7 @@ public:
         registerEncorePlugins (engine);
         registerBridgedPlugins (engine);   // 32-bit plugins, through the bridge
         startupStep ("plugin formats");
-        if (props().containsKey ("clickSound")) clicks::apply (engine, props().getIntValue ("clickSound", 0), props().getIntValue ("clickAccent", 0));
+        if (props().containsKey ("clickSet") || props().containsKey ("clickSound")) clicks::apply (engine, clicks::savedSound (props()), props().getIntValue ("clickAccent", 0));
         startupStep ("click sound");
         behaviour->songFolder = [this] { return songFile.getParentDirectory(); };
 
@@ -2551,10 +2545,9 @@ private:
         drums::kit::load (*sampler, songFile.getParentDirectory());
         // 4 bars from the bar the playhead is in
         auto& ts = edit->tempoSequence;
-        const int beatsPerBar = juce::jmax (1, ts.getTimeSig (0)->numerator.get());
-        const double startBeat = std::floor (ts.toBeats (edit->getTransport().getPosition()).inBeats() / beatsPerBar) * beatsPerBar;
-        const auto start = ts.toTime (te::BeatPosition::fromBeats (startBeat));
-        const auto end = ts.toTime (te::BeatPosition::fromBeats (startBeat + 4.0 * beatsPerBar));
+        const int bar = ts.toBarsAndBeats (edit->getTransport().getPosition()).bars;
+        const auto start = ts.toTime (te::tempo::BarsAndBeats { bar, {} });
+        const auto end = ts.toTime (te::tempo::BarsAndBeats { bar + 4, {} });
         if (auto clip = t->insertMIDIClip ("Beat", te::TimeRange (start, end), nullptr))
             openPianoRoll (*clip, true);
         status ("Drum track ready: click steps in the drum grid, then play. Drag the clip's end to make it longer.");
@@ -2945,12 +2938,18 @@ private:
                 {
                     auto from = (juce::int64) (w->getPosition().getOffset().inSeconds() * r->sampleRate);
                     auto num = (juce::int64) (w->getPosition().getLength().inSeconds() * r->sampleRate);
-                    juce::Range<float> ranges[8];
-                    const int ch = juce::jmin (8, (int) r->numChannels);
-                    r->readMaxLevels (from, juce::jmin (num, r->lengthInSamples - from), ranges, ch);
+                    // the clip's sample peak (encore-audio-processing's), read a block at a time
+                    const int ch = juce::jmax (1, (int) r->numChannels);
+                    const auto end = juce::jmin (from + num, r->lengthInSamples);
+                    juce::AudioBuffer<float> buf (ch, 65536);
                     float peak = 0;
-                    for (int i = 0; i < ch; ++i) peak = juce::jmax (peak, std::abs (ranges[i].getStart()), std::abs (ranges[i].getEnd()));
-                    if (peak > 0.00001f) { w->setGainDB (juce::jlimit (-60.0f, 24.0f, -0.3f - juce::Decibels::gainToDecibels (peak))); ++done; }
+                    for (auto at = from; at < end; at += buf.getNumSamples())
+                    {
+                        const int n = (int) juce::jmin ((juce::int64) buf.getNumSamples(), end - at);
+                        r->read (&buf, 0, n, at, true, true);
+                        peak = juce::jmax (peak, vs::channels::peakOf (buf.getArrayOfReadPointers(), ch, n));
+                    }
+                    if (peak > 0.00001f) { w->setGainDB (juce::jlimit (-60.0f, 24.0f, -0.3f - vs::ampToDb (peak, 0.0f))); ++done; }
                 }
         status (done ? "Normalized " + juce::String (done) + (done == 1 ? " clip" : " clips") + " to -0.3 dB" : juce::String ("Nothing to normalize"));
     }
@@ -3390,13 +3389,16 @@ private:
                                                 : juce::String ("Punch in/out off"));
     }
 
+    /** To the start of the bar (back from inside one, or the one before from its start) or the next one,
+        by the song's bars as its time signatures lay them out */
     void moveBars (int n)
     {
         auto& ts = edit->tempoSequence;
-        const int num = juce::jmax (1, ts.getTimeSig (0)->numerator.get());
-        auto beats = ts.toBeats (edit->getTransport().getPosition()).inBeats();
-        auto bar = n < 0 ? std::ceil (beats / num - 0.001) - 1 : std::floor (beats / num + 0.001) + 1;
-        edit->getTransport().setPosition (ts.toTime (te::BeatPosition::fromBeats (juce::jmax (0.0, bar) * num)));
+        const auto pos = edit->getTransport().getPosition();
+        const auto here = ts.toBarsAndBeats (pos);
+        const bool atBarStart = here.beats.inBeats() < 0.001;
+        const int bar = n < 0 ? (atBarStart ? here.bars - 1 : here.bars) : here.bars + 1;
+        edit->getTransport().setPosition (ts.toTime (te::tempo::BarsAndBeats { juce::jmax (0, bar), {} }));
     }
     void loopToSelection()
     {
@@ -4229,7 +4231,7 @@ private:
                           juce::dontSendNotification);
         playButton.setButtonText (tr.isPlaying() ? "Stop" : "Play");
         if (liveImportProgress) status ("Bringing in the live recording: splitting it into a file per input... " + juce::String (juce::roundToInt (liveImportProgress->load() * 100)) + "%");
-        if (currentExport) status ("Exporting " + exportingWhat + "... " + (currentExport->finishing > 0 ? juce::String (currentExport->finishing == 1 ? "mastering" : "making the MP3")
+        if (currentExport) status ("Exporting " + exportingWhat + "... " + (currentExport->finishing > 0 ? juce::String (currentExport->finishing == 1 ? "mastering" : currentExport->finishing == 2 ? "making the MP3" : "finishing")
                                                                                                     : juce::String (juce::roundToInt (currentExport->progress() * 100)) + "%"));
         recordButton.setToggleState (tr.isRecording(), juce::dontSendNotification);
         clickButton.setToggleState (edit->clickTrackEnabled.get(), juce::dontSendNotification);
