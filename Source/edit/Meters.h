@@ -85,7 +85,9 @@ private:
     Orientation orientation;
     WeakReference<te::LevelMeasurer> source;
     te::LevelMeasurer::Client client;
-    struct Chan { float level = -100.0f, hold = -100.0f; bool clipped = false; vs::meters::PeakMeter meter; };
+    // the meter's settings are written out so `c = {}` resets a Chan on every compiler
+    // (PeakMeter's default constructor is explicit, which Clang and MSVC won't use for {})
+    struct Chan { float level = -100.0f, hold = -100.0f; bool clipped = false; vs::meters::PeakMeter meter { vs::meters::PeakSettings {} }; };
     std::array<Chan, 2> chans;
     int numChannels = 1;
 
