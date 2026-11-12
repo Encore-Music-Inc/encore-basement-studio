@@ -194,8 +194,8 @@ published release and is exactly what the folder is pinned to
 <!-- pinned-releases:start -->
 | Folder | Repository | Release |
 |---|---|---|
-| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.7.0` |
-| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v2.2.0` |
+| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.7.1` |
+| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v2.3.0` |
 | `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE), pinned by encore-audio-processing (shown, not pinned here) | `9.0.5` |
 | `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9. Move to the first release that does) |
 <!-- pinned-releases:end -->

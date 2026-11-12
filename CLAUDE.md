@@ -93,8 +93,10 @@ this file does.
   only ENCORE.'s (songs that already use a Tracktion effect still open it).
   When something is missing there, add it there first.
   `.github/no-audio-processing.sh` (in CI) fails on processing-shaped code in
-  `Source/`. Tracktion's playback engine (mixing, volume and pan, clip gain,
-  fades and reverse, plugin hosting, its level readings) is the DAW itself.
+  `Source/`. Tracktion Engine's own playback calls the headers too, through
+  `patches/tracktion-audio-processing.patch` (the patches row above lists
+  what); what stays Tracktion's is summing tracks, the timeline, plugin
+  hosting and reading a clip backwards.
 - `ReferenceTests` (a target in `CMakeLists.txt`) builds encore-audio-processing's
   `tests/ReferenceTests.cpp` the way this repository compiles the headers; CI
   runs it on every system and it checks every result in that repo's
