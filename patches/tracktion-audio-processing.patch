@@ -468,7 +468,7 @@ index dab58c5..44ae271 100644
              lastGain[channel] = gain;
          }
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
-index a9012a7..eddf380 100644
+index a9012a7..9414977 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
 @@ -17,7 +17,7 @@ struct SpeedRampWaveNode::PerChannelState
@@ -489,6 +489,19 @@ index a9012a7..eddf380 100644
      const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
  
      AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
+@@ -263,8 +263,10 @@ void SpeedRampWaveNode::processSection (ProcessContext& pc, juce::Range<int64_t>
+ 
+             if (std::exchange (state.resamplerNeedsPriming, false))
+             {
+-                float discarded[resamplerLatency];
+-                state.resampler.process (1.0, src, discarded, resamplerLatency);
++                // in steps: the latency is only known at run time (ENCORE. Audio Processing's live resampler)
++                float discarded[64];
++                for (int done = 0; done < resamplerLatency; done += 64)
++                    state.resampler.process (1.0, src + done, discarded, std::min (64, resamplerLatency - done));
+             }
+ 
+             state.resampler.processAdding (ratio, src + resamplerLatency, dest, (int) numSamples, gains[channel & 1]);
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp
 index eb32318..784a731 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_TrackMutingNode.cpp
@@ -506,7 +519,7 @@ index eb32318..784a731 100644
  
  } // namespace tracktion::inline engine
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
-index 1993f02..9646482 100644
+index 1993f02..d113981 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
 @@ -330,7 +330,7 @@ public:
@@ -768,7 +781,20 @@ index 1993f02..9646482 100644
      const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
  
      AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
-@@ -2237,10 +2060,8 @@ bool WaveNodeRealTime::buildAudioReaderGraph()
+@@ -1884,8 +1707,10 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+ 
+             if (std::exchange (state.resamplerNeedsPriming, false))
+             {
+-                float discarded[resamplerLatency];
+-                state.resampler.process (1.0, src, discarded, resamplerLatency);
++                // in steps: the latency is only known at run time (ENCORE. Audio Processing's live resampler)
++                float discarded[64];
++                for (int done = 0; done < resamplerLatency; done += 64)
++                    state.resampler.process (1.0, src + done, discarded, std::min (64, resamplerLatency - done));
+             }
+ 
+             state.resampler.processAdding (ratio, src + resamplerLatency, dest, (int) numFrames, gains[channel & 1]);
+@@ -2237,10 +2062,8 @@ bool WaveNodeRealTime::buildAudioReaderGraph()
      const bool timestretchDisabled = timeStretcherMode == TimeStretcher::Mode::disabled;
      std::unique_ptr<ResamplerReader> resamplerAudioReader;
  
