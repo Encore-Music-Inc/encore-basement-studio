@@ -90,7 +90,8 @@ this file does.
   roll's grids and note edits, and note and key names all come from its
   headers. JUCE's processing classes and Tracktion's effects, instruments,
   export loudness and dither don't stand in for them, and the menus offer
-  only ENCORE.'s (songs that already use a Tracktion effect still open it).
+  only ENCORE.'s. Tracktion's own effects and instruments aren't built, so a
+  song that used one opens without it.
   When something is missing there, add it there first.
   `.github/no-audio-processing.sh` (in CI) fails on processing-shaped code in
   `Source/`. Tracktion Engine's own playback calls the headers too, through
