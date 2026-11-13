@@ -131,8 +131,9 @@ support@encoremusic.studio directly. More at https://encoremusic.studio.
     formats is listed once, in the first of VST3, Audio Unit, LV2, VST2 and
     LADSPA. Add more plugin folders in Preferences.
   - ENCORE.'s own effects, built in: Compressor, Limiter, Delay, Chorus,
-    Phaser, Pitch Shifter and Filter. Songs made with an earlier version that
-    use Tracktion's built-in effects still open and play them.
+    Phaser, Pitch Shifter and Filter. Tracktion Engine's own built-in effects
+    aren't included: a song made with an earlier version that used them opens
+    without them.
 - **Instruments and MIDI**: Project > Add Instrument Track with any of your
   instrument plugins (drums, keys, samplers) or ENCORE. Synth, played
   and recorded from your MIDI keyboard or pads; import MIDI files too.
