@@ -447,6 +447,28 @@ namespace selftest
                     String (loaded) + " of " + String (encoreOnTrack) + " loaded: " + ids.joinIntoString (", "));
         }
 
+        // the FX tracks play ENCORE.'s effects, and Tracktion's own effects and instruments can't be made
+        {
+            auto fxFile = dir.getChildFile ("FX Tracks").getChildFile ("FX Tracks.encore");
+            fxFile.getParentDirectory().deleteRecursively();
+            fxFile.getParentDirectory().createDirectory();
+            auto e = songs::create (engine, fxFile);
+            auto effectOn = [] (te::AudioTrack* t) -> String
+            {
+                if (t == nullptr) return "no track";
+                for (auto p : t->pluginList.getPlugins())
+                    if (auto ext = dynamic_cast<te::ExternalPlugin*> (p)) return ext->desc.fileOrIdentifier;
+                return "none";
+            };
+            const auto verb = effectOn (fx::addKind (*e, 0)), delay = effectOn (fx::addKind (*e, 1));
+            expect ("the Reverb and Delay FX tracks play ENCORE. Verb and ENCORE. Delay", verb == "encore:verb" && delay == "encore:delay",
+                    verb + ", " + delay);
+            StringArray made;
+            for (auto type : { "4bandEq", "reverb", "compressor", "chorus", "delay", "phaser", "pitchShifter", "lowpass", "sampler", "4osc" })
+                if (e->getPluginCache().createNewPlugin (type, {}) != nullptr) made.add (type);
+            expect ("Tracktion's own effects and instruments can't be made", made.isEmpty(), made.joinIntoString (", "));
+        }
+
         // a live recording (ENCORE. Live's session.json beside a 4-input WAV): names, song marks, one file per input, silent input left out
         {
             auto liveDir = dir.getChildFile ("Live Import");

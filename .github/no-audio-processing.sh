@@ -6,8 +6,8 @@
 # levels, meters and the fader law, pan, fades, waveform pictures, resampling,
 # the preview A/B, note names and note edits are called from there. JUCE's own
 # processing classes and buffer mixing count too, and so do Tracktion's export
-# loudness and dither, since using them would be a second version of
-# something that repository has. Tracktion's own playback code is patched to
+# loudness and dither and its own effects and instruments, since using them
+# would be a second version of something that repository has. Tracktion's own playback code is patched to
 # call it too (patches/tracktion-audio-processing.patch); what stays
 # Tracktion's is summing tracks, the timeline, plugin hosting and reading a
 # clip backwards, which that repository has no counterpart for.
@@ -25,6 +25,8 @@ pattern+='|\.(addFrom|addFromWithRamp|copyFromWithRamp|applyGainRamp)\s*\(|juce:
 pattern+='|setSkewFactorFromMidPoint\s*\(\s*-|pan\s*\*\s*gain'
 # a gain applied sample by sample by hand
 pattern+='|[a-z]\s*\*\s*[a-z]+\.getSample\s*\('
+# Tracktion's own effects and instruments (the patch doesn't register them either)
+pattern+='|\bte::(Equaliser|Reverb|Compressor|Chorus|Delay|Phaser|PitchShift|LowPass|Sampler|FourOsc|ImpulseResponse|ToneGenerator)Plugin\b'
 
 # Test pages, not the app's sound: they make test tones and measure the raw
 # signals of an interface, a plugin or an export to check them

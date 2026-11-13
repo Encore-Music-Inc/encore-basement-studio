@@ -1146,6 +1146,30 @@ index 12a877a..64cd100 100644
  
      RealTimeSpinLock vcaTrackLock;
      juce::ReferenceCountedObjectPtr<AudioTrack> vcaTrack;
+diff --git a/modules/tracktion_engine/plugins/tracktion_PluginManager.cpp b/modules/tracktion_engine/plugins/tracktion_PluginManager.cpp
+index 8b10702..cd380c9 100644
+--- a/modules/tracktion_engine/plugins/tracktion_PluginManager.cpp
++++ b/modules/tracktion_engine/plugins/tracktion_PluginManager.cpp
+@@ -47,16 +47,9 @@ void PluginManager::initialise()
+     createBuiltInType<VolumeAndPanPlugin>();
+     createBuiltInType<VCAPlugin>();
+     createBuiltInType<LevelMeterPlugin>();
+-    createBuiltInType<EqualiserPlugin>();
+-    createBuiltInType<ReverbPlugin>();
+-    createBuiltInType<CompressorPlugin>();
+-    createBuiltInType<ChorusPlugin>();
+-    createBuiltInType<DelayPlugin>();
+-    createBuiltInType<PhaserPlugin>();
+-    createBuiltInType<PitchShiftPlugin>();
+-    createBuiltInType<LowPassPlugin>();
+-    createBuiltInType<SamplerPlugin>();
+-    createBuiltInType<FourOscPlugin>();
++    // ENCORE. Basement Studio: Tracktion's own effects and instruments (EQ, reverb,
++    // compressor, chorus, delay, phaser, pitch shifter, filter, sampler, 4OSC) aren't
++    // registered: the effects and instruments are ENCORE. Audio Processing's
+     createBuiltInType<MidiModifierPlugin>();
+     createBuiltInType<MidiPatchBayPlugin>();
+     createBuiltInType<PatchBayPlugin>();
 diff --git a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp b/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp
 index 26fd3d1..d87fe5d 100644
 --- a/modules/tracktion_engine/timestretch/tracktion_TimeStretch.cpp

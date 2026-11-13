@@ -74,6 +74,20 @@ namespace fx
                 t->pluginList.insertPlugin (effect, 1, nullptr);
         return t.get();
     }
+
+    /** The FX tracks the menus offer: 0 a reverb (ENCORE. Verb), 1 a delay (ENCORE. Delay),
+        2 an empty one, each named for what it holds */
+    inline te::AudioTrack* addKind (te::Edit& e, int kind)
+    {
+        const char* id = kind == 0 ? "encore:verb" : kind == 1 ? "encore:delay" : nullptr;
+        juce::PluginDescription effect;
+        if (id != nullptr)
+            if (auto* entry = EncorePluginFormat::find (id)) effect = EncorePluginFormat::describe (*entry);
+        int n = tracks (e).size() + 1;
+        juce::String name = kind == 0 ? "Reverb" : kind == 1 ? "Delay" : "FX " + juce::String (n);
+        for (auto t : tracks (e)) if (t->getName() == name) name << " " << n;
+        return addTrack (e, name, id != nullptr ? juce::String (te::ExternalPlugin::xmlTypeName) : juce::String(), effect);
+    }
 }
 
 //==============================================================================
@@ -489,9 +503,6 @@ private:
             if (d.pluginFormatName != "Encore" && ! d.isInstrument && ! d.manufacturerName.containsIgnoreCase ("Encore"))
                 byMaker[d.manufacturerName.isEmpty() ? String ("Other") : d.manufacturerName].addItem (d.name, [this, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); });
         for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);
-        m.addSeparator();
-        m.addItem ("EQ (4-band)", [this, add] { add (edit.getPluginCache().createNewPlugin (te::EqualiserPlugin::xmlTypeName, {})); });
-        m.addItem ("Compressor / Limiter", [this, add] { add (edit.getPluginCache().createNewPlugin (te::CompressorPlugin::xmlTypeName, {})); });
         m.showMenuAsync (PopupMenu::Options().withTargetComponent (&addFx));
     }
 

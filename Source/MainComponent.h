@@ -3948,18 +3948,11 @@ private:
     }
     bool audioSetupOpen = false;
 
-    /** 0 reverb (ENCORE. Verb), 1 delay, 2 empty */
+    /** 0 reverb (ENCORE. Verb), 1 delay (ENCORE. Delay), 2 empty */
     void addFxTrack (int kind)
     {
-        juce::PluginDescription verb;
-        for (auto& d : engine.getPluginManager().knownPluginList.getTypes())
-            if (d.pluginFormatName == "Encore" && d.fileOrIdentifier == "encore:verb") verb = d;
-        int n = fx::tracks (*edit).size() + 1;
-        juce::String name = kind == 0 ? "Reverb" : kind == 1 ? "Delay" : "FX " + juce::String (n);
-        for (auto t : fx::tracks (*edit)) if (t->getName() == name) name << " " << n;
-        auto t = kind == 0 ? fx::addTrack (*edit, name, te::ExternalPlugin::xmlTypeName, verb)
-               : kind == 1 ? fx::addTrack (*edit, name, te::DelayPlugin::xmlTypeName)
-                           : fx::addTrack (*edit, name, {});
+        auto t = fx::addKind (*edit, kind);
+        const auto name = t != nullptr ? t->getName() : juce::String();
         if (t != nullptr)
             status ("Added the FX track \"" + name + "\": turn up its send on any track in the mixer (F3)");
     }

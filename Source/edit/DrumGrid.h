@@ -363,10 +363,6 @@ private:
         if (clip == nullptr) return;
         auto* t = dynamic_cast<te::AudioTrack*> (clip->getTrack());
         if (t == nullptr || ! clip->edit.editFileRetriever) return;
-        // a song made before ENCORE. Sampler plays its kit on Tracktion's sampler: that is swapped for ENCORE.'s here
-        if (drums::kit::samplerOn (*t) == nullptr)
-            for (auto p : t->pluginList.getPlugins())
-                if (dynamic_cast<te::SamplerPlugin*> (p) != nullptr) { instruments::makeInstrumentTrack (*t, drums::kit::newSampler (clip->edit), false); break; }
         if (auto* s = drums::kit::samplerOn (*t))
         {
             drums::kit::load (*s, clip->edit.editFileRetriever().getParentDirectory(), style);
