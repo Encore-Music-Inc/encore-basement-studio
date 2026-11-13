@@ -7,6 +7,8 @@
 // click it, so a clipped take never goes unnoticed.
 #pragma once
 
+#include "dsp/Meters.h"
+
 class LevelMeter : public Component,
                    public SettableTooltipClient,
                    private Timer
@@ -37,7 +39,7 @@ public:
 
     void mouseDown (const MouseEvent&) override
     {
-        for (auto& c : chans) { c.clipped = false; c.hold = -100.0f; }
+        for (auto& c : chans) { c.meter.reset(); c.clipped = false; c.hold = -100.0f; }
         repaint();
     }
 
@@ -83,17 +85,14 @@ private:
     Orientation orientation;
     WeakReference<te::LevelMeasurer> source;
     te::LevelMeasurer::Client client;
-    struct Chan { float level = -100.0f, hold = -100.0f; uint32 holdTime = 0; bool clipped = false; };
+    // the meter's settings are written out so `c = {}` resets a Chan on every compiler
+    // (PeakMeter's default constructor is explicit, which Clang and MSVC won't use for {})
+    struct Chan { float level = -100.0f, hold = -100.0f; bool clipped = false; vs::meters::PeakMeter meter { vs::meters::PeakSettings {} }; };
     std::array<Chan, 2> chans;
     int numChannels = 1;
 
-    static float proportion (float db)
-    {
-        // -60..+6 dB, with more room near the top where it matters
-        if (db <= -60.0f) return 0.0f;
-        const float x = jlimit (0.0f, 1.0f, (db + 60.0f) / 66.0f);
-        return std::pow (x, 1.6f);
-    }
+    // -60..+6 dB, with more room near the top where it matters (ENCORE.'s meter scale)
+    static float proportion (float db) { return vs::meters::scalePosition (db); }
 
     void fillRange (Graphics& g, Rectangle<float> body, float fromDb, float toDb, Colour col)
     {
@@ -112,7 +111,7 @@ private:
         bool changed = false;
         if (source.get() == nullptr)
         {
-            for (auto& c : chans) if (c.level > -100.0f) { c.level = -100.0f; changed = true; }
+            for (auto& c : chans) if (c.meter.silence()) { c.level = c.meter.level(); changed = true; }
         }
         else
         {
@@ -120,14 +119,31 @@ private:
             for (int i = 0; i < 2; ++i)
             {
                 auto& c = chans[(size_t) i];
-                auto measured = client.getAndClearAudioLevel (i).dB;
-                // fall back smoothly (about 20 dB a second)
-                const float next = jmax (measured, c.level - 0.7f);
-                if (std::abs (next - c.level) > 0.05f) { c.level = next; changed = true; }
-                if (measured > c.hold || now - c.holdTime > 1500) { c.hold = measured; c.holdTime = now; changed = true; }
-                if (measured >= -0.1f && ! c.clipped) { c.clipped = true; changed = true; }
+                // ENCORE.'s peak meter: up at once, back smoothly, a held peak and a clip light
+                if (c.meter.step (client.getAndClearAudioLevel (i).dB, now)) changed = true;
+                c.level = c.meter.level(); c.hold = c.meter.hold(); c.clipped = c.meter.isClipped();
             }
         }
         if (changed) repaint();
     }
 };
+
+//==============================================================================
+/** Volume faders and send knobs move along encore-audio-processing's fader law
+    (dsp/Meters.h), the law songs store a level in: the slider holds the fader's
+    position (0 silent .. 1 at +6 dB) and shows the level in dB */
+namespace faderlaw
+{
+    inline void setUp (Slider& s, float doubleClickDb, const String& silentText)
+    {
+        s.setRange (0.0, 1.0, 0.0);
+        s.setDoubleClickReturnValue (true, vs::meters::dbToFaderPosition (doubleClickDb));
+        s.textFromValueFunction = [silentText] (double p)
+        {
+            const float db = vs::meters::faderPositionToDb ((float) p);
+            return db <= vs::meters::faderFloorDb + 0.05f ? silentText : String (db, 1) + " dB";
+        };
+    }
+    inline float db (const Slider& s) { return vs::meters::faderPositionToDb ((float) s.getValue()); }
+    inline void show (Slider& s, float db) { s.setValue (vs::meters::dbToFaderPosition (db), dontSendNotification); }
+}

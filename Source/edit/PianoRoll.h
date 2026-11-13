@@ -18,15 +18,27 @@
 // Every change goes through the song's undo, so Ctrl+Z works as everywhere else.
 #pragma once
 
+#include "dsp/Music.h"
+#include "dsp/NoteEdit.h"
+
 /** Note edits shared by the piano roll and the MIDI menu */
 namespace midiedit
 {
-    /** Grid sizes in beats (quarter notes) */
-    struct Grid { const char* name; double beats; };
-    inline const std::array<Grid, 6>& grids()
+    /** Grid sizes in beats (quarter notes): encore-audio-processing's list (dsp/NoteEdit.h), with their names here */
+    struct Grid { juce::String name; double beats; };
+    inline const std::vector<Grid>& grids()
     {
-        static const std::array<Grid, 6> g { { { "1/4", 1.0 }, { "1/8", 0.5 }, { "1/16", 0.25 }, { "1/32", 0.125 },
-                                               { "1/8 triplet", 1.0 / 3.0 }, { "1/16 triplet", 1.0 / 6.0 } } };
+        static const std::vector<Grid> g = []
+        {
+            std::vector<Grid> out;
+            for (const auto& x : vs::noteedit::grids)
+            {
+                juce::String n (x.id);
+                if (n.endsWith ("T")) n = n.dropLastCharacters (1) + " triplet";
+                out.push_back ({ n, x.beats });
+            }
+            return out;
+        }();
         return g;
     }
 
@@ -39,7 +51,7 @@ namespace midiedit
         const double content = c.getContentStartBeat().inBeats();
         for (auto* n : notes)
         {
-            const double snapped = std::round ((content + n->getStartBeat().inBeats()) / grid) * grid;
+            const double snapped = vs::noteedit::quantize (content + n->getStartBeat().inBeats(), grid);
             n->setStartAndLength (te::BeatPosition::fromBeats (snapped - content), n->getLengthBeats(), um);
         }
     }
@@ -47,14 +59,14 @@ namespace midiedit
     inline void transpose (te::MidiClip& c, const juce::Array<te::MidiNote*>& notes, int semitones)
     {
         auto* um = &c.edit.getUndoManager();
-        for (auto* n : notes) n->setNoteNumber (juce::jlimit (0, 127, n->getNoteNumber() + semitones), um);
+        for (auto* n : notes) n->setNoteNumber (vs::noteedit::transpose (n->getNoteNumber(), semitones), um);
     }
 
     /** to >= 0 sets every velocity to it; otherwise each one changes by delta */
     inline void velocity (te::MidiClip& c, const juce::Array<te::MidiNote*>& notes, int to, int delta = 0)
     {
         auto* um = &c.edit.getUndoManager();
-        for (auto* n : notes) n->setVelocity (juce::jlimit (1, 127, to >= 0 ? to : n->getVelocity() + delta), um);
+        for (auto* n : notes) n->setVelocity (vs::noteedit::velocity (n->getVelocity(), to, delta), um);
     }
 
     inline juce::Array<te::MidiNote*> allNotes (te::MidiClip& c)
@@ -64,11 +76,8 @@ namespace midiedit
         return out;
     }
 
-    inline juce::String noteName (int n)
-    {
-        static const char* names[] { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-        return juce::String (names[n % 12]) + juce::String (n / 12 - 1);
-    }
+    /** A note's name by ENCORE.'s one rule (encore-audio-processing's dsp/Music.h) */
+    inline juce::String noteName (int n) { return juce::String (vs::music::noteName (n)); }
 
     inline bool isBlackKey (int n) { const int k = n % 12; return k == 1 || k == 3 || k == 6 || k == 8 || k == 10; }
 }
@@ -585,13 +594,13 @@ private:
         g.fillRect (juce::Rectangle<float> ((float) area.getX(), (float) area.getY(), juce::jmax (0.0f, cx1 - area.getX()), (float) area.getHeight()));
         g.fillRect (juce::Rectangle<float> (cx2, (float) area.getY(), juce::jmax (0.0f, (float) area.getRight() - cx2), (float) area.getHeight()));
         // vertical lines: grid, beats, bars
-        const int beatsPerBar = juce::jmax (1, clip->edit.tempoSequence.getTimeSig (0)->numerator.get());
+        auto& ts = clip->edit.tempoSequence;
         const double grid = gridBeats();
         const double first = std::floor (beatAtX (area.getX()) / grid) * grid;
         for (double b = first; xOfBeat (b) < area.getRight(); b += grid)
         {
             const bool beat = std::abs (b - std::round (b)) < 1.0e-6;
-            const bool bar = beat && ((int) std::round (b)) % beatsPerBar == 0;
+            const bool bar = beat && ts.toBarsAndBeats (ts.toTime (te::BeatPosition::fromBeats (b))).beats.inBeats() < 1.0e-3;
             g.setColour (bar ? theme::muted.withAlpha (0.8f) : beat ? theme::strong.brighter (0.15f) : theme::strong.withAlpha (0.6f));
             g.drawVerticalLine ((int) xOfBeat (b), (float) area.getY(), (float) area.getBottom());
         }

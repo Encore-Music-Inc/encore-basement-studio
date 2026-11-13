@@ -130,9 +130,11 @@ support@encoremusic.studio directly. More at https://encoremusic.studio.
     prompt, is set aside) and lists them by maker. A plugin installed in several
     formats is listed once, in the first of VST3, Audio Unit, LV2, VST2 and
     LADSPA. Add more plugin folders in Preferences.
-  - A few simple built-in effects (EQ, compressor, reverb, delay and more).
+  - ENCORE.'s own effects, built in: Compressor, Limiter, Delay, Chorus,
+    Phaser, Pitch Shifter and Filter. Songs made with an earlier version that
+    use Tracktion's built-in effects still open and play them.
 - **Instruments and MIDI**: Project > Add Instrument Track with any of your
-  instrument plugins (drums, keys, samplers) or the built-in synth, played
+  instrument plugins (drums, keys, samplers) or ENCORE. Synth, played
   and recorded from your MIDI keyboard or pads; import MIDI files too.
   A piano roll (double-click a MIDI clip): click to add notes, drag to move or
   resize, a velocity strip, grid snap, quantize, transpose and velocity
@@ -171,8 +173,8 @@ Source/encore/                      creates the built-in ENCORE. plugins (Make<N
 Source/bridge/                      the 32-bit plugin bridge (Windows)
 Assets/                             the ENCORE. icon
 installer/                          Windows installer (Inno Setup), Linux .deb and AppImage
-patches/                            ENCORE.'s change to Tracktion Engine, applied by CMake
-tools/                              tuner data generator, Windows plugin window test
+patches/                            ENCORE.'s changes to Tracktion Engine, applied by CMake
+tools/                              Windows plugin window test
 external/encore-vst                 the ENCORE. plugins (submodule), with the audio processing and JUCE it pins
 external/tracktion_engine           Tracktion Engine (submodule)
 external/fst                        FST, the VST2 interface headers (GPLv3)
@@ -192,8 +194,8 @@ published release and is exactly what the folder is pinned to
 <!-- pinned-releases:start -->
 | Folder | Repository | Release |
 |---|---|---|
-| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.6.1` |
-| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v1.0.1` |
+| `external/encore-vst` | [encore-vst](https://github.com/Encore-Music-Inc/encore-vst) | `v0.7.1` |
+| `external/encore-vst/external/encore-audio-processing` | [encore-audio-processing](https://github.com/Encore-Music-Inc/encore-audio-processing), pinned by encore-vst (shown, not pinned here) | `v2.3.0` |
 | `external/encore-vst/external/encore-audio-processing/external/JUCE` | [JUCE](https://github.com/juce-framework/JUCE), pinned by encore-audio-processing (shown, not pinned here) | `9.0.5` |
 | `external/tracktion_engine` | [Tracktion Engine](https://github.com/Tracktion/tracktion_engine) | commit `a5e4499` (exception: no Tracktion Engine release supports JUCE 9. Move to the first release that does) |
 <!-- pinned-releases:end -->
@@ -308,6 +310,10 @@ on a Mac, `~/.config/ENCORE/Basement Studio` on Linux). New songs go in
   testing without touching your own.
 
 The plugins' and the audio processing's own test suites run in encore-vst and
+encore-audio-processing. CI also runs `ReferenceTests` (a target here), which
+checks encore-audio-processing's reference set against its headers as this
+repository compiles them, and `.github/no-audio-processing.sh`, which fails if
+Basement Studio grows audio processing of its own: all of it comes from
 encore-audio-processing.
 
 ## CI

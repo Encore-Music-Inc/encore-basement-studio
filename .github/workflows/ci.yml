@@ -229,6 +229,9 @@ jobs:
         with:
           path: .ccache
           key: ccache-debian12-${{ matrix.arch }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
+      # encore-audio-processing's reference set, as this build compiles its headers
+      - name: Reference set
+        run: build/ReferenceTests_artefacts/Release/ReferenceTests
       # Makes songs, imports, mixes, exports, reopens and runs each built-in
       # ENCORE. plugin, without an audio device (needs an X display)
       - name: Self-test
@@ -438,6 +441,12 @@ jobs:
         with:
           path: .sccache
           key: sccache-${{ runner.os }}-${{ steps.key.outputs.compiler }}-${{ steps.key.outputs.pins }}-${{ github.run_id }}
+      # encore-audio-processing's reference set, as this build compiles its headers
+      - name: Reference set
+        shell: pwsh
+        run: |
+          & "build/ReferenceTests_artefacts/Release/ReferenceTests.exe"
+          if ($LASTEXITCODE -ne 0) { throw "the reference set failed ($LASTEXITCODE)" }
       - name: Self-test
         shell: pwsh
         run: |
@@ -572,6 +581,9 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :CFBundleDocumentTypes:0:CFBundleTypeExtensions" "$app/Contents/Info.plist" | tee /dev/stderr | grep -q encore \
             || { echo "::error::the app doesn't say it opens .encore songs"; exit 1; }
+      # encore-audio-processing's reference set, as this build compiles its headers
+      - name: Reference set
+        run: build/ReferenceTests_artefacts/Release/ReferenceTests
       - name: Self-test
         run: |
           app="build/EncoreBasementStudio_artefacts/Release/ENCORE Basement Studio.app"
@@ -723,6 +735,8 @@ jobs:
           git -C external/encore-vst submodule update --init --depth 1 external/encore-audio-processing
       - name: Check the pins
         run: bash .github/pins/check.sh
+      - name: No audio processing outside encore-audio-processing
+        run: bash .github/no-audio-processing.sh
 
   # The one check to require on main. It fails if any build or test job failed or
   # was cancelled, and passes when they passed or were skipped (docs-only changes).

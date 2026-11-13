@@ -237,21 +237,13 @@ namespace selftest
                 std::unique_ptr<AudioFormatReader> lr2 (rendered.existsAsFile() ? fm.createReaderFor (rendered) : nullptr);
                 Range<float> ll[2];
                 if (lr2) lr2->readMaxLevels (lr2->sampleRate * 1, (int) lr2->sampleRate, ll, 2);
-                // loudness of steady tones: -0.691 + 10 log10 (sum of the channels' mean squares)
-                // (K-weighting is flat around 220-330 Hz, and there's nothing quiet to gate)
+                // its loudness, by encore-audio-processing's BS.1770 meter
                 double lufs = -100.0;
                 if (lr2)
                 {
                     AudioBuffer<float> b ((int) lr2->numChannels, (int) lr2->sampleRate * 2);
                     lr2->read (&b, 0, b.getNumSamples(), (juce::int64) lr2->sampleRate, true, true);
-                    double sum = 0;
-                    for (int c = 0; c < b.getNumChannels(); ++c)
-                    {
-                        double ms = 0;
-                        for (int i = 0; i < b.getNumSamples(); ++i) ms += (double) b.getSample (c, i) * b.getSample (c, i);
-                        sum += ms / b.getNumSamples();
-                    }
-                    lufs = -0.691 + 10.0 * std::log10 (juce::jmax (1.0e-12, sum));
+                    lufs = vs::channels::loudnessOf (b.getArrayOfReadPointers(), jmin (2, b.getNumChannels()), b.getNumSamples(), lr2->sampleRate);
                 }
                 expect ("streaming-loud export lands at -14 LUFS", lr2 != nullptr && std::abs (lufs + 14.0) < 1.0, String (lufs, 1) + " LUFS");
 
@@ -291,14 +283,7 @@ namespace selftest
                     // the last 2 s, once the loudness has settled
                     AudioBuffer<float> b ((int) mar->numChannels, (int) mar->sampleRate * 2);
                     mar->read (&b, 0, b.getNumSamples(), mar->lengthInSamples - b.getNumSamples(), true, true);
-                    double sum = 0;
-                    for (int c = 0; c < b.getNumChannels(); ++c)
-                    {
-                        double ms = 0;
-                        for (int i = 0; i < b.getNumSamples(); ++i) ms += (double) b.getSample (c, i) * b.getSample (c, i);
-                        sum += ms / b.getNumSamples();
-                    }
-                    mlufs = -0.691 + 10.0 * std::log10 (juce::jmax (1.0e-12, sum));
+                    mlufs = vs::channels::loudnessOf (b.getArrayOfReadPointers(), jmin (2, b.getNumChannels()), b.getNumSamples(), mar->sampleRate);
                 }
                 int masterPluginsInSong = -1;
                 if (auto check = songs::open (engine, songFile, te::Edit::forExamining))
@@ -462,6 +447,28 @@ namespace selftest
                     String (loaded) + " of " + String (encoreOnTrack) + " loaded: " + ids.joinIntoString (", "));
         }
 
+        // the FX tracks play ENCORE.'s effects, and Tracktion's own effects and instruments can't be made
+        {
+            auto fxFile = dir.getChildFile ("FX Tracks").getChildFile ("FX Tracks.encore");
+            fxFile.getParentDirectory().deleteRecursively();
+            fxFile.getParentDirectory().createDirectory();
+            auto e = songs::create (engine, fxFile);
+            auto effectOn = [] (te::AudioTrack* t) -> String
+            {
+                if (t == nullptr) return "no track";
+                for (auto p : t->pluginList.getPlugins())
+                    if (auto ext = dynamic_cast<te::ExternalPlugin*> (p)) return ext->desc.fileOrIdentifier;
+                return "none";
+            };
+            const auto verb = effectOn (fx::addKind (*e, 0)), delay = effectOn (fx::addKind (*e, 1));
+            expect ("the Reverb and Delay FX tracks play ENCORE. Verb and ENCORE. Delay", verb == "encore:verb" && delay == "encore:delay",
+                    verb + ", " + delay);
+            StringArray made;
+            for (auto type : { "4bandEq", "reverb", "compressor", "chorus", "delay", "phaser", "pitchShifter", "lowpass", "sampler", "4osc" })
+                if (e->getPluginCache().createNewPlugin (type, {}) != nullptr) made.add (type);
+            expect ("Tracktion's own effects and instruments can't be made", made.isEmpty(), made.joinIntoString (", "));
+        }
+
         // a live recording (ENCORE. Live's session.json beside a 4-input WAV): names, song marks, one file per input, silent input left out
         {
             auto liveDir = dir.getChildFile ("Live Import");
@@ -556,8 +563,9 @@ namespace selftest
             bool made = true;
             for (int s = 0; s < clicks::sounds().size(); ++s)
             {
-                auto audio = clicks::make (s, false);
-                made = made && audio.getNumSamples() > 100 && audio.getMagnitude (0, audio.getNumSamples()) > 0.5f;
+                auto set = clicks::make (s);
+                for (auto* x : { &set.accent, &set.beat })
+                    made = made && x->size() > 100 && vs::channels::peakOf (std::array<const float*, 1> { x->data() }.data(), 1, (int) x->size()) > 0.5f;
             }
             clicks::apply (engine, 1, 0);
             const File big (props.getProperty (te::SettingID::clickTrackSampleBig).toString()), small (props.getProperty (te::SettingID::clickTrackSampleSmall).toString());
@@ -571,25 +579,25 @@ namespace selftest
         // the tuner: which string, how far off, horns read in their own key, temperaments, and pitch from a bass's low E to a fiddle's E string
         {
             int instruments = 0;
-            const tunings::Instrument* guitar = nullptr;
-            const tunings::Instrument* trumpet = nullptr;
-            const tunings::Instrument* bouzouki = nullptr;
-            const tunings::Instrument* twelve = nullptr;
+            const vs::tunings::Instrument* guitar = nullptr;
+            const vs::tunings::Instrument* trumpet = nullptr;
+            const vs::tunings::Instrument* bouzouki = nullptr;
+            const vs::tunings::Instrument* twelve = nullptr;
             bool coursesAddUp = true;
-            for (auto& f : tunings::families())
+            for (auto& f : vs::tunings::families())
                 for (auto& i : f.instruments)
                 {
                     ++instruments;
-                    if (tunings::text (i.name) == "Guitar (12-string)") twelve = &i;
+                    if (tunerText::text (i.name) == "Guitar (12-string)") twelve = &i;
                     for (auto& t : i.tunings)
                     {
                         int sum = 0;
                         for (auto c : t.courses) sum += c;
                         coursesAddUp = coursesAddUp && (t.courses.empty() || sum == (int) t.strings.size());
                     }
-                    if (tunings::text (i.name) == "Guitar (6-string)") guitar = &i;
-                    if (tunings::text (i.name) == "Trumpet / cornet (Bb)") trumpet = &i;
-                    if (tunings::text (i.name) == "Bouzouki (Irish)") bouzouki = &i;
+                    if (tunerText::text (i.name) == "Guitar (6-string)") guitar = &i;
+                    if (tunerText::text (i.name) == "Trumpet / cornet (Bb)") trumpet = &i;
+                    if (tunerText::text (i.name) == "Bouzouki (Irish)") bouzouki = &i;
                 }
             expect ("tuner: the instrument list", instruments >= 80 && guitar != nullptr && trumpet != nullptr && bouzouki != nullptr, String (instruments) + " instruments");
             expect ("tuner: a 12-string has all 12 strings, in 6 pairs", coursesAddUp && twelve != nullptr && twelve->tunings[0].strings.size() == 12
@@ -597,15 +605,15 @@ namespace selftest
             if (guitar != nullptr && trumpet != nullptr)
             {
                 const std::array<float, 12> equal {};
-                auto a = TunerReading::of (110.0f, 440.0, guitar->tunings[0].strings, equal, 0);
-                auto sharp = TunerReading::of (112.0f, 440.0, guitar->tunings[0].strings, equal, 0);
+                auto a = vs::TunerReading::of (110.0f, 440.0, guitar->tunings[0].strings, equal, 0);
+                auto sharp = vs::TunerReading::of (112.0f, 440.0, guitar->tunings[0].strings, equal, 0);
                 expect ("tuner: finds the guitar string", a.string == 1 && std::abs (a.cents) < 0.5f && sharp.string == 1 && std::abs (sharp.cents - 31.2f) < 1.0f,
                         String (sharp.cents, 1) + " cents");
-                auto horn = TunerReading::of (233.08f, 440.0, {}, equal, 0);
-                expect ("tuner: a Bb trumpet reads its own note", trumpet->transpose == 2 && TunerReading::name (horn.note + trumpet->transpose) == "C4");
-                const auto& meantone = tunings::temperaments()[3].cents;
-                auto e = TunerReading::of (329.63f, 440.0, {}, meantone, 0);
-                expect ("tuner: quarter-comma meantone wants a lower E", TunerReading::name (e.note) == "E4" && std::abs (e.cents - 13.7f) < 0.6f, String (e.cents, 1));
+                auto horn = vs::TunerReading::of (233.08f, 440.0, {}, equal, 0);
+                expect ("tuner: a Bb trumpet reads its own note", trumpet->transpose == 2 && tunerText::note (horn.note + trumpet->transpose) == "C4");
+                const auto& meantone = vs::tunings::temperaments()[3].cents;
+                auto e = vs::TunerReading::of (329.63f, 440.0, {}, meantone, 0);
+                expect ("tuner: quarter-comma meantone wants a lower E", tunerText::note (e.note) == "E4" && std::abs (e.cents - 13.7f) < 0.6f, String (e.cents, 1));
             }
             bool pitches = true;
             String heard;
@@ -613,7 +621,7 @@ namespace selftest
             {
                 std::vector<float> x (4096);
                 for (size_t i = 0; i < x.size(); ++i) x[i] = 0.5f * std::sin (MathConstants<float>::twoPi * f * (float) i / 24000.0f) + 0.2f * std::sin (MathConstants<float>::twoPi * 2 * f * (float) i / 24000.0f);
-                const float got = TunerPitch::estimate (x.data(), (int) x.size(), 24000.0);
+                const float got = vs::TunerPitch::estimate (x.data(), (int) x.size(), 24000.0);
                 heard << String (got, 2) << " ";
                 pitches = pitches && std::abs (got / f - 1.0f) < 0.003f;
             }
@@ -657,7 +665,10 @@ namespace selftest
         {
             expect ("a tempo in a file name is read", stretch::tempoInName ("Beat 92bpm") == 92 && stretch::tempoInName ("loop_120_BPM") == 120
                                                          && stretch::tempoInName ("Drums - 140 bpm take 2") == 140 && stretch::tempoInName ("Take 3") == 0);
-            auto e = songs::create (engine, dir.getChildFile ("Stretch Song").getChildFile (String ("Stretch Song") + songfile::ext));
+            const auto stretchSong = dir.getChildFile ("Stretch Song").getChildFile (String ("Stretch Song") + songfile::ext);
+            stretchSong.getParentDirectory().deleteRecursively();
+            stretchSong.getParentDirectory().createDirectory();
+            auto e = songs::create (engine, stretchSong);
             e->tempoSequence.getTempo (0)->setBpm (120.0);
             e->ensureNumberOfAudioTracks (1);
             te::AudioFile af (engine, a);
@@ -668,16 +679,40 @@ namespace selftest
             const double at60 = clip->getPosition().getLength().inSeconds();
             expect ("a following clip plays in time with the song's tempo", std::abs (at120 - 3.0) < 0.05 && std::abs (at60 - 6.0) < 0.05,
                     String (at120, 2) + " s at 120, " + String (at60, 2) + " s at 60");
+
+            // played at 60 BPM the 220 Hz loop lasts twice as long and keeps its pitch (ENCORE. Audio Processing's stretcher)
+            expect ("a following clip uses ENCORE. Audio Processing's stretcher", clip->getTimeStretchMode() == te::TimeStretcher::signalsmithDefault);
+            te::EditFileOperations (*e).save (true, true, false);
+            clip = nullptr;   // let go of the clip before its song: its timer reads the song
+            e.reset();
+            auto out = stretchSong.getSiblingFile ("stretch.wav");
+            ExportOptions o; o.tail = false;
+            std::atomic<bool> done { false };
+            juce::File r; juce::String err;
+            auto job = exportSong (engine, stretchSong, out, o, [&] (juce::File f, juce::String x) { r = f; err = x; done = true; });
+            for (int i = 0; i < 1200 && ! done; ++i) juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            AudioFormatManager fm; fm.registerBasicFormats();
+            std::unique_ptr<AudioFormatReader> rr (r.existsAsFile() ? fm.createReaderFor (r) : nullptr);
+            double hz = 0, seconds = 0;
+            if (rr)
+            {
+                seconds = (double) rr->lengthInSamples / rr->sampleRate;
+                AudioBuffer<float> mid (1, 4096);
+                rr->read (&mid, 0, mid.getNumSamples(), (juce::int64) (rr->sampleRate * 3.0), true, false);
+                hz = vs::Yin().analyse (mid.getReadPointer (0), mid.getNumSamples(), rr->sampleRate).hz;
+            }
+            expect ("a stretched clip renders twice as long at the same pitch", rr != nullptr && std::abs (seconds - 6.0) < 0.1 && std::abs (hz - 220.0) < 2.0,
+                    rr ? String (seconds, 2) + " s, " + String (hz, 1) + " Hz" : err);
         }
 
         // the kits: every one makes all ten drums, and they sound different (the 808 kick booms longer)
         {
             bool all = true;
             for (int k = 0; k < (int) drums::kit::styles().size(); ++k)
-                for (auto& l : drums::lanes()) { auto s = drums::kit::make (l.note, k); all = all && s.getNumSamples() > 1000 && s.getMagnitude (0, 0, s.getNumSamples()) > 0.5f; }
-            const auto studio = drums::kit::make (36, 0), boom = drums::kit::make (36, 1);
-            expect ("4 drum kits, each with all 10 drums", all && drums::kit::styles().size() == 4);
-            expect ("the 808 kick is longer than the Studio kick", boom.getNumSamples() > studio.getNumSamples() * 1.4, String (boom.getNumSamples() / 48000.0, 2) + " s");
+                for (auto& l : drums::lanes()) { auto x = drums::kit::make (l.note, k); all = all && x.size() > 1000 && *std::max_element (x.begin(), x.end()) > 0.3f; }
+            const auto studio = drums::kit::make (36, drums::kit::styleIndex ("Studio")), boom = drums::kit::make (36, drums::kit::styleIndex ("808"));
+            expect ("every drum kit offered has a drum for all 10 rows", all && drums::kit::styles().size() >= 6, String ((int) drums::kit::styles().size()) + " kits");
+            expect ("the 808 kick is longer than the Studio kick", boom.size() > studio.size() * 1.4, String (boom.size() / 48000.0, 2) + " s");
         }
 
         // a drum track: the Studio Kit (made in the song folder) plays a kick on beat 1 and a snare on beat 2
@@ -691,12 +726,11 @@ namespace selftest
                 e->ensureNumberOfAudioTracks (1);
                 auto t = te::getAudioTracks (*e)[0];
                 t->state.setProperty ("basementRole", "drums", nullptr);
-                auto plugin = e->getPluginCache().createNewPlugin (te::SamplerPlugin::xmlTypeName, {});
-                instruments::makeInstrumentTrack (*t, plugin, false);
-                if (auto* sampler = dynamic_cast<te::SamplerPlugin*> (plugin.get()))
+                instruments::makeInstrumentTrack (*t, drums::kit::newSampler (*e), false);
+                if (auto* sampler = drums::kit::samplerOn (*t))
                 {
                     drums::kit::load (*sampler, drumSong.getParentDirectory());
-                    sounds = sampler->getNumSounds();
+                    sounds = (int) sampler->getSounds().size();
                 }
                 auto clip = t->insertMIDIClip ({ 0_tp, te::TimePosition::fromSeconds (2.0) }, nullptr);
                 clip->getSequence().addNote (36, te::BeatPosition::fromBeats (0.0), te::BeatDuration::fromBeats (0.25), 110, 0, nullptr);
@@ -734,7 +768,7 @@ namespace selftest
                 auto e = songs::create (engine, synthSong);
                 e->ensureNumberOfAudioTracks (1);
                 auto t = te::getAudioTracks (*e)[0];
-                instruments::makeInstrumentTrack (*t, e->getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}));
+                instruments::makeInstrumentTrack (*t, e->getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))));
                 auto clip = t->insertMIDIClip ({ 0_tp, te::TimePosition::fromSeconds (2.0) }, nullptr);
                 for (int i = 0; i < 4; ++i) clip->getSequence().addNote (60 + i * 4, te::BeatPosition::fromBeats (i), te::BeatDuration::fromBeats (0.9), 100, 0, nullptr);
                 expect ("instrument track has its synth first", instruments::isInstrumentTrack (*t));
@@ -866,7 +900,7 @@ namespace selftest
                 const double fs = 24000.0;
                 std::vector<float> x (2048);
                 for (size_t i = 0; i < x.size(); ++i) x[i] = wave ((double) i / fs);
-                const float f = TunerPitch::estimate (x.data(), (int) x.size(), fs);
+                const float f = vs::TunerPitch::estimate (x.data(), (int) x.size(), fs);
                 return f > 0 ? 1200.0 * std::log2 (f / hz) : 9999.0;
             };
             const double tau = MathConstants<double>::twoPi;

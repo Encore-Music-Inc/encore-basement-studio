@@ -163,14 +163,6 @@ void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
 {
     addInternalPlugin<te::VolumeAndPanPlugin> (*this, num);
     addInternalPlugin<te::LevelMeterPlugin> (*this, num);
-    addInternalPlugin<te::EqualiserPlugin> (*this, num);
-    addInternalPlugin<te::ReverbPlugin> (*this, num);
-    addInternalPlugin<te::DelayPlugin> (*this, num);
-    addInternalPlugin<te::ChorusPlugin> (*this, num);
-    addInternalPlugin<te::PhaserPlugin> (*this, num);
-    addInternalPlugin<te::CompressorPlugin> (*this, num);
-    addInternalPlugin<te::PitchShiftPlugin> (*this, num);
-    addInternalPlugin<te::LowPassPlugin> (*this, num);
     addInternalPlugin<te::MidiModifierPlugin> (*this, num);
     addInternalPlugin<te::MidiPatchBayPlugin> (*this, num);
     addInternalPlugin<te::PatchBayPlugin> (*this, num);
@@ -182,12 +174,6 @@ void PluginTreeGroup::createBuiltInItems (int& num, te::Plugin::Type types)
    #if TRACKTION_ENABLE_REWIRE
     addInternalPlugin<te::ReWirePlugin> (*this, num, true);
    #endif
-
-    if (types == te::Plugin::Type::allPlugins)
-    {
-        addInternalPlugin<te::SamplerPlugin> (*this, num, true);
-        addInternalPlugin<te::FourOscPlugin> (*this, num, true);
-    }
 
     addInternalPlugin<te::InsertPlugin> (*this, num);
 
@@ -312,8 +298,10 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
     {
         auto maker = d.manufacturerName.trim().isEmpty() ? String ("Other") : d.manufacturerName.trim();
         auto item = [&edit, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); };
-        if (d.pluginFormatName == "Encore")
+        if (d.pluginFormatName == "Encore" && ! d.isInstrument)
             encore.addItem (d.name + "  (" + d.category + ")", item);
+        else if (d.pluginFormatName == "Encore")
+            continue;   // ENCORE.'s instruments: the synth is offered below; the sampler plays the drum kits
         else if (maker.containsIgnoreCase ("Encore"))
             continue; // installed VST3 copies of the same plugins: the built-in ones replace them
         else if (d.isInstrument)
@@ -331,26 +319,12 @@ inline void showEffectsMenu (te::Track::Ptr track, te::SelectionManager* sm, Com
     if (byMaker.empty()) m.addItem ("None found yet", false, false, nullptr);
     for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);
     instruments.addSeparator();
-    instruments.addItem ("Built-in synth (4OSC)", [&edit, track]
+    instruments.addItem ("ENCORE. Synth", [&edit, track]
     {
         if (auto at = dynamic_cast<te::AudioTrack*> (track.get()))
-            instruments::makeInstrumentTrack (*at, edit.getPluginCache().createNewPlugin (te::FourOscPlugin::xmlTypeName, {}));
+            instruments::makeInstrumentTrack (*at, edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, EncorePluginFormat::describe (*EncorePluginFormat::find ("encore:synth"))));
     });
     m.addSubMenu ("Instrument (plays this track from MIDI)", instruments, true);
-
-    m.addSectionHeader ("Built in");
-    auto builtIn = [&m, &edit, add] (const char* name, const char* type)
-    {
-        m.addItem (name, [&edit, add, t = String (type)] { add (edit.getPluginCache().createNewPlugin (t, {})); });
-    };
-    builtIn ("EQ (4-band)", te::EqualiserPlugin::xmlTypeName);
-    builtIn ("Compressor / Limiter", te::CompressorPlugin::xmlTypeName);
-    builtIn ("Reverb", te::ReverbPlugin::xmlTypeName);
-    builtIn ("Delay", te::DelayPlugin::xmlTypeName);
-    builtIn ("Chorus", te::ChorusPlugin::xmlTypeName);
-    builtIn ("Phaser", te::PhaserPlugin::xmlTypeName);
-    builtIn ("Pitch Shifter", te::PitchShiftPlugin::xmlTypeName);
-    builtIn ("Low / High-Pass Filter", te::LowPassPlugin::xmlTypeName);
 
     m.addSeparator();
     auto scanning = StudioHooks::pluginScanStatus ? StudioHooks::pluginScanStatus() : String();
@@ -591,9 +565,9 @@ void AudioClipComponent::drawWaveform (Graphics& g, te::AudioClipBase& c, te::Sm
     const auto gain = c.getGain() * jlimit (1.0f, 32.0f, editViewState.waveformZoom.get());
     const auto pan = thumb.getNumChannels() == 1 ? 0.0f : c.getPan();
 
-    const float pv = pan * gain;
-    const float gainL = (gain - pv);
-    const float gainR = (gain + pv);
+    // the picture follows the clip's gain and pan as playback applies them (encore-audio-processing's pan law)
+    const auto panned = vs::mix::panGains (gain, pan, vs::mix::PanLaw::linear);
+    const float gainL = panned.left, gainR = panned.right;
 
     const bool usesTimeStretchedProxy = c.usesTimeStretchedProxy();
 
@@ -938,14 +912,11 @@ TrackHeaderComponent::TrackHeaderComponent (EditViewState& evs, te::Track::Ptr t
     {
         if (auto vp = at->getVolumePlugin())
         {
-            volume.setRange (-60.0, 6.0, 0.1);
-            volume.setSkewFactorFromMidPoint (-12.0);
-            volume.setValue (vp->getVolumeDb(), dontSendNotification);
-            volume.setDoubleClickReturnValue (true, 0.0);
-            volume.textFromValueFunction = [] (double v) { return v <= -59.9 ? String ("-inf dB") : String (v, 1) + " dB"; };
+            faderlaw::setUp (volume, 0.0f, "-inf dB");
+            faderlaw::show (volume, vp->getVolumeDb());
             volume.setPopupDisplayEnabled (true, true, nullptr);
             volume.setTooltip ("Volume (double-click for 0 dB)");
-            volume.onValueChange = [this, vp] { vp->setVolumeDb ((float) volume.getValue()); };
+            volume.onValueChange = [this, vp] { vp->setVolumeDb (faderlaw::db (volume)); };
 
             pan.setRange (-1.0, 1.0, 0.01);
             pan.setValue (vp->getPan(), dontSendNotification);

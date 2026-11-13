@@ -50,14 +50,15 @@ this file does.
 |---|---|
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
-| `patches/` | ENCORE.'s change to Tracktion Engine, applied by CMake at configure |
-| `tools/` | `tunings.py` (writes `Source/edit/Tunings.h`), `window-test.ps1` |
+| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure: per-track monitoring, and `tracktion-audio-processing.patch`, which has its playback call ENCORE. Audio Processing (fades, gains and pan, the fader law, levels, resampling, time stretching, clicks, automation curves, delay compensation, a hosted plugin's channels and dry and wet levels and the clean-up after it, racks, sends, the patch bay, an export's measurements) and takes out of the build what has its own processing but Basement Studio doesn't use (Tracktion's effects and instruments, clip effects, speed-ramp fades, transient detection, its loudness meter and analysers, export normalising, trimming and dither, the envelope follower modifier, the output test tone) |
+| `tools/` | `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |
 | `CHANGELOG.md` | every release's notes, newest first; the release job copies the version's section onto the GitHub release |
 | `.github/release-notes.sh` | prints a version's notes from `CHANGELOG.md`, and fails if they're missing (CI runs it on every build) |
 | `.github/encore-vst-release.sh` | downloads a file of the ENCORE. VST release the pin points to and checks its SHA-256 (the Windows installer and the Mac disk image bundle it; Linux CI loads its plugins) |
 | `.github/pins/check.sh` | CI's check that every pin is a release (the README's Pinned releases table) |
+| `.github/no-audio-processing.sh` | CI's check that Basement Studio keeps no audio processing of its own (its exceptions are listed in it, each with its reason) |
 | `external/fst`, `external/lame` | vendored: VST2 headers (GPLv3), the MP3 encoder (LGPL) |
 | `.github/sanitizers/` | the scheduled sanitizer run's exceptions (`ubsan.supp`, each with its reason; keep it short) and `report.sh` |
 | `.github/workflows/ci.yml` | pull requests: Linux x64, Windows x64 and macOS (Apple Silicon), the app and the self-test, no packaging (skipped when only docs change, or only the version line and `CHANGELOG.md`); on a schedule: the self-test with sanitizers; main and manual runs: Windows, macOS, Linux x64 and arm64 with their files as artifacts, plus the Linux package tests; `v*` tags: attach main's files to the Release, no rebuild; "CI passed" is the one check to require |
@@ -81,6 +82,27 @@ this file does.
   Linux, Windows and macOS proves that in the pull request that moves the pin.
 - `tools/sync-encore-plugins.ps1` and the copied `encore/` folder are gone on
   purpose.
+- All audio processing lives in encore-audio-processing; Basement Studio keeps
+  none of its own, not even a small helper: the tuner and its tunings list,
+  mastering, export loudness and dither, the metronome's clicks, the drum kits,
+  the built-in effects and instruments (`Source/encore/StudioEffects.h` only
+  wraps them as plugins), clip time stretching, how meters move, the piano
+  roll's grids and note edits, and note and key names all come from its
+  headers. JUCE's processing classes and Tracktion's effects, instruments,
+  export loudness and dither don't stand in for them, and the menus offer
+  only ENCORE.'s (songs that already use a Tracktion effect still open it).
+  When something is missing there, add it there first.
+  `.github/no-audio-processing.sh` (in CI) fails on processing-shaped code in
+  `Source/`. Tracktion Engine's own playback calls the headers too, through
+  `patches/tracktion-audio-processing.patch` (the patches row above lists
+  what); what stays Tracktion's is summing tracks, the timeline, plugin
+  hosting and reading a clip backwards. What the patch takes out of the build
+  stays out: to use one of those features, build it in encore-audio-processing
+  first, and the check fails on code that asks for them.
+- `ReferenceTests` (a target in `CMakeLists.txt`) builds encore-audio-processing's
+  `tests/ReferenceTests.cpp` the way this repository compiles the headers; CI
+  runs it on every system and it checks every result in that repo's
+  `data/reference.json`.
 
 ## Pins
 

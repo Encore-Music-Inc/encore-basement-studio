@@ -90,6 +90,11 @@ EOF
         echo "License: AGPL-3"
         echo " The ENCORE. plugins and audio processing, built into the app."
         echo
+        echo "Files: external/encore-vst/external/encore-audio-processing/dsp/third_party/signalsmith/*"
+        echo "Copyright: Geraint Luff / Signalsmith Audio Ltd."
+        echo "License: Expat"
+        echo " Signalsmith Stretch (MIT), the time stretcher in the audio processing."
+        echo
         echo "Files: external/encore-vst/external/encore-audio-processing/external/JUCE/*"
         echo "Copyright: Raw Material Software Limited"
         echo "License: AGPL-3"
@@ -98,11 +103,6 @@ EOF
         echo "Copyright: Tracktion Corporation"
         echo "License: GPL-3+"
         echo " Tracktion Engine is used under the GNU General Public License v3 or later."
-        echo
-        echo "Files: external/tracktion_engine/modules/tracktion_engine/3rd_party/soundtouch/*"
-        echo "Copyright: Olli Parviainen"
-        echo "License: LGPL-2.1+"
-        echo " On Debian systems the LGPL 2.1 is in /usr/share/common-licenses/LGPL-2.1."
         echo
         echo "Files: external/fst/*"
         echo "Copyright: IOhannes m zmoelnig"

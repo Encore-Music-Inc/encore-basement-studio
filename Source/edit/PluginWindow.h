@@ -365,6 +365,13 @@ class ExtendedUIBehaviour : public te::UIBehaviour
 public:
     ExtendedUIBehaviour() = default;
 
+    // the waveform pictures: encore-audio-processing's (edit/WaveformPicture.h)
+    std::unique_ptr<juce::AudioThumbnailBase> createAudioThumbnail (int samplesPerBlock, juce::AudioFormatManager& formats,
+                                                                   juce::AudioThumbnailCache& cache) override
+    {
+        return std::make_unique<WaveformPicture> (samplesPerBlock, formats, cache);
+    }
+
     std::unique_ptr<Component> createPluginWindow (te::PluginWindowState& pws) override
     {
         if (auto ws = dynamic_cast<te::Plugin::WindowState*> (&pws))

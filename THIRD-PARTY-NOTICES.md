@@ -13,14 +13,14 @@ to rebuild against a changed copy, and the rest are permissive.
   they share (`shared/`: `EncoreProcessorBase.h`, `ui/`). Basement Studio
   compiles their processors and editors in.
 - Where: git submodule at `external/encore-vst`
-  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.6.1
+  (https://github.com/Encore-Music-Inc/encore-vst), pinned to its release v0.7.1
 - Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its
   `external/encore-audio-processing` (and that repo's `external/JUCE`) are the
   audio processing and JUCE below.
 
 ## ENCORE. Audio Processing (encore-audio-processing)
 
-- What: ENCORE.'s shared audio processing headers (`dsp/...`), release v1.0.1
+- What: ENCORE.'s shared audio processing headers (`dsp/...`), release v2.3.0
 - Where: `external/encore-vst/external/encore-audio-processing`, pinned by encore-vst
   (https://github.com/Encore-Music-Inc/encore-audio-processing)
 - Licence: GNU AGPLv3, Copyright (C) Encore Music, Inc. Its `external/JUCE`
@@ -83,8 +83,10 @@ JUCE also ships the AAX SDK (Avid's licence or GPLv3) and the LV2 libraries
 - What: Tracktion Engine, the audio engine (editing, playback, recording,
   rendering), at commit `a5e44996f5f08dfa6af5f5d02d900fb3cfa37422`
 - Where: git submodule at `external/tracktion_engine`
-  (https://github.com/Tracktion/tracktion_engine). `patches/tracktion-per-track-monitor.patch`
-  is ENCORE.'s change to it, applied when CMake configures.
+  (https://github.com/Tracktion/tracktion_engine). ENCORE.'s changes to it are
+  in `patches/` (per-track monitoring, and its playback calling ENCORE. Audio
+  Processing for fades, gains and pan, levels, resampling, time stretching,
+  clicks, automation curves and delay compensation), applied when CMake configures.
 - Also: `Source/edit/Components.*`, `Source/edit/Utilities.h` and
   `Source/edit/PluginWindow.h` started from Tracktion Engine's example code
   (`examples/common/`), Copyright Tracktion Software Corporation.
@@ -98,8 +100,6 @@ The ones compiled into this build:
 
 | Library | Where (under `external/tracktion_engine/modules/`) | Licence |
 |---|---|---|
-| SoundTouch 2.1 (time stretching, `TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH=1`) | `tracktion_engine/3rd_party/soundtouch` | GNU LGPL 2.1 or later, Copyright Olli Parviainen |
-| libsamplerate | `3rd_party/libsamplerate` | BSD-2-Clause, Copyright Erik de Castro Lopo |
 | CHOC | `3rd_party/choc` | ISC, Copyright Tracktion Corporation |
 | crill | `3rd_party/crill` | Boost Software License 1.0 |
 | magic_enum | `3rd_party/magic_enum` | MIT, Copyright Daniil Goncharov |
@@ -107,8 +107,10 @@ The ones compiled into this build:
 | rpmalloc | `3rd_party/rpmalloc` | public domain (or MIT), Mattias Jansson |
 | tl::expected | `3rd_party/expected` | CC0 1.0 |
 
-Tracktion Engine's other bundled code (Airwindows, Signalsmith Stretch,
-doctest) is switched off or only used by its own tests.
+Tracktion Engine's other bundled code (Airwindows, SoundTouch, libsamplerate,
+its own copy of Signalsmith Stretch, doctest) is switched off or only used by
+its own tests. Clip time stretching uses ENCORE. Audio Processing's stretcher
+(`patches/tracktion-audio-processing.patch`), whose notices cover Signalsmith Stretch.
 
 ## FST
 

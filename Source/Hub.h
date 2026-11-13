@@ -7,6 +7,9 @@
 // are right from the start.
 #pragma once
 
+#include "dsp/Music.h"
+#include "dsp/Tempo.h"
+
 #include "SongInfo.h"
 
 namespace hubui
@@ -62,12 +65,25 @@ namespace hubui
         return juce::String ((int) s / 60) + ":" + juce::String ((int) s % 60).paddedLeft ('0', 2);
     }
 
+    /** Every key, by ENCORE.'s one list (encore-audio-processing's dsp/Music.h), in
+        order of the tonic: C, then C# and Db, then D... each major then minor */
     inline juce::StringArray keys()
     {
+        namespace mu = vs::music;
         juce::StringArray k;
-        for (auto n : { "C", "C#/Db", "D", "Eb", "E", "F", "F#/Gb", "G", "Ab", "A", "Bb", "B" })
-            for (auto m : { " major", " minor" }) k.add (juce::String (n) + m);
+        for (int pc = 0; pc < 12; ++pc)
+            for (auto mode : { mu::Mode::major, mu::Mode::minor })
+                for (auto* name : mode == mu::Mode::major ? mu::majorKeys : mu::minorKeys)
+                    if (auto n = mu::parseNote (name); n && mu::pcOf (*n) == pc)
+                        k.add (juce::String (mu::keyName ({ *n, mode })));
         return k;
+    }
+
+    /** A saved key in the list's words ("C#/Db major", from older versions, is "C# major") */
+    inline juce::String keyFromSaved (const juce::String& saved)
+    {
+        if (auto key = vs::music::parseKey (saved.toStdString())) return juce::String (vs::music::keyName (*key));
+        return saved;
     }
 
     inline juce::StringArray genres()
@@ -104,7 +120,7 @@ public:
         {
             auto v = bpm.getText().getDoubleValue();
             SongInfo i;
-            i.bpm = juce::jlimit (20.0, 400.0, v > 0 ? v : 120.0);
+            i.bpm = vs::tempo::clampTempo (v > 0 ? v : 120.0);
             if (bpm.getText() != i.bpmText()) { bpm.setText (i.bpmText(), false); if (onChange) onChange(); }
         };
         bpm.setTooltip ("20 to 400 BPM");
@@ -141,7 +157,7 @@ public:
         bpm.setText (i.bpmText(), false);
         sig.setText (i.sigText(), juce::dontSendNotification);
         if (sig.getSelectedId() == 0) sig.setText (i.sigText(), juce::dontSendNotification);
-        key.setSelectedId (juce::jmax (1, hubui::keys().indexOf (i.key) + 2), juce::dontSendNotification);
+        key.setSelectedId (juce::jmax (1, hubui::keys().indexOf (hubui::keyFromSaved (i.key)) + 2), juce::dontSendNotification);
         notes.setText (i.notes, false);
     }
 
@@ -155,7 +171,7 @@ public:
         base.notes = notes.getText();
         base.key = key.getSelectedId() > 1 ? key.getText() : juce::String();
         auto b = bpm.getText().getDoubleValue();
-        base.bpm = b > 0 ? juce::jlimit (20.0, 400.0, b) : 120.0;
+        base.bpm = b > 0 ? vs::tempo::clampTempo (b) : 120.0;
         auto s = juce::StringArray::fromTokens (sig.getText(), "/", {});
         if (s.size() == 2 && s[0].getIntValue() > 0 && s[1].getIntValue() > 0) { base.sigNum = s[0].getIntValue(); base.sigDen = s[1].getIntValue(); }
         return base;

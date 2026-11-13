@@ -45,7 +45,7 @@ namespace fx
         auto* s = dynamic_cast<te::AuxSendPlugin*> (p.get());
         if (s == nullptr) return nullptr;
         s->busNumber = bus;
-        s->setGainDb (-100.0f);
+        s->setGainDb (vs::meters::faderFloorDb);
         // after the volume/pan, before the meter: a post-fader send
         auto list = t.pluginList.getPlugins();
         int index = list.size();
@@ -74,6 +74,20 @@ namespace fx
                 t->pluginList.insertPlugin (effect, 1, nullptr);
         return t.get();
     }
+
+    /** The FX tracks the menus offer: 0 a reverb (ENCORE. Verb), 1 a delay (ENCORE. Delay),
+        2 an empty one, each named for what it holds */
+    inline te::AudioTrack* addKind (te::Edit& e, int kind)
+    {
+        const char* id = kind == 0 ? "encore:verb" : kind == 1 ? "encore:delay" : nullptr;
+        juce::PluginDescription effect;
+        if (id != nullptr)
+            if (auto* entry = EncorePluginFormat::find (id)) effect = EncorePluginFormat::describe (*entry);
+        int n = tracks (e).size() + 1;
+        juce::String name = kind == 0 ? "Reverb" : kind == 1 ? "Delay" : "FX " + juce::String (n);
+        for (auto t : tracks (e)) if (t->getName() == name) name << " " << n;
+        return addTrack (e, name, id != nullptr ? juce::String (te::ExternalPlugin::xmlTypeName) : juce::String(), effect);
+    }
 }
 
 //==============================================================================
@@ -87,11 +101,9 @@ public:
     {
         fader.setSliderStyle (Slider::LinearVertical);
         fader.setTextBoxStyle (Slider::NoTextBox, false, 0, 0);
-        fader.setRange (-60.0, 6.0, 0.1);
-        fader.setSkewFactorFromMidPoint (-12.0);
-        fader.setDoubleClickReturnValue (true, 0.0);
+        faderlaw::setUp (fader, 0.0f, "-inf");
         fader.setTooltip ("Volume (double-click for 0 dB)");
-        fader.onValueChange = [this] { if (onDb) onDb ((float) fader.getValue()); updateText(); };
+        fader.onValueChange = [this] { if (onDb) onDb (faderlaw::db (fader)); updateText(); };
         addAndMakeVisible (fader);
         addAndMakeVisible (meter);
         juce::ignoreUnused (stereo);
@@ -101,7 +113,7 @@ public:
         addAndMakeVisible (db);
     }
 
-    void setDb (float v) { if (! fader.isMouseButtonDown()) { fader.setValue (v, dontSendNotification); updateText(); } }
+    void setDb (float v) { if (! fader.isMouseButtonDown()) { faderlaw::show (fader, v); updateText(); } }
     LevelMeter meter;
 
     void resized() override
@@ -116,7 +128,7 @@ public:
 private:
     Slider fader;
     Label db;
-    void updateText() { auto v = fader.getValue(); db.setText (v <= -59.9 ? String ("-inf") : String (v, 1), dontSendNotification); }
+    void updateText() { db.setText (fader.getTextFromValue (fader.getValue()).upToFirstOccurrenceOf (" dB", false, false), dontSendNotification); }
 };
 
 //==============================================================================
@@ -286,18 +298,15 @@ private:
                 s->label.setText (fxTrack->getName(), dontSendNotification);
                 s->label.setFont (FontOptions (11.0f));
                 s->label.setColour (Label::textColourId, theme::text2);
-                s->knob.setRange (-60.0, 6.0, 0.1);
-                s->knob.setSkewFactorFromMidPoint (-12.0);
-                s->knob.setDoubleClickReturnValue (true, -60.0);
+                faderlaw::setUp (s->knob, vs::meters::faderFloorDb, "off");
                 s->knob.setPopupDisplayEnabled (true, true, nullptr);
-                s->knob.textFromValueFunction = [] (double v) { return v <= -59.9 ? String ("off") : String (v, 1) + " dB"; };
                 s->knob.setTooltip ("How much of this track goes to " + fxTrack->getName());
                 auto existing = fx::sendOn (*track, s->bus);
-                s->knob.setValue (existing ? juce::jlimit (-60.0f, 6.0f, existing->getGainDb()) : -60.0, dontSendNotification);
+                faderlaw::show (s->knob, existing ? existing->getGainDb() : vs::meters::faderFloorDb);
                 s->knob.onValueChange = [this, s]
                 {
                     if (auto send = fx::ensureSend (*track, s->bus))
-                        send->setGainDb (s->knob.getValue() <= -59.9 ? -100.0f : (float) s->knob.getValue());
+                        send->setGainDb (faderlaw::db (s->knob));
                 };
                 s->addAndMakeVisible (s->label);
                 s->addAndMakeVisible (s->knob);
@@ -371,7 +380,7 @@ private:
         for (auto* s : sends)
             if (! s->knob.isMouseButtonDown())
                 if (auto send = fx::sendOn (*track, s->bus))
-                    s->knob.setValue (juce::jlimit (-60.0f, 6.0f, send->getGainDb()), dontSendNotification);
+                    faderlaw::show (s->knob, send->getGainDb());
     }
 };
 
@@ -494,9 +503,6 @@ private:
             if (d.pluginFormatName != "Encore" && ! d.isInstrument && ! d.manufacturerName.containsIgnoreCase ("Encore"))
                 byMaker[d.manufacturerName.isEmpty() ? String ("Other") : d.manufacturerName].addItem (d.name, [this, add, d] { add (edit.getPluginCache().createNewPlugin (te::ExternalPlugin::xmlTypeName, d)); });
         for (auto& [maker, menu] : byMaker) m.addSubMenu (maker, menu);
-        m.addSeparator();
-        m.addItem ("EQ (4-band)", [this, add] { add (edit.getPluginCache().createNewPlugin (te::EqualiserPlugin::xmlTypeName, {})); });
-        m.addItem ("Compressor / Limiter", [this, add] { add (edit.getPluginCache().createNewPlugin (te::CompressorPlugin::xmlTypeName, {})); });
         m.showMenuAsync (PopupMenu::Options().withTargetComponent (&addFx));
     }
 
