@@ -5,6 +5,81 @@ job puts its section on the GitHub release (see "Release notes" in
 `CLAUDE.md`). Versions 0.4.3 and earlier were published from a different
 repository; their notes are kept below as they were written.
 
+## v0.7.0
+
+ENCORE. Basement Studio now runs entirely on ENCORE. Audio Processing, the
+same audio processing as ENCORE. VST, with ENCORE.'s own effects and
+instruments, masters that land on their loudness target, and fixes for songs
+that change time signature. Some songs saved with v0.6.0 open differently,
+listed below.
+
+### What's new
+- **ENCORE.'s effects and instruments, built in:** Compressor, Limiter, Delay,
+  Chorus, Phaser, Pitch Shifter and Filter, and ENCORE. Synth and ENCORE.
+  Sampler. The Delay FX track plays ENCORE. Delay.
+- **Masters land on their loudness target**, and 16 and 24-bit masters are
+  dithered (they weren't before). Every export uses the same dither as the
+  rest of ENCORE., and streaming loudness never goes past -1 dBFS peak.
+- **The before and after preview** matches the two by loudness as people
+  hear it, so the comparison is fair.
+- **Drum kits:** the kits are rebuilt on the same drum engine as the rest of
+  ENCORE., and the drum grid also offers the ENCORE. and Club kits.
+- **Metronome:** the click sounds are rebuilt on the same engine, with a new
+  Kick and hat. Your chosen sound carries over.
+- **One spelling for notes and keys** everywhere (the tuner, the piano roll
+  and song details).
+
+### What's fixed
+- Moving by bars, snapping to bars, the piano roll's bar lines and new drum
+  clips used the song's first time signature, so they went wrong after a
+  change. They now follow the song's bars.
+- Mastered exports were measured once and not checked, so they could miss
+  their loudness target.
+
+### Songs saved with v0.6.0
+- Tracktion Engine's own effects (its EQ, reverb, compressor, delay, chorus,
+  phaser, pitch shifter and filter) and its 4OSC synth and sampler are no
+  longer included. A song that used them opens without them: put ENCORE.'s
+  in their place. Drum tracks made with v0.6.0 played their kit on
+  Tracktion's sampler, so they open silent: choose a kit again in the drum
+  grid.
+- A key saved as "C#/Db major" reads as "C# major".
+
+### Downloads
+- **Windows** (10 and 11, 64-bit):
+  `ENCORE-Basement-Studio-0.7.0-windows-setup.exe`, the installer (Start menu,
+  desktop shortcut, opens .encore songs, and it can also install ENCORE. VST
+  v0.7.1 for your other DAWs). Or `ENCORE-Basement-Studio-0.7.0-windows-x64.zip`
+  to run it from any folder without installing. If SmartScreen warns you, click
+  **More info**, then **Run anyway**.
+- **Mac** (Apple Silicon and Intel, macOS 11 or newer):
+  `ENCORE-Basement-Studio-0.7.0-macos.dmg`. Open it and drag
+  `ENCORE Basement Studio` to Applications. It isn't signed by Apple yet: the
+  first time, macOS says it was "Not Opened". Click **Done**, go to
+  **System Settings > Privacy & Security**, click **Open Anyway**, then open
+  the app again and click **Open Anyway**. For the ENCORE. plugins in your other
+  music apps, open `ENCORE-VST-0.7.1-macos.pkg` from the same disk image (the
+  same steps the first time).
+- **Linux and Raspberry Pi** (64-bit Raspberry Pi OS Bookworm or newer,
+  Debian 12 or newer, Ubuntu 22.04 or newer):
+  `encore-basement-studio_0.7.0_amd64.deb` and
+  `ENCORE-Basement-Studio-0.7.0-x86_64.AppImage` for PCs,
+  `encore-basement-studio_0.7.0_arm64.deb` and
+  `ENCORE-Basement-Studio-0.7.0-aarch64.AppImage` for Raspberry Pi 4 and 5.
+  Install the .deb with `sudo apt install ./<file>.deb`, or make the AppImage
+  runnable (`chmod +x`) and start it. For the ENCORE. plugins in your other
+  music apps, get ENCORE. VST v0.7.1's Linux download from the encore-vst
+  releases.
+
+Each file has a `.sha256` next to it, to check the download.
+
+### Built on
+ENCORE. VST v0.7.1 (which brings ENCORE. Audio Processing v2.3.0 and JUCE
+9.0.5), and Tracktion Engine at commit `a5e4499` (no Tracktion Engine release
+supports JUCE 9 yet).
+
+Questions or problems: support@encoremusic.studio
+
 ## v0.6.0
 
 ENCORE. Basement Studio finds more of your plugins (Audio Units on a Mac, LV2
