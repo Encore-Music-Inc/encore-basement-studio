@@ -216,6 +216,43 @@ index 7d578c3..6b8dd6f 100644
  
      if (curve1 >= -0.5f && curve1 <= 0.5f)
      {
+diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
+index 55cefed..7c630da 100644
+--- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
++++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
+@@ -1205,7 +1205,7 @@ public:
+         auto inputGainDb = getWaveInput().inputGainDb;
+ 
+         if (inputGainDb > 0.01f || inputGainDb < -0.01f)
+-            inputBuffer.applyGain (0, numSamples, dbToGain (inputGainDb));
++            vs::mix::applyGain (dbToGain (inputGainDb), inputBuffer.getArrayOfWritePointers(), inputBuffer.getNumChannels(), numSamples);   // ENCORE. Basement Studio: ENCORE. Audio Processing's gain stage
+ 
+         if (measurerToUpdate != nullptr)
+             getWaveInput().feedLevelMeasurerThroughGate (inputBuffer, 0, numSamples);
+@@ -1795,7 +1795,7 @@ void WaveInputDevice::consumeNextAudioBlock (const float* const* allChannels, in
+                                                        allChannels[ci.indexInDevice], numSamples);
+ 
+             if (inputGainDb > 0.01f || inputGainDb < -0.01f)
+-                buf.applyGain (0, numSamples, dbToGain (inputGainDb));
++                vs::mix::applyGain (dbToGain (inputGainDb), buf.getArrayOfWritePointers(), buf.getNumChannels(), numSamples);   // ENCORE. Basement Studio: ENCORE. Audio Processing's gain stage
+ 
+             feedLevelMeasurerThroughGate (buf, 0, numSamples);
+         }
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_ChannelRemappingNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_ChannelRemappingNode.cpp
+index c782faf..8b6ec59 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_ChannelRemappingNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_ChannelRemappingNode.cpp
+@@ -133,8 +133,8 @@ void ChannelRemappingNode::processExplicitMapping (ProcessContext& pc)
+ 
+             if (e.gain == 1.0f)
+                 add (destChan, srcChan);
+-            else
+-                add (destChan, srcChan, e.gain);
++            else   // ENCORE. Basement Studio: ENCORE. Audio Processing's gain stage (dsp/Mix.h)
++                vs::mix::addWithGain (srcChan.data.data, destChan.data.data, (int) destChan.getNumFrames(), e.gain);
+         }
+     }
+ }
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp
 index 48805df..9f6c43a 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_ClickNode.cpp
@@ -447,10 +484,23 @@ index 826be8a..70703d1 100644
      //==============================================================================
      bool isMutedAtTime (TimePosition) const;
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
-index dab58c5..44ae271 100644
+index dab58c5..ff0288f 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_RackInstanceNode.cpp
-@@ -135,10 +135,12 @@ void RackInstanceNode::process (ProcessContext& pc)
+@@ -128,17 +128,22 @@ void RackInstanceNode::process (ProcessContext& pc)
+ 
+         copyIfNotAliased (dest, src);
+ 
++        // ENCORE. Basement Studio: ENCORE. Audio Processing's gain stage and ramp
++        // (dsp/Mix.h, dsp/Ramp.h; the ramp number for number as JUCE's smoother)
++        float* d = dest.data.data;
++        const int numFrames = (int) dest.getNumFrames();
++
+         if (gain == lastGain[channel])
+         {
+-            if (gain != 1.0f)
+-                applyGain (dest, gain);
++            vs::mix::applyGain (gain, &d, 1, numFrames);
          }
          else
          {
@@ -458,15 +508,78 @@ index dab58c5..44ae271 100644
 -            smoother.setTargetValue (gain);
 -            smoother.reset ((int) dest.getNumFrames());
 -            applyGainPerFrame (dest, [&] { return smoother.getNextValue(); });
-+            // ENCORE. Basement Studio: ENCORE. Audio Processing's ramp (number for number as JUCE's smoother)
 +            vs::Ramp<false> smoother;
 +            smoother.setCurrentAndTarget (lastGain[channel]);
 +            smoother.setTarget (gain);
-+            smoother.reset ((double) dest.getNumFrames(), 1.0);
-+            applyGainPerFrame (dest, [&] { return smoother.next(); });
++            smoother.reset ((double) numFrames, 1.0);
++            vs::mix::applyGain (smoother, &d, 1, numFrames);
  
              lastGain[channel] = gain;
          }
+diff --git a/modules/tracktion_engine/playback/graph/tracktion_RackReturnNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_RackReturnNode.cpp
+index a1bba45..1f5013d 100644
+--- a/modules/tracktion_engine/playback/graph/tracktion_RackReturnNode.cpp
++++ b/modules/tracktion_engine/playback/graph/tracktion_RackReturnNode.cpp
+@@ -126,33 +126,44 @@ void RackReturnNode::process (ProcessContext& pc)
+     copyIfNotAliased (destAudio.getFirstChannels (wetSource.audio.getNumChannels()),
+                       wetSource.audio);
+ 
+-    if (wetGain == lastWetGain)
+-    {
+-        if (wetGain != 1.0f)
+-            applyGain (destAudio, wetGain);
+-    }
+-    else
++    // ENCORE. Basement Studio: the wet and dry levels by ENCORE. Audio Processing's
++    // gain stages and a rack return's ramps (dsp/Mix.h), number for number as before
++    const auto numFrames = (int) destAudio.getNumFrames();
++    auto channel = [] (auto& view, choc::buffer::ChannelCount c) { return view.getChannel (c).data.data; };
++
++    for (choc::buffer::ChannelCount c = 0; c < destAudio.getNumChannels(); ++c)
+     {
+-        const auto step = (wetGain - lastWetGain) / static_cast<float> (destAudio.getNumFrames());
+-        applyGainPerFrame (destAudio, [start = lastWetGain, step]() mutable { return start += step; });
++        float* d = channel (destAudio, c);
+ 
+-        lastWetGain = wetGain;
++        if (wetGain == lastWetGain)
++            vs::mix::applyGain (wetGain, &d, 1, numFrames);
++        else
++            vs::mix::applyGainRampStepFirst (d, numFrames, lastWetGain, wetGain);
+     }
+ 
++    lastWetGain = wetGain;
++
+ 
+     // Add dry audio applying gain
+     auto dryDestView = destAudio.getFirstChannels (drySource.audio.getNumChannels());
+ 
+-    if (dryGain == lastDryGain)
++    if (dryGain == lastDryGain && dryGain == 1.0f)
+     {
+-        if (dryGain == 1.0f)
+-            add (dryDestView, drySource.audio);
+-        else
+-            tracktion::graph::add (dryDestView, drySource.audio, dryGain);
++        add (dryDestView, drySource.audio);
+     }
+     else
+     {
+-        tracktion::graph::addApplyingGainRamp (dryDestView, drySource.audio, lastDryGain, dryGain);
++        for (choc::buffer::ChannelCount c = 0; c < dryDestView.getNumChannels(); ++c)
++        {
++            const float* src = channel (drySource.audio, c);
++            float* d = channel (dryDestView, c);
++
++            if (dryGain == lastDryGain)
++                vs::mix::addWithGain (src, d, numFrames, dryGain);
++            else
++                vs::mix::addWithGainRamp (src, d, numFrames, lastDryGain, dryGain);
++        }
++
+         lastDryGain = dryGain;
+     }
+ }
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
 index a9012a7..9414977 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_SpeedRampWaveNode.cpp
@@ -857,6 +970,116 @@ index 65aa698..c99c468 100644
  
              channelLevels[(size_t) i] = { { now, gainToDb (gain) }, gain > 0.999f };
          }
+diff --git a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
+index 9b10781..e9f79b2 100644
+--- a/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
++++ b/modules/tracktion_engine/plugins/external/tracktion_ExternalPlugin.cpp
+@@ -1423,25 +1423,33 @@ void ExternalPlugin::applyToBuffer (const PluginRenderContext& fc)
+             AudioScratchBuffer asb (numChansToProcess, fc.bufferNumSamples);
+             auto& buffer = asb.buffer;
+ 
++            // ENCORE. Basement Studio: the channels into and out of the plugin by
++            // ENCORE. Audio Processing's channel maps (dsp/Channels.h)
++            namespace vc = vs::channels;
++            const int n = fc.bufferNumSamples;
++            auto copyChannel = [n] (const float* from, float* to) { vc::map (vc::Map::keep, &from, 1, n, &to); };
++            auto dest = [&fc] (int c) { return fc.destBuffer->getWritePointer (c, fc.bufferStartSample); };
++
+             // Copy existing channel or clear data
+             for (int i = 0; i < numChansToProcess; ++i)
+             {
+                 if (i < destNumChans)
+-                    buffer.copyFrom (i, 0, *fc.destBuffer, i, fc.bufferStartSample, fc.bufferNumSamples);
++                    copyChannel (dest (i), buffer.getWritePointer (i));
+                 else
+-                    buffer.clear (i, 0, fc.bufferNumSamples);
++                    buffer.clear (i, 0, n);
+             }
+ 
+             if (destNumChans == 1 && numInputChannels == 2)
+             {
+                 // If we're getting a mono in and need stereo, dupe the channel..
+-                buffer.copyFrom (1, 0, buffer, 0, 0, fc.bufferNumSamples);
++                copyChannel (buffer.getReadPointer (0), buffer.getWritePointer (1));
+             }
+             else if (destNumChans == 2 && numInputChannels == 1)
+             {
+                 // If we're getting a stereo in and need mono, average the input..
+-                buffer.addFrom (0, 0, *fc.destBuffer, 1, fc.bufferStartSample, fc.bufferNumSamples);
+-                buffer.applyGain (0, 0, fc.bufferNumSamples, 0.5f);
++                const float* both[2] { dest (0), dest (1) };
++                float* one[1] { buffer.getWritePointer (0) };
++                vc::map (vc::Map::mono, both, 2, n, one);
+             }
+ 
+             PluginRenderContext fc2 (fc);
+@@ -1454,11 +1462,11 @@ void ExternalPlugin::applyToBuffer (const PluginRenderContext& fc)
+             for (int i = 0; i < destNumChans; ++i)
+             {
+                 if (i < numChansToProcess)
+-                    fc.destBuffer->copyFrom (i, fc.bufferStartSample, buffer, i, 0, fc.bufferNumSamples);
++                    copyChannel (buffer.getReadPointer (i), dest (i));
+                 else if (i < 2 && numChansToProcess > 0) // convert mono output to stereo for next plugin
+-                    fc.destBuffer->copyFrom (i, fc.bufferStartSample, buffer, 0, 0, fc.bufferNumSamples);
++                    copyChannel (buffer.getReadPointer (0), dest (i));
+                 else
+-                    fc.destBuffer->clear (i, fc.bufferStartSample, fc.bufferNumSamples);
++                    fc.destBuffer->clear (i, fc.bufferStartSample, n);
+             }
+         }
+     }
+@@ -1500,10 +1508,14 @@ void ExternalPlugin::processPluginBlock (juce::AudioPluginInstance& pluginInstan
+     juce::AudioBuffer<float> asb (fc.destBuffer->getArrayOfWritePointers(), fc.destBuffer->getNumChannels(),
+                                   fc.bufferStartSample, fc.bufferNumSamples);
+ 
++    // ENCORE. Basement Studio: the plugin's dry and wet levels by ENCORE. Audio
++    // Processing's hosting rule (dsp/Mix.h)
+     auto dry = dryGain->getCurrentValue();
+     auto wet = wetGain->getCurrentValue();
++    const auto numChans = asb.getNumChannels();
++    const auto n = fc.bufferNumSamples;
+ 
+-    if (dry <= 0.00004f)
++    if (! vs::mix::hostKeepsDry (dry))
+     {
+         if (processedBypass)
+             pluginInstance.processBlockBypassed (asb, midiBuffer);
+@@ -1511,17 +1523,12 @@ void ExternalPlugin::processPluginBlock (juce::AudioPluginInstance& pluginInstan
+             pluginInstance.processBlock (asb, midiBuffer);
+ 
+         zeroDenormalisedValuesIfNeeded (asb);
+-
+-        if (wet < 0.999f)
+-            asb.applyGain (0, fc.bufferNumSamples, wet);
++        vs::mix::hostWetGain (wet, asb.getArrayOfWritePointers(), numChans, n);
+     }
+     else
+     {
+-        auto numChans = asb.getNumChannels();
+-        AudioScratchBuffer dryAudio (numChans, fc.bufferNumSamples);
+-
+-        for (int i = 0; i < numChans; ++i)
+-            dryAudio.buffer.copyFrom (i, 0, asb, i, 0, fc.bufferNumSamples);
++        AudioScratchBuffer dryAudio (numChans, n);
++        vs::channels::map (vs::channels::Map::keep, asb.getArrayOfReadPointers(), numChans, n, dryAudio.buffer.getArrayOfWritePointers());
+ 
+         if (processedBypass)
+             pluginInstance.processBlockBypassed (asb, midiBuffer);
+@@ -1529,12 +1536,10 @@ void ExternalPlugin::processPluginBlock (juce::AudioPluginInstance& pluginInstan
+             pluginInstance.processBlock (asb, midiBuffer);
+ 
+         zeroDenormalisedValuesIfNeeded (asb);
+-
+-        if (wet < 0.999f)
+-            asb.applyGain (0, fc.bufferNumSamples, wet);
++        vs::mix::hostWetGain (wet, asb.getArrayOfWritePointers(), numChans, n);
+ 
+         for (int i = 0; i < numChans; ++i)
+-            asb.addFrom (i, 0, dryAudio.buffer.getReadPointer (i), fc.bufferNumSamples, dry);
++            vs::mix::addWithGain (dryAudio.buffer.getReadPointer (i), asb.getWritePointer (i), n, dry);
+     }
+ }
+ 
 diff --git a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp b/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
 index 85a7fa9..2d1230a 100644
 --- a/modules/tracktion_engine/plugins/internal/tracktion_VolumeAndPan.cpp
@@ -1255,10 +1478,47 @@ index 7da7643..ec57eb1 100644
          }
  
 diff --git a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
-index 3b8c193..33d34ef 100644
+index 3b8c193..d057651 100644
 --- a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
 +++ b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
-@@ -122,37 +122,23 @@ void addAntiDenormalisationNoise (juce::AudioBuffer<float>& buffer, int start, i
+@@ -13,32 +13,13 @@ namespace tracktion::inline engine {
+ void sanitiseValues (juce::AudioBuffer<float>& buffer, int start, int numSamps,
+                      float maxAbsValue, float minAbsThreshold)
+ {
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's clean-up (dsp/Channels.h)
++    jassert (numSamps <= buffer.getNumSamples());
++
+     for (int j = buffer.getNumChannels(); --j >= 0;)
+     {
+         float* d = buffer.getWritePointer (j, start);
+-        jassert (numSamps <= buffer.getNumSamples());
+-
+-        for (int i = numSamps; --i >= 0;)
+-        {
+-            const float n = *d;
+-
+-            if (n >= minAbsThreshold)
+-            {
+-                if (n > maxAbsValue)
+-                    *d = maxAbsValue;
+-            }
+-            else if (n <= -minAbsThreshold)
+-            {
+-                if (n < -maxAbsValue)
+-                    *d = -maxAbsValue;
+-            }
+-            else
+-            {
+-                *d = 0;
+-            }
+-
+-            ++d;
+-        }
++        vs::channels::sanitise (&d, 1, numSamps, maxAbsValue, minAbsThreshold);
+     }
+ }
+ 
+@@ -122,37 +103,23 @@ void addAntiDenormalisationNoise (juce::AudioBuffer<float>& buffer, int start, i
  }
  
  //==============================================================================
@@ -1305,7 +1565,7 @@ index 3b8c193..33d34ef 100644
  
  juce::String gainToDbString (float gain, float infLevel, int decPlaces)
  {
-@@ -206,71 +192,30 @@ juce::String getSemitonesAsString (double semitones)
+@@ -206,71 +173,30 @@ juce::String getSemitonesAsString (double semitones)
      return TRANS("1 semitone").replace ("1", t);
  }
  
@@ -1450,15 +1710,16 @@ index 814d5ac..701b1e7 100644
  
  
 diff --git a/modules/tracktion_graph/tracktion_graph.h b/modules/tracktion_graph/tracktion_graph.h
-index a71deec..46211af 100644
+index a71deec..89fcb7f 100644
 --- a/modules/tracktion_graph/tracktion_graph.h
 +++ b/modules/tracktion_graph/tracktion_graph.h
-@@ -98,6 +98,12 @@
+@@ -98,6 +98,13 @@
  #include <juce_audio_basics/juce_audio_basics.h>
  #include "../tracktion_core/tracktion_core.h"
  
-+// ENCORE. Basement Studio: the ramps and the delay line Tracktion's graph uses
-+// are ENCORE. Audio Processing's (on the include path as "dsp/...")
++// ENCORE. Basement Studio: the ramps, gains, the clean-up after a plugin and the
++// delay line Tracktion's graph uses are ENCORE. Audio Processing's (on the include path as "dsp/...")
++#include "dsp/Channels.h"
 +#include "dsp/DelayLine.h"
 +#include "dsp/Mix.h"
 +#include "dsp/Ramp.h"
@@ -1467,10 +1728,33 @@ index a71deec..46211af 100644
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wfloat-equal"
 diff --git a/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h b/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
-index 9a282a6..2bfb7e7 100644
+index 9a282a6..42137b9 100644
 --- a/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
 +++ b/modules/tracktion_graph/tracktion_graph/tracktion_TestNodes.h
-@@ -439,10 +439,12 @@ public:
+@@ -430,19 +430,36 @@ public:
+ 
+         float gain = gainFunction();
+ 
++        // ENCORE. Basement Studio: ENCORE. Audio Processing's gain stage and ramp
++        // (dsp/Mix.h, dsp/Ramp.h; the ramp number for number as JUCE's smoother)
++        const int numFrames = (int) pc.buffers.audio.getNumFrames();
++
+         if (gain == lastGain)
+         {
+             if (gain == 0.0f)
++            {
+                 pc.buffers.audio.clear();
+-            else if (gain != 1.0f)
+-                applyGain (pc.buffers.audio, gain);
++            }
++            else
++            {
++                for (choc::buffer::ChannelCount c = 0; c < pc.buffers.audio.getNumChannels(); ++c)
++                {
++                    float* d = pc.buffers.audio.getChannel (c).data.data;
++                    vs::mix::applyGain (gain, &d, 1, numFrames);
++                }
++            }
          }
          else
          {
@@ -1478,15 +1762,146 @@ index 9a282a6..2bfb7e7 100644
 -            smoother.setTargetValue (gain);
 -            smoother.reset ((int) pc.buffers.audio.getNumFrames());
 -            applyGainPerFrame (pc.buffers.audio, [&] { return smoother.getNextValue(); });
-+            // ENCORE. Basement Studio: ENCORE. Audio Processing's ramp (number for number as JUCE's smoother)
-+            vs::Ramp<false> smoother;
-+            smoother.setCurrentAndTarget (lastGain);
-+            smoother.setTarget (gain);
-+            smoother.reset ((double) pc.buffers.audio.getNumFrames(), 1.0);
-+            applyGainPerFrame (pc.buffers.audio, [&] { return smoother.next(); });
++            for (choc::buffer::ChannelCount c = 0; c < pc.buffers.audio.getNumChannels(); ++c)
++            {
++                vs::Ramp<false> smoother;
++                smoother.setCurrentAndTarget (lastGain);
++                smoother.setTarget (gain);
++                smoother.reset ((double) numFrames, 1.0);
++                float* d = pc.buffers.audio.getChannel (c).data.data;
++                vs::mix::applyGain (smoother, &d, 1, numFrames);
++            }
          }
  
          lastGain = gain;
+diff --git a/modules/tracktion_graph/utilities/tracktion_GlueCode.h b/modules/tracktion_graph/utilities/tracktion_GlueCode.h
+index 7a55ba6..49894f1 100644
+--- a/modules/tracktion_graph/utilities/tracktion_GlueCode.h
++++ b/modules/tracktion_graph/utilities/tracktion_GlueCode.h
+@@ -46,46 +46,8 @@ inline juce::MidiMessage toMidiMessage (const choc::midi::Sequence::Event& e)
+ }
+ 
+ //==============================================================================
+-/** Mutiplies a choc::buffer::BufferView by a juce::SmoothedValue. */
+-template<typename BufferViewType, typename SampleType, typename SmoothingType>
+-void multiplyBy (BufferViewType& view, juce::SmoothedValue<SampleType, SmoothingType>& value) noexcept
+-{
+-    if (! value.isSmoothing())
+-    {
+-        choc::buffer::applyGain (view, value.getTargetValue());
+-    }
+-    else
+-    {
+-        const auto numChannels = view.getNumChannels();
+-        const auto numFrames = view.getNumFrames();
+-
+-        for (choc::buffer::FrameCount i = 0; i < numFrames; ++i)
+-        {
+-            const auto scaler = value.getNextValue();
+-
+-            for (choc::buffer::ChannelCount ch = 0; ch < numChannels; ++ch)
+-                view.getSample (ch, i) *= scaler;
+-        }
+-    }
+-}
+-
+-/** Applies a gain ram to a choc::buffer::BufferView. */
+-template<typename BufferType, typename GainType>
+-void applyGainRamp (BufferType&& buffer,
+-                    GainType startGain, GainType endGain) noexcept
+-{
+-    if (juce::approximatelyEqual (startGain, endGain))
+-    {
+-        choc::buffer::applyGain (buffer, startGain);
+-    }
+-    else
+-    {
+-        auto size = buffer.getSize();
+-        const auto increment = (endGain - startGain) / (float) size.getNumFrames();
+-        choc::buffer::applyGainPerFrame (buffer,
+-                                         [startGain, increment] (auto frameNum) { return startGain * (increment * frameNum); });
+-    }
+-}
++// ENCORE. Basement Studio: the graph's own gain, gain ramp and smoothed-gain helpers are
++// gone; gains and ramps are ENCORE. Audio Processing's (dsp/Mix.h, dsp/Ramp.h)
+ 
+ /** Returns a FrameRange with a start and length. */
+ inline choc::buffer::FrameRange frameRangeWithStartAndLength (choc::buffer::FrameCount start, choc::buffer::FrameCount length)
+@@ -104,11 +66,16 @@ inline choc::buffer::ChannelRange channelRangeWithStartAndLength (choc::buffer::
+ template<typename Buffer>
+ void sanitise (Buffer& buffer)
+ {
+-    choc::buffer::setAllSamples (buffer,
+-        [] (auto s)
+-        {
+-            return std::isnan (s) ? typename Buffer::Sample() : s;
+-        });
++    // ENCORE. Basement Studio: ENCORE. Audio Processing's NaN clean-up (dsp/Channels.h)
++    static_assert (std::is_same_v<typename Buffer::Sample, float>);
++
++    for (choc::buffer::ChannelCount c = 0; c < buffer.getNumChannels(); ++c)
++    {
++        auto channel = buffer.getChannel (c);
++        jassert (channel.data.stride == 1);
++        float* d = channel.data.data;
++        vs::channels::zeroNaN (&d, 1, (int) buffer.getNumFrames());
++    }
+ }
+ 
+ /** Checks that the channels have valid pointers if they have a non-zero number of frames. */
+@@ -122,52 +89,6 @@ void sanityCheckView (const choc::buffer::BufferView<SampleType, LayoutType>& vi
+         jassert (view.getIterator (channel).sample != nullptr);
+ }
+ 
+-/** Adds two buffers applying a gain. */
+-template <typename DestBuffer, typename SourceBuffer, typename GainType>
+-static void add (DestBuffer&& dest, const SourceBuffer& source, GainType gain)
+-{
+-    auto size = source.getSize();
+-    CHOC_ASSERT (size == dest.getSize());
+-
+-    for (decltype (size.numChannels) chan = 0; chan < size.numChannels; ++chan)
+-    {
+-        auto src = source.getIterator (chan);
+-        auto dst = dest.getIterator (chan);
+-
+-        for (decltype (size.numFrames) i = 0; i < size.numFrames; ++i)
+-        {
+-            *dst += static_cast<decltype (dst.get())> (src.get() * gain);
+-            ++dst;
+-            ++src;
+-        }
+-    }
+-}
+-
+-/** Adds two buffers applying a smoothed gain. */
+-template <typename DestBuffer, typename SourceBuffer, typename GainType>
+-static void addApplyingGainRamp (DestBuffer&& dest, const SourceBuffer& source, GainType startGain, GainType endGain)
+-{
+-    auto size = source.getSize();
+-    CHOC_ASSERT (size == dest.getSize());
+-
+-    const auto delta = (endGain - startGain) / static_cast<float> (size.numFrames);
+-
+-    for (decltype (size.numChannels) chan = 0; chan < size.numChannels; ++chan)
+-    {
+-        auto src = source.getIterator (chan);
+-        auto dst = dest.getIterator (chan);
+-        auto gain = startGain;
+-
+-        for (decltype (size.numFrames) i = 0; i < size.numFrames; ++i)
+-        {
+-            *dst += static_cast<decltype (dst.get())> (src.get() * gain);
+-            ++dst;
+-            ++src;
+-            gain += delta;
+-        }
+-    }
+-}
+-
+ /** Copies the contents of one view or buffer to a destination.
+     If the source and dest point to the same buffer, this will skip the copy.
+     This will assert if the two views do not have exactly the same size.
 diff --git a/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h b/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h
 index f1a497f..7866f74 100644
 --- a/modules/tracktion_graph/utilities/tracktion_LatencyProcessor.h
