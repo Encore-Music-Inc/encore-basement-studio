@@ -27,6 +27,8 @@ pattern+='|setSkewFactorFromMidPoint\s*\(\s*-|pan\s*\*\s*gain'
 pattern+='|[a-z]\s*\*\s*[a-z]+\.getSample\s*\('
 # Tracktion's own effects and instruments (the patch doesn't register them either)
 pattern+='|\bte::(Equaliser|Reverb|Compressor|Chorus|Delay|Phaser|PitchShift|LowPass|Sampler|FourOsc|ImpulseResponse|ToneGenerator)Plugin\b'
+# what the patch takes out of Tracktion's build: asking for it would want a second version back
+pattern+='|\b(shouldNormalise|shouldNormaliseByRMS|trimSilenceAtEnds|wrapRemainder)\s*=\s*true|\bspeedRamp\b|enableEffects\s*\(\s*true|startTestTone\s*\('
 
 # Test pages, not the app's sound: they make test tones and measure the raw
 # signals of an interface, a plugin or an export to check them

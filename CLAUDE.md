@@ -50,7 +50,7 @@ this file does.
 |---|---|
 | `Source/` | the app; `edit/` arrange view, mixer, piano roll, tuner; `encore/` creates the built-in plugins; `bridge/` the 32-bit plugin bridge (Windows) |
 | `installer/` | `EncoreBasementStudio.iss` (Windows, Inno Setup), `linux/package.sh` (.deb and AppImage) |
-| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure: per-track monitoring, and `tracktion-audio-processing.patch`, which has its playback call ENCORE. Audio Processing (fades, gains and pan, the fader law, levels, resampling, time stretching, clicks, automation curves, delay compensation) |
+| `patches/` | ENCORE.'s changes to Tracktion Engine, applied by CMake at configure: per-track monitoring, and `tracktion-audio-processing.patch`, which has its playback call ENCORE. Audio Processing (fades, gains and pan, the fader law, levels, resampling, time stretching, clicks, automation curves, delay compensation, a hosted plugin's channels and dry and wet levels and the clean-up after it, racks, sends, the patch bay, an export's measurements) and takes out of the build what has its own processing but Basement Studio doesn't use (Tracktion's effects and instruments, clip effects, speed-ramp fades, transient detection, its loudness meter and analysers, export normalising, trimming and dither, the envelope follower modifier, the output test tone) |
 | `tools/` | `window-test.ps1` |
 | `external/tracktion_engine` | Tracktion Engine, pinned to a commit: the one listed exception to releases-only (the README's Pinned releases table says why) |
 | `external/encore-vst` | the plugins' sources and `shared/`, pinned to a release (the README's Pinned releases table); its `external/encore-audio-processing` and that repo's `external/JUCE` are the audio processing and JUCE Basement Studio builds with |
@@ -96,7 +96,9 @@ this file does.
   `Source/`. Tracktion Engine's own playback calls the headers too, through
   `patches/tracktion-audio-processing.patch` (the patches row above lists
   what); what stays Tracktion's is summing tracks, the timeline, plugin
-  hosting and reading a clip backwards.
+  hosting and reading a clip backwards. What the patch takes out of the build
+  stays out: to use one of those features, build it in encore-audio-processing
+  first, and the check fails on code that asks for them.
 - `ReferenceTests` (a target in `CMakeLists.txt`) builds encore-audio-processing's
   `tests/ReferenceTests.cpp` the way this repository compiles the headers; CI
   runs it on every system and it checks every result in that repo's
