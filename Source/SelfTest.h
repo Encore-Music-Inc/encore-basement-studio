@@ -683,6 +683,7 @@ namespace selftest
             // played at 60 BPM the 220 Hz loop lasts twice as long and keeps its pitch (ENCORE. Audio Processing's stretcher)
             expect ("a following clip uses ENCORE. Audio Processing's stretcher", clip->getTimeStretchMode() == te::TimeStretcher::signalsmithDefault);
             te::EditFileOperations (*e).save (true, true, false);
+            clip = nullptr;   // let go of the clip before its song: its timer reads the song
             e.reset();
             auto out = stretchSong.getSiblingFile ("stretch.wav");
             ExportOptions o; o.tail = false;
