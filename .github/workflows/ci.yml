@@ -707,13 +707,13 @@ jobs:
         run: |
           exe="build/EncoreBasementStudio_artefacts/RelWithDebInfo/ENCORE Basement Studio"
           dir="$RUNNER_TEMP/selftest"
-          reports="$RUNNER_TEMP/ubsan"
-          mkdir -p "$reports"
-          export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0:report_error_type=1:suppressions=$GITHUB_WORKSPACE/.github/sanitizers/ubsan.supp:log_path=$reports/report"
+          output="$RUNNER_TEMP/selftest-output.txt"
+          # the sanitizers report in the run's output (report.sh says why), so that is what is checked
+          export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0:report_error_type=1:suppressions=$GITHUB_WORKSPACE/.github/sanitizers/ubsan.supp"
           code=0
-          timeout 900 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --selftest "$dir" || code=$?
+          timeout 900 xvfb-run -a -s "-screen 0 1920x1080x24" "$exe" --selftest "$dir" > "$output" 2>&1 || code=$?
           cat "$dir/selftest.log" || true
-          bash .github/sanitizers/report.sh "$reports" "$code"
+          bash .github/sanitizers/report.sh "$output" "$code"
 
   # Every pin is a published release (or a listed exception): the README's
   # Pinned releases table against what each folder is pinned to, including what

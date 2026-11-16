@@ -8,6 +8,22 @@
 # MSVC all give the intended 0xff000000, so the right ID3 frames are chosen.
 # The self-test reads the MP3 tags back on every build (Linux, Windows, macOS)
 # to prove it ("MP3 tags read back exactly").
-# Revisit, by patching or replacing LAME, if LAME needs more than one or two
-# entries here, or if AddressSanitizer ever finds a memory error in it.
 shift-base:frame_id_matches
+
+# setLameTagFrameHeader() in libmp3lame/VbrTag.c builds each field of the LAME
+# tag's frame header with a mask made as ~(-1 << n), a shift of a negative
+# int. Every compiler gives the intended mask of n ones. The self-test exports
+# MP3s that players read back at the right rate and length, which needs that
+# header ("MP3 export plays back", "MP3 of a 96 kHz mix").
+shift-base:setLameTagFrameHeader
+
+# putbits2() in libmp3lame/bitstream.c writes bits into a byte as
+# (val >> j) << bit_index in a signed int, which overflows for a wide val. Only
+# the low eight bits are kept (the byte), and those are the same on every
+# compiler, so the stream is right: the self-test's MP3s decode with the level
+# they were made at.
+shift-base:putbits2
+
+# LAME needs three entries here now, all the same signed-shift idiom. Revisit
+# by patching those shifts to unsigned arithmetic (or by replacing LAME) if it
+# needs another, or if AddressSanitizer ever finds a memory error in it.
