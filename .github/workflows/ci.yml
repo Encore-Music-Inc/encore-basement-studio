@@ -694,12 +694,12 @@ jobs:
           "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined"
           "-DCMAKE_MODULE_LINKER_FLAGS=-fsanitize=address,undefined"
       - name: Build
-        # only the app: the self-test is what runs here, and the reference set's
-        # tests (every other target) are too large to build with the sanitizers
-        # alongside it on the runner
+        # only the app (the self-test is what runs here), two files at a time:
+        # with the sanitizers, compiling more at once than that runs the runner
+        # out of memory and it stops answering
         run: |
           ccache -z
-          cmake --build build --parallel "$(nproc)" --target EncoreBasementStudio
+          cmake --build build --parallel 2 --target EncoreBasementStudio
           ccache -s
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: always() && steps.key.outputs.pins != ''
