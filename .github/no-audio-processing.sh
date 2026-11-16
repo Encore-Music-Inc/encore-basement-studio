@@ -29,6 +29,9 @@ pattern+='|[a-z]\s*\*\s*[a-z]+\.getSample\s*\('
 pattern+='|\bte::(Equaliser|Reverb|Compressor|Chorus|Delay|Phaser|PitchShift|LowPass|Sampler|FourOsc|ImpulseResponse|ToneGenerator)Plugin\b'
 # what the patch takes out of Tracktion's build: asking for it would want a second version back
 pattern+='|\b(shouldNormalise|shouldNormaliseByRMS|trimSilenceAtEnds|wrapRemainder)\s*=\s*true|\bspeedRamp\b|enableEffects\s*\(\s*true|startTestTone\s*\('
+pattern+='|\b(BeatDetect|TempoDetect|LatencyPlugin|ExpEnvelope|LinEnvelope|LFOModifier|BreakpointOscillatorModifier|StepModifier|RandomModifier|MIDITrackerModifier)\b|performTempoDetect|setAutoDetectBeats\s*\(\s*true|setRecordTriggerDb\s*\('
+# Tracktion's denormal switch (encore-audio-processing's dsp/Denormals.h is the one)
+pattern+='|juce::ScopedNoDenormals\b|disableDenormalisedNumberSupport'
 
 # Test pages, not the app's sound: they make test tones and measure the raw
 # signals of an interface, a plugin or an export to check them

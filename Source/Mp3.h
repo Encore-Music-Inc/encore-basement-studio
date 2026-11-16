@@ -40,8 +40,14 @@ namespace mp3
         std::unique_ptr<lame_global_flags, decltype (&lame_close)> gf (lame_init(), &lame_close);
         if (gf == nullptr) return "the MP3 encoder didn't start";
         lame_set_num_channels (gf.get(), channels);
-        lame_set_in_samplerate (gf.get(), (int) reader->sampleRate);
-        lame_set_out_samplerate (gf.get(), (int) rateFor (reader->sampleRate));
+        // a rate MP3 can't carry is converted by encore-audio-processing's
+        // resampler (dsp/Resampler.h) before LAME, which then encodes as it gets
+        const double outRate = rateFor (reader->sampleRate);
+        std::unique_ptr<vs::Resampler> resampler;
+        if (outRate != reader->sampleRate)
+            resampler = std::make_unique<vs::Resampler> (reader->sampleRate, outRate, channels);
+        lame_set_in_samplerate (gf.get(), (int) outRate);
+        lame_set_out_samplerate (gf.get(), (int) outRate);
         lame_set_mode (gf.get(), channels == 1 ? MONO : JOINT_STEREO);
         lame_set_VBR (gf.get(), vbr_off);
         lame_set_brate (gf.get(), kbps);
@@ -67,15 +73,38 @@ namespace mp3
 
         const int block = 8192;
         juce::AudioBuffer<float> pcm (channels, block);
-        buffer.resize ((size_t) (block * 5 / 4 + 7200));
+        auto encodeFrames = [&] (const float* l, const float* r, int n) -> bool
+        {
+            // LAME takes at most its buffer's worth at a time
+            for (int done = 0; done < n; done += block)
+            {
+                const int m = juce::jmin (block, n - done);
+                buffer.resize (juce::jmax (buffer.size(), (size_t) (m * 5 / 4 + 7200)));
+                const int bytes = lame_encode_buffer_ieee_float (gf.get(), l + done, r + done, m, buffer.data(), (int) buffer.size());
+                if (bytes < 0) return false;
+                out.write (buffer.data(), (size_t) bytes);
+            }
+            return true;
+        };
         for (juce::int64 pos = 0; pos < reader->lengthInSamples; pos += block)
         {
             const int n = (int) juce::jmin ((juce::int64) block, reader->lengthInSamples - pos);
             reader->read (&pcm, 0, n, pos, true, channels > 1);
-            const int bytes = lame_encode_buffer_ieee_float (gf.get(), pcm.getReadPointer (0), pcm.getReadPointer (channels > 1 ? 1 : 0),
-                                                             n, buffer.data(), (int) buffer.size());
-            if (bytes < 0) return "the MP3 encoder stopped (" + juce::String (bytes) + ")";
-            out.write (buffer.data(), (size_t) bytes);
+            bool ok;
+            if (resampler != nullptr)
+            {
+                const int made = resampler->push (pcm.getArrayOfReadPointers(), n);
+                ok = encodeFrames (resampler->output (0), resampler->output (channels > 1 ? 1 : 0), made);
+            }
+            else
+                ok = encodeFrames (pcm.getReadPointer (0), pcm.getReadPointer (channels > 1 ? 1 : 0), n);
+            if (! ok) return "the MP3 encoder stopped";
+        }
+        if (resampler != nullptr)
+        {
+            const int made = resampler->flush();
+            if (! encodeFrames (resampler->output (0), resampler->output (channels > 1 ? 1 : 0), made))
+                return "the MP3 encoder stopped";
         }
         const int tail = lame_encode_flush (gf.get(), buffer.data(), (int) buffer.size());
         if (tail > 0) out.write (buffer.data(), (size_t) tail);

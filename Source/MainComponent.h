@@ -583,8 +583,6 @@ namespace clicks
         return a;
     }
     constexpr double fs = 48000.0;
-    // A soft count's level, of a normal one's (the engine's own)
-    constexpr float softLevel = 0.4f;
 
     inline juce::String soundId (int sound) { return mt::soundSets[(size_t) juce::jlimit (0, sounds().size() - 1, sound)].id; }
     inline int soundIndex (const juce::String& id)
@@ -615,14 +613,10 @@ namespace clicks
     inline juce::File folder() { return settingsFolder().getChildFile ("Click sounds"); }
 
     /** Writes a sound for Tracktion's click as a float WAV; a level under 1 brings its
-        peak down that far (encore-audio-processing's peak setting) */
+        peak down that far (encore-audio-processing's metronome::atLevel) */
     inline juce::File write (const juce::String& name, mt::Buffer sound, float level)
     {
-        if (level < 1.0f && ! sound.empty())
-        {
-            const float* ch[1] { sound.data() };
-            vs::channels::toPeakWithEndFade (sound, vs::channels::peakOf (ch, 1, (int) sound.size()) * level, 256);
-        }
+        sound = mt::atLevel (std::move (sound), level);
         auto f = folder().getChildFile (name + ".wav");
         folder().createDirectory();
         f.deleteFile();
@@ -645,7 +639,7 @@ namespace clicks
         const auto set = make (sound);
         // a set with a sound of its own for the off beats (Kick and hat) plays it on every beat after the first
         const auto& offBeat = set.alt.empty() ? set.beat : set.alt;
-        auto small = write (base + " beat", offBeat, accent == 1 ? softLevel : 1.0f);
+        auto small = write (base + " beat", offBeat, accent == 1 ? (float) mt::softCount : 1.0f);
         auto big = accent == 0 ? write (base + " bar", set.accent, 1.0f)
                  : accent == 1 ? write (base + " bar", set.beat, 1.0f)
                  : accent == 2 ? write (base + " bar", mt::makeSounds ("cowbell", fs).accent, 1.0f)
