@@ -155,6 +155,41 @@ index 27a14b5..db00950 100644
  }
  
  }
+diff --git a/modules/tracktion_engine/audio_files/tracktion_AudioFile.cpp b/modules/tracktion_engine/audio_files/tracktion_AudioFile.cpp
+index 75b1dc3..2add201 100644
+--- a/modules/tracktion_engine/audio_files/tracktion_AudioFile.cpp
++++ b/modules/tracktion_engine/audio_files/tracktion_AudioFile.cpp
+@@ -258,7 +258,7 @@ juce::ThreadPoolJob::JobStatus AudioProxyGenerator::GeneratorJob::runJob()
+     CRASH_TRACER
+ 
+     auto& afm = proxy.engine->getAudioFileManager();
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+     proxy.deleteFile();
+ 
+     if (render())
+diff --git a/modules/tracktion_engine/audio_files/tracktion_AudioFileCache.cpp b/modules/tracktion_engine/audio_files/tracktion_AudioFileCache.cpp
+index 04c981b..094f250 100644
+--- a/modules/tracktion_engine/audio_files/tracktion_AudioFileCache.cpp
++++ b/modules/tracktion_engine/audio_files/tracktion_AudioFileCache.cpp
+@@ -532,7 +532,7 @@ public:
+ 
+     void run()
+     {
+-        juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++        vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+         uint32_t lastOldFlePurge = 0;
+ 
+@@ -574,7 +574,7 @@ public:
+ 
+     void run()
+     {
+-        juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++        vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+         while (! threadShouldExit())
+         {
 diff --git a/modules/tracktion_engine/audio_files/tracktion_AudioFileUtils.cpp b/modules/tracktion_engine/audio_files/tracktion_AudioFileUtils.cpp
 index c22d26e..9ca8e5f 100644
 --- a/modules/tracktion_engine/audio_files/tracktion_AudioFileUtils.cpp
@@ -404,31 +439,142 @@ index 7d578c3..6b8dd6f 100644
      if (curve1 >= -0.5f && curve1 <= 0.5f)
      {
 diff --git a/modules/tracktion_engine/model/automation/tracktion_Modifier.cpp b/modules/tracktion_engine/model/automation/tracktion_Modifier.cpp
-index 3c3b761..9ef4e10 100644
+index 3c3b761..ba4f10c 100644
 --- a/modules/tracktion_engine/model/automation/tracktion_Modifier.cpp
 +++ b/modules/tracktion_engine/model/automation/tracktion_Modifier.cpp
-@@ -243,7 +243,7 @@ ModifierList::~ModifierList()
- bool ModifierList::isModifier (const juce::Identifier& i)
- {
-     return i == IDs::LFO || i == IDs::BREAKPOINTOSCILLATOR
--        || i == IDs::STEP || i == IDs::ENVELOPEFOLLOWER
-+        || i == IDs::STEP
-         || i == IDs::RANDOM || i == IDs::MIDITRACKER;
+@@ -240,11 +240,11 @@ ModifierList::~ModifierList()
+     freeObjects();
  }
  
-@@ -311,7 +311,6 @@ Modifier* ModifierList::createNewObject (const juce::ValueTree& v)
-         if (v.hasType (IDs::LFO))                         m = new LFOModifier (edit, v);
-         else if (v.hasType (IDs::BREAKPOINTOSCILLATOR))   m = new BreakpointOscillatorModifier (edit, v);
-         else if (v.hasType (IDs::STEP))                   m = new StepModifier (edit, v);
+-bool ModifierList::isModifier (const juce::Identifier& i)
++bool ModifierList::isModifier (const juce::Identifier&)
+ {
+-    return i == IDs::LFO || i == IDs::BREAKPOINTOSCILLATOR
+-        || i == IDs::STEP || i == IDs::ENVELOPEFOLLOWER
+-        || i == IDs::RANDOM || i == IDs::MIDITRACKER;
++    // ENCORE. Basement Studio: Tracktion's modifiers (LFO, breakpoint, step,
++    // random, MIDI tracker) are not built, so a song that has one opens without it
++    return false;
+ }
+ 
+ juce::ReferenceCountedArray<Modifier> ModifierList::getModifiers() const
+@@ -306,18 +306,11 @@ Modifier* ModifierList::createNewObject (const juce::ValueTree& v)
+     const auto id = EditItemID::readOrCreateNewID (edit, v);
+     Modifier::Ptr m = dynamic_cast<Modifier*> (edit.automatableEditItemCache.findItem (id));
+ 
++    // no modifier type is built (isModifier is false for all), so there is nothing to make
++    jassert (m != nullptr);
++
+     if (m == nullptr)
+-    {
+-        if (v.hasType (IDs::LFO))                         m = new LFOModifier (edit, v);
+-        else if (v.hasType (IDs::BREAKPOINTOSCILLATOR))   m = new BreakpointOscillatorModifier (edit, v);
+-        else if (v.hasType (IDs::STEP))                   m = new StepModifier (edit, v);
 -        else if (v.hasType (IDs::ENVELOPEFOLLOWER))       m = new EnvelopeFollowerModifier (edit, v);
-         else if (v.hasType (IDs::RANDOM))                 m = new RandomModifier (edit, v);
-         else if (v.hasType (IDs::MIDITRACKER))            m = new MIDITrackerModifier (edit, v);
-         else                                              jassertfalse;
+-        else if (v.hasType (IDs::RANDOM))                 m = new RandomModifier (edit, v);
+-        else if (v.hasType (IDs::MIDITRACKER))            m = new MIDITrackerModifier (edit, v);
+-        else                                              jassertfalse;
+-
+-        m->initialise();
+-    }
++        return nullptr;
+ 
+     m->incReferenceCount();
+ 
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-index 7cd796b..b030e39 100644
+index 7cd796b..9af768c 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.cpp
-@@ -268,7 +268,6 @@ AudioClipBase::AudioClipBase (const juce::ValueTree& v, EditItemID id, Type t, C
+@@ -10,88 +10,6 @@
+ 
+ namespace tracktion::inline engine {
+ 
+-//==============================================================================
+-/**
+-    Performs a tempo detection task on a background thread.
+-*/
+-class AudioClipBase::TempoDetectTask   : public ThreadPoolJobWithProgress
+-{
+-public:
+-    /** Creates a task for a given file. */
+-    TempoDetectTask (Engine& e, const juce::File& file)
+-        : ThreadPoolJobWithProgress (TRANS("Detecting tempo")),
+-          engine (e), sourceFile (file)
+-    {
+-    }
+-
+-    /** Returns the bpm after a successful detection. */
+-    float getBpm()                                      { return bpm; }
+-
+-    /** Returns true if the result was within a sensible range. */
+-    bool isResultSensible()                             { return isSensible; }
+-
+-    //==============================================================================
+-    /** Performs the actual detection. */
+-    JobStatus runJob() override
+-    {
+-        std::unique_ptr<juce::AudioFormatReader> reader (AudioFileUtils::createReaderFor (engine, sourceFile));
+-
+-        if (reader == nullptr)
+-            return jobHasFinished;
+-
+-        auto numChannels = (int) reader->numChannels;
+-        auto numSamples = reader->lengthInSamples;
+-        auto sampleRate = reader->sampleRate;
+-
+-        if (numSamples <= 0)
+-            return jobHasFinished;
+-
+-        // main detection loop
+-        {
+-            TempoDetect detector (numChannels, sampleRate);
+-            const int blockSize = 65536;
+-            const bool useRightChan = numChannels > 1;
+-
+-            // can't use an AudioScratchBuffer yet
+-            juce::AudioBuffer<float> buffer (numChannels, blockSize);
+-
+-            auto numLeft = numSamples;
+-            SampleCount startSample = 0;
+-
+-            while (numLeft > 0)
+-            {
+-                if (shouldExit())
+-                    return jobHasFinished;
+-
+-                auto numThisTime = (int) std::min ((SampleCount) numLeft, (SampleCount) blockSize);
+-                reader->read (&buffer, 0, numThisTime, startSample, true, useRightChan);
+-                detector.processSection (buffer, numThisTime);
+-
+-                startSample += numThisTime;
+-                numLeft -= numThisTime;
+-                progress = float (numLeft) / float (numSamples);
+-            }
+-
+-            bpm = detector.finishAndDetect();
+-            isSensible = bpm > 0;
+-        }
+-
+-        return jobHasFinished;
+-    }
+-
+-    /** Returns the current progress. */
+-    float getCurrentTaskProgress() override             { return progress; }
+-
+-private:
+-    //==============================================================================
+-    Engine& engine;
+-    juce::File sourceFile;
+-    float progress = 0;
+-    bool isSensible = false;
+-    float bpm = 12.0f;
+-
+-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TempoDetectTask)
+-};
+ 
+ 
+ //==============================================================================
+@@ -268,7 +186,6 @@ AudioClipBase::AudioClipBase (const juce::ValueTree& v, EditItemID id, Type t, C
      useClipLaunchQuantisation.referTo (state, IDs::useClipLaunchQuantisation, um);
  
      clipEffectsVisible.referTo (state, IDs::effectsVisible, nullptr);
@@ -436,7 +582,7 @@ index 7cd796b..b030e39 100644
  
      pluginList.setTrackAndClip (getTrack(), this);
      pluginList.initialise (state);
-@@ -398,9 +397,6 @@ void AudioClipBase::flushStateToValueTree()
+@@ -398,9 +315,6 @@ void AudioClipBase::flushStateToValueTree()
  {
      Clip::flushStateToValueTree();
  
@@ -446,7 +592,7 @@ index 7cd796b..b030e39 100644
     #if TRACKTION_ENABLE_ARA
      // Persist the ARA IDs used for this save, so reloading can map them to the
      // current IDs even if they've changed (e.g. the source file moved, which
-@@ -558,14 +554,7 @@ void AudioClipBase::setActiveChannelConfiguration (const ChannelConfiguration& c
+@@ -558,14 +472,7 @@ void AudioClipBase::setActiveChannelConfiguration (const ChannelConfiguration& c
  
  ChannelConfiguration AudioClipBase::getOutputChannelConfiguration()
  {
@@ -462,7 +608,71 @@ index 7cd796b..b030e39 100644
  }
  
  //==============================================================================
-@@ -1425,62 +1414,10 @@ juce::StringArray AudioClipBase::getPitchChoices()
+@@ -1327,60 +1234,13 @@ LoopInfo AudioClipBase::autoDetectBeatMarkers (const LoopInfo& current, bool aut
+         if (res.getLoopPoint(i).isAutomatic())
+             res.deleteLoopPoint (i);
+ 
+-    if (autoBeat)
+-    {
+-        if (auto reader = std::unique_ptr<juce::AudioFormatReader> (AudioFileUtils::createReaderFor (edit.engine, getCurrentSourceFile())))
+-        {
+-            const auto start = loopInfo.getInMarker();
+-            const auto end = (loopInfo.getOutMarker() == -1) ? reader->lengthInSamples
+-                                                             : loopInfo.getOutMarker();
+-
+-            BeatDetect detect;
+-            detect.setSensitivity (sens);
+-            detect.setSampleRate (reader->sampleRate);
+-
+-            if (double (end - start) > reader->sampleRate)
+-            {
+-                auto blockLength = detect.getBlockSize();
+-                auto blockSize = choc::buffer::Size::create (reader->numChannels, blockLength);
+-                auto pos = start;
+-
+-                choc::buffer::ChannelArrayBuffer<float> buffer (blockSize);
+-
+-                while (pos + blockLength < end)
+-                {
+-                    if (! reader->read (buffer.getView().data.channels,
+-                                        (int) reader->numChannels, pos, (int) blockLength))
+-                        break;
+-
+-                    detect.audioProcess (buffer);
+-                    pos += blockLength;
+-                }
+-
+-                for (auto beat : detect.getBeats())
+-                    res.addLoopPoint (start + beat, LoopInfo::LoopPointType::automatic);
+-            }
+-        }
+-    }
++    // ENCORE. Basement Studio: Tracktion's beat detection is not built, so no
++    // automatic beat markers are added (autoBeat has no effect)
++    juce::ignoreUnused (autoBeat, sens);
+ 
+     return res;
+ }
+ 
+-bool AudioClipBase::performTempoDetect()
+-{
+-    TempoDetectTask tempoDetectTask (edit.engine, getCurrentSourceFile());
+-
+-    edit.engine.getUIBehaviour().runTaskWithProgressBar (tempoDetectTask);
+-
+-    if (! tempoDetectTask.isResultSensible())
+-        return false;
+-
+-    const AudioFileInfo wi = AudioFile (edit.engine, getCurrentSourceFile()).getInfo();
+-    loopInfo.setBpm (tempoDetectTask.getBpm(), wi);
+-
+-    return true;
+-}
+-
+ juce::StringArray AudioClipBase::getRootNoteChoices (Engine& e)
+ {
+     juce::StringArray s;
+@@ -1425,62 +1285,10 @@ juce::StringArray AudioClipBase::getPitchChoices()
      return s;
  }
  
@@ -529,7 +739,7 @@ index 7cd796b..b030e39 100644
  
  //==============================================================================
  TimePosition AudioClipBase::clipTimeToSourceFileTime (TimePosition t)
-@@ -1940,9 +1877,6 @@ void AudioClipBase::renderComplete()
+@@ -1940,9 +1748,6 @@ void AudioClipBase::renderComplete()
      TRACKTION_ASSERT_MESSAGE_THREAD
      // Updates the thumbnail message
      changed();
@@ -539,7 +749,7 @@ index 7cd796b..b030e39 100644
  }
  
  //==============================================================================
-@@ -2071,9 +2005,6 @@ bool AudioClipBase::isUsingFile (const AudioFile& af)
+@@ -2071,9 +1876,6 @@ bool AudioClipBase::isUsingFile (const AudioFile& af)
      if (getPlaybackFile() == af || getAudioFile() == af)
          return true;
  
@@ -549,7 +759,7 @@ index 7cd796b..b030e39 100644
      return false;
  }
  
-@@ -2676,8 +2607,6 @@ void AudioClipBase::valueTreeChildAdded (juce::ValueTree& parentState, juce::Val
+@@ -2676,8 +2478,6 @@ void AudioClipBase::valueTreeChildAdded (juce::ValueTree& parentState, juce::Val
      {
          if (child.hasType (IDs::PLUGIN))
              Selectable::changed();
@@ -558,7 +768,7 @@ index 7cd796b..b030e39 100644
          else if (child.hasType (IDs::PATTERNGENERATOR))
              patternGenerator = std::make_unique<PatternGenerator> (*this, child);
          else if (child.hasType (IDs::LOOPINFO) && isInitialised)
-@@ -2699,8 +2628,6 @@ void AudioClipBase::valueTreeChildRemoved (juce::ValueTree& parentState, juce::V
+@@ -2699,8 +2499,6 @@ void AudioClipBase::valueTreeChildRemoved (juce::ValueTree& parentState, juce::V
      {
          if (child.hasType (IDs::PLUGIN))
              Selectable::changed();
@@ -567,7 +777,7 @@ index 7cd796b..b030e39 100644
          else if (child.hasType (IDs::PATTERNGENERATOR))
              patternGenerator = nullptr;
          else if (child.hasType (IDs::LOOPINFO) && isInitialised)
-@@ -2781,35 +2708,4 @@ void AudioClipBase::updateAutoTempoState()
+@@ -2781,35 +2579,4 @@ void AudioClipBase::updateAutoTempoState()
      }
  }
  
@@ -604,7 +814,7 @@ index 7cd796b..b030e39 100644
 -
  } // namespace tracktion::inline engine
 diff --git a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
-index 45733ad..1803e29 100644
+index 45733ad..a69eaee 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
 +++ b/modules/tracktion_engine/model/clips/tracktion_AudioClipBase.h
 @@ -287,12 +287,12 @@ public:
@@ -622,7 +832,20 @@ index 45733ad..1803e29 100644
  
      //==============================================================================
      /** Override this to fill in the LoopInfo structure as best fits the source. */
-@@ -468,7 +468,7 @@ public:
+@@ -454,12 +454,6 @@ public:
+     */
+     LoopInfo autoDetectBeatMarkers (const LoopInfo& current, bool autoBeat, float sensitivity) const;
+ 
+-    /** Performs a tempo-detection task and if successful sets the clip's LoopInfo tempo to this.
+-        @returns true if the tempo was sensibly detected
+-        [[ blocks ]]
+-    */
+-    bool performTempoDetect();
+-
+     /** Returns an array of the root note choices e.g. "C#" etc. */
+     static juce::StringArray getRootNoteChoices (Engine&);
+ 
+@@ -468,7 +462,7 @@ public:
  
      //==============================================================================
      /** Returns true if this clip can have ClipEffects added to it. */
@@ -631,7 +854,7 @@ index 45733ad..1803e29 100644
  
      /** Enables/disables ClipEffects for this clip.
          @param enable   Whether to turn on/off clip FX for this clip
-@@ -477,7 +477,7 @@ public:
+@@ -477,7 +471,7 @@ public:
      void enableEffects (bool enable, bool warn);
  
      /** Returns true if ClipEffects are enabled. */
@@ -640,7 +863,7 @@ index 45733ad..1803e29 100644
  
      /** Adds a ClipEffect to this clip. */
      void addEffect (const juce::ValueTree& effectsTree);
-@@ -489,7 +489,7 @@ public:
+@@ -489,7 +483,7 @@ public:
      bool getEffectsVisible() const                      { return clipEffectsVisible; }
  
      /** Returns the ClipEffects for this clip if it has been enabled. */
@@ -649,7 +872,7 @@ index 45733ad..1803e29 100644
  
      //==============================================================================
      /** Returns true if source file has a bwav time reference metadata property. */
-@@ -754,7 +754,6 @@ protected:
+@@ -754,7 +748,6 @@ protected:
  
      mutable WarpTimeManager::Ptr warpTimeManager;
      mutable std::unique_ptr<AudioSegmentList> audioSegmentList;
@@ -657,7 +880,15 @@ index 45733ad..1803e29 100644
      mutable AsyncFunctionCaller asyncFunctionCaller;
  
      PluginList pluginList;
-@@ -795,7 +794,6 @@ private:
+@@ -785,7 +778,6 @@ private:
+     //==============================================================================
+     juce::ReferenceCountedObjectPtr<ARAFileReader> araProxy;
+ 
+-    class TempoDetectTask;
+     class BeatSensitivityComp;
+ 
+     std::shared_ptr<LaunchHandle> launchHandle;
+@@ -795,7 +787,6 @@ private:
  
      void updateReversedState();
      void updateAutoTempoState();
@@ -665,6 +896,25 @@ index 45733ad..1803e29 100644
  
      /** Returns true if the beat-based or time-based loop representation holds a loop. */
      bool hasLoop (bool beatBased) const     { return beatBased ? (loopLengthBeats > BeatDuration()) : (loopLength > TimeDuration()); }
+diff --git a/modules/tracktion_engine/model/clips/tracktion_Clip.h b/modules/tracktion_engine/model/clips/tracktion_Clip.h
+index e6bb2e6..4608b87 100644
+--- a/modules/tracktion_engine/model/clips/tracktion_Clip.h
++++ b/modules/tracktion_engine/model/clips/tracktion_Clip.h
+@@ -47,10 +47,10 @@ struct LiveClipLevel
+     /** Reutrns the left and right gains taking in to account mute and pan values. */
+     void getLeftAndRightGains (float& left, float& right) const noexcept
+     {
+-        const float g = getGainIncludingMute();
+-        const float pv = getPan() * g;
+-        left  = g - pv;
+-        right = g + pv;
++        // the linear pan law (ENCORE. Audio Processing's, dsp/Mix.h)
++        const auto p = vs::mix::panGains (getGainIncludingMute(), getPan(), vs::mix::PanLaw::linear);
++        left  = p.left;
++        right = p.right;
+     }
+ 
+ private:
 diff --git a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp b/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
 index 7c3a193..1c5ddc2 100644
 --- a/modules/tracktion_engine/model/clips/tracktion_WarpTimeManager.cpp
@@ -1036,8 +1286,60 @@ index b3a8796..db89ee4 100644
  
  /** Removes all the content clips from an Edit, leaving its structure intact.
  
+diff --git a/modules/tracktion_engine/model/export/tracktion_Archive.cpp b/modules/tracktion_engine/model/export/tracktion_Archive.cpp
+index 5cb68f8..43f1ca8 100644
+--- a/modules/tracktion_engine/model/export/tracktion_Archive.cpp
++++ b/modules/tracktion_engine/model/export/tracktion_Archive.cpp
+@@ -67,7 +67,7 @@ juce::String ArchiveJob::getError() const
+ juce::ThreadPoolJob::JobStatus ArchiveJob::runJob()
+ {
+     CRASH_TRACER
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+     if (! copyToTempDir())
+     {
+diff --git a/modules/tracktion_engine/model/export/tracktion_ArchiveFile.cpp b/modules/tracktion_engine/model/export/tracktion_ArchiveFile.cpp
+index 0de2c28..dcf94ca 100644
+--- a/modules/tracktion_engine/model/export/tracktion_ArchiveFile.cpp
++++ b/modules/tracktion_engine/model/export/tracktion_ArchiveFile.cpp
+@@ -301,7 +301,7 @@ public:
+     JobStatus runJob()
+     {
+         CRASH_TRACER
+-        juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++        vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+         if (auto res = destDir.createDirectory(); res.failed())
+         {
+diff --git a/modules/tracktion_engine/model/export/tracktion_ExportJob.cpp b/modules/tracktion_engine/model/export/tracktion_ExportJob.cpp
+index 56a660b..7a7df04 100644
+--- a/modules/tracktion_engine/model/export/tracktion_ExportJob.cpp
++++ b/modules/tracktion_engine/model/export/tracktion_ExportJob.cpp
+@@ -50,7 +50,7 @@ juce::ThreadPoolJob::JobStatus ExportJob::runJob()
+ {
+     CRASH_TRACER
+ 
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+     if (edit != nullptr)
+         copyEditFilesToTempDir();
+diff --git a/modules/tracktion_engine/model/export/tracktion_RenderManager.cpp b/modules/tracktion_engine/model/export/tracktion_RenderManager.cpp
+index daabbc7..60f81d1 100644
+--- a/modules/tracktion_engine/model/export/tracktion_RenderManager.cpp
++++ b/modules/tracktion_engine/model/export/tracktion_RenderManager.cpp
+@@ -38,7 +38,7 @@ juce::ThreadPoolJob::JobStatus RenderManager::Job::runJob()
+ {
+     CRASH_TRACER
+ 
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+     try
+     {
 diff --git a/modules/tracktion_engine/model/export/tracktion_Renderer.cpp b/modules/tracktion_engine/model/export/tracktion_Renderer.cpp
-index 4b51072..ca5cfe2 100644
+index 4b51072..f03c4bb 100644
 --- a/modules/tracktion_engine/model/export/tracktion_Renderer.cpp
 +++ b/modules/tracktion_engine/model/export/tracktion_Renderer.cpp
 @@ -55,27 +55,6 @@ namespace render_utils
@@ -1068,6 +1370,15 @@ index 4b51072..ca5cfe2 100644
  
  //==============================================================================
  inline void addAcidInfo (Edit& edit, Renderer::Parameters& r)
+@@ -216,7 +195,7 @@ bool Renderer::RenderTask::shouldCancel() const
+ juce::ThreadPoolJob::JobStatus Renderer::RenderTask::runJob()
+ {
+     CRASH_TRACER
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+     if (params.createMidiFile)
+         renderMidi (params);
 @@ -226,224 +205,8 @@ juce::ThreadPoolJob::JobStatus Renderer::RenderTask::runJob()
      return jobHasFinished;
  }
@@ -1337,7 +1648,7 @@ index 9e114e5..1dbef36 100644
  
      //==============================================================================
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
-index 55cefed..7c630da 100644
+index 55cefed..2803243 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 +++ b/modules/tracktion_engine/playback/devices/tracktion_WaveInputDevice.cpp
 @@ -1205,7 +1205,7 @@ public:
@@ -1349,7 +1660,19 @@ index 55cefed..7c630da 100644
  
          if (measurerToUpdate != nullptr)
              getWaveInput().feedLevelMeasurerThroughGate (inputBuffer, 0, numSamples);
-@@ -1795,7 +1795,7 @@ void WaveInputDevice::consumeNextAudioBlock (const float* const* allChannels, in
+@@ -1250,7 +1250,10 @@ public:
+                 {
+                     if (! recordingContext->hasHitThreshold)
+                     {
+-                        auto bufferLevelDb = gainToDb (inputBuffer.getMagnitude (0, numSamples));
++                        // the block's sample peak, by ENCORE. Audio Processing (dsp/Channels.h)
++                        const float peak = inputBuffer.hasBeenCleared() ? 0.0f
++                                         : vs::channels::peakOf (inputBuffer.getArrayOfReadPointers(), inputBuffer.getNumChannels(), numSamples);
++                        auto bufferLevelDb = gainToDb (peak);
+                         recordingContext->hasHitThreshold = bufferLevelDb > getWaveInput().recordTriggerDb;
+ 
+                         if (! recordingContext->hasHitThreshold)
+@@ -1795,7 +1798,7 @@ void WaveInputDevice::consumeNextAudioBlock (const float* const* allChannels, in
                                                         allChannels[ci.indexInDevice], numSamples);
  
              if (inputGainDb > 0.01f || inputGainDb < -0.01f)
@@ -1358,6 +1681,15 @@ index 55cefed..7c630da 100644
  
              feedLevelMeasurerThroughGate (buf, 0, numSamples);
          }
+@@ -2008,7 +2011,7 @@ void WaveInputRecordingThread::waitForWriterToFinish (AudioFileWriter& writer)
+ void WaveInputRecordingThread::run()
+ {
+     CRASH_TRACER
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+     for (;;)
+     {
 diff --git a/modules/tracktion_engine/playback/devices/tracktion_WaveOutputDevice.cpp b/modules/tracktion_engine/playback/devices/tracktion_WaveOutputDevice.cpp
 index 6011b79..57796a0 100644
 --- a/modules/tracktion_engine/playback/devices/tracktion_WaveOutputDevice.cpp
@@ -2152,7 +2484,7 @@ index eb32318..784a731 100644
  
  } // namespace tracktion::inline engine
 diff --git a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
-index 1993f02..8cedf74 100644
+index 1993f02..80b4b5b 100644
 --- a/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
 +++ b/modules/tracktion_engine/playback/graph/tracktion_WaveNode.cpp
 @@ -330,7 +330,7 @@ public:
@@ -2541,7 +2873,57 @@ index 1993f02..8cedf74 100644
      const auto numFileSamplesToRead = numFileSamples + resamplerLatency + 2;
  
      AudioScratchBuffer fileData ((int) numChannels, numFileSamplesToRead);
-@@ -1884,8 +1597,10 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+@@ -1813,17 +1526,17 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+                                  isOfflineRender ? 5000 : 3))
+         {
+             if (! getPlayHeadState().isContiguousWithPreviousBlock() && ! getPlayHeadState().isFirstBlockOfLoop())
+-                lastSampleFadeLength = std::min (numFrames, 40u);
++                lastSampleFadeLength = std::min (numFrames, (uint32_t) vs::channels::heldFadeSamples);
+         }
+         else
+         {
+-            lastSampleFadeLength = std::min (numFrames, 40u);
++            lastSampleFadeLength = std::min (numFrames, (uint32_t) vs::channels::heldFadeSamples);
+             fileData.buffer.clear();
+         }
+     }
+     else
+     {
+-        lastSampleFadeLength = std::min (numFrames, 40u);
++        lastSampleFadeLength = std::min (numFrames, (uint32_t) vs::channels::heldFadeSamples);
+ 
+         for (choc::buffer::ChannelCount channel = 0; channel < numChannels; ++channel)
+         {
+@@ -1832,16 +1545,7 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+ 
+             auto& state = *channelState->getUnchecked ((int) channel);
+ 
+-            if (state.lastSample == 0.0)
+-                continue;
+-
+-            const auto dest = destBuffer.getIterator (channel).sample;
+-
+-            for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+-            {
+-                auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
+-                dest[i] = state.lastSample * (1.0f - alpha);
+-            }
++            vs::channels::fadeFromHeld (destBuffer.getIterator (channel).sample, (int) lastSampleFadeLength, state.lastSample);
+         }
+ 
+         for (auto state : *channelState)
+@@ -1869,8 +1573,8 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
+ 
+     if (getPlayHead().isUserDragging())
+     {
+-        gains[0] *= 0.4f;
+-        gains[1] *= 0.4f;
++        gains[0] *= vs::mix::scrubGain;
++        gains[1] *= vs::mix::scrubGain;
+     }
+ 
+     for (choc::buffer::ChannelCount channel = 0; channel < numChannels; ++channel)
+@@ -1884,20 +1588,15 @@ void WaveNode::processSection (ProcessContext& pc, juce::Range<int64_t> timeline
  
              if (std::exchange (state.resamplerNeedsPriming, false))
              {
@@ -2554,7 +2936,20 @@ index 1993f02..8cedf74 100644
              }
  
              state.resampler.processAdding (ratio, src + resamplerLatency, dest, (int) numFrames, gains[channel & 1]);
-@@ -2237,10 +1952,8 @@ bool WaveNodeRealTime::buildAudioReaderGraph()
+ 
+-            if (lastSampleFadeLength > 0)
+-            {
+-                for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+-                {
+-                    auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
+-                    dest[i] = alpha * dest[i] + state.lastSample * (1.0f - alpha);
+-                }
+-            }
++            vs::channels::joinFromHeld (dest, (int) lastSampleFadeLength, state.lastSample);
+ 
+             state.lastSample = dest[numFrames - 1];
+         }
+@@ -2237,10 +1936,8 @@ bool WaveNodeRealTime::buildAudioReaderGraph()
      const bool timestretchDisabled = timeStretcherMode == TimeStretcher::Mode::disabled;
      std::unique_ptr<ResamplerReader> resamplerAudioReader;
  
@@ -2567,11 +2962,81 @@ index 1993f02..8cedf74 100644
  
      resamplerReader = resamplerAudioReader.get();
      std::unique_ptr<TimeStretchReaderBase> timeStretchReader;
+@@ -2430,8 +2127,8 @@ void WaveNodeRealTime::processSection (ProcessContext& pc)
+ 
+     if (getPlayHead().isUserDragging())
+     {
+-        gains[0] *= 0.4f;
+-        gains[1] *= 0.4f;
++        gains[0] *= vs::mix::scrubGain;
++        gains[1] *= vs::mix::scrubGain;
+     }
+ 
+     if (resamplerReader != nullptr)
+@@ -2442,17 +2139,17 @@ void WaveNodeRealTime::processSection (ProcessContext& pc)
+ 
+     // Read through the audio stack
+     const auto isContiguous = getPlayHeadState().isContiguousWithPreviousBlock();
+-    uint32_t lastSampleFadeLength = (isFirstBlock && ! sectionContainsStartOfClip) ? std::min (numFrames, 10u) : 0;
++    uint32_t lastSampleFadeLength = (isFirstBlock && ! sectionContainsStartOfClip) ? std::min (numFrames, (uint32_t) vs::channels::heldFadeStartSamples) : 0;
+     isFirstBlock = false;
+ 
+     if (editReader->read (sectionEditBeats, sectionEditTime, pc.buffers.audio, isContiguous, getPlaybackSpeedRatio()))
+     {
+         if (! isContiguous && (! getPlayHeadState().isFirstBlockOfLoop()) && (! sectionContainsStartOfClip))
+-            lastSampleFadeLength = std::min (numFrames, 40u);
++            lastSampleFadeLength = std::min (numFrames, (uint32_t) vs::channels::heldFadeSamples);
+     }
+     else
+     {
+-        lastSampleFadeLength = std::min (numFrames, 40u);
++        lastSampleFadeLength = std::min (numFrames, (uint32_t) vs::channels::heldFadeSamples);
+         isFirstBlock = true; // Fade in the next block to avoid clicks
+     }
+ 
+@@ -2467,14 +2164,7 @@ void WaveNodeRealTime::processSection (ProcessContext& pc)
+ 
+             auto& lastSample = (*channelState)[(size_t) channel];
+ 
+-            if (lastSampleFadeLength > 0)
+-            {
+-                for (uint32_t i = 0; i < lastSampleFadeLength; ++i)
+-                {
+-                    auto alpha = static_cast<float> (i) / static_cast<float> (lastSampleFadeLength);
+-                    dest[i] = alpha * dest[i] + lastSample * (1.0f - alpha);
+-                }
+-            }
++            vs::channels::joinFromHeld (dest, (int) lastSampleFadeLength, lastSample);
+ 
+             lastSample = dest[numFrames - 1];
+         }
 diff --git a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
-index 5011615..01400bd 100644
+index 5011615..98cf0fa 100644
 --- a/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_DeviceManager.cpp
-@@ -1418,7 +1418,6 @@ void DeviceManager::audioDeviceIOCallbackInternal (const float* const* inputChan
+@@ -1314,7 +1314,7 @@ void DeviceManager::audioDeviceIOCallbackWithContext (const float* const* inputC
+                                                       const juce::AudioIODeviceCallbackContext&)
+ {
+     CRASH_TRACER
+-    juce::FloatVectorOperations::disableDenormalisedNumberSupport();
++    vs::disableDenormals(); // ENCORE. Audio Processing's denormal guard
+ 
+    #if JUCE_ANDROID
+     const ScopedSteadyLoad load (steadyLoadContext, numSamples);
+@@ -1410,15 +1410,16 @@ void DeviceManager::audioDeviceIOCallbackInternal (const float* const* inputChan
+                 for (auto chan : activeOutputChannels)
+                     if (chan >= 0 && chan < totalNumOutputChannels)
+                         if (auto* dest = outputChannelData[chan])
+-                            for (int j = 0; j < numSamples; ++j)
+-                                if (! std::isnormal (dest[j]))
+-                                    dest[j] = 0;
++                        {
++                            // nothing that isn't a normal number reaches the sound card (ENCORE. Audio Processing)
++                            float* one[1] { dest };
++                            vs::channels::zeroNaN (one, 1, numSamples, vs::channels::Zero::notNormal);
++                        }
+ 
+                 for (auto wo : waveOutputs)
                  {
                      if (wo->isEnabled())
                      {
@@ -2602,10 +3067,35 @@ index a75ca78..08d2db7 100644
  };
  
 diff --git a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
-index 65aa698..c99c468 100644
+index 65aa698..8f4535e 100644
 --- a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
 +++ b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.cpp
-@@ -29,7 +29,8 @@ static void getSumAndDiff (const juce::AudioBuffer<FloatType>& buffer,
+@@ -10,6 +10,24 @@
+ 
+ namespace tracktion::inline engine {
+ 
++// The highest level since a meter last read it, kept and taken by ENCORE.
++// Audio Processing's rule (dsp/Meters.h): a reading at least as loud replaces
++// the held one, and taking it leaves silence at the same time.
++static void keepHighest (DbTimePair& held, DbTimePair reading) noexcept
++{
++    vs::meters::Reading h { held.time, held.dB };
++    vs::meters::keepHighest (h, { reading.time, reading.dB });
++    held = { h.timeMs, h.db };
++}
++
++static DbTimePair takeHighest (DbTimePair& held) noexcept
++{
++    vs::meters::Reading h { held.time, held.dB };
++    const auto r = vs::meters::takeHighest (h);
++    held = { h.timeMs, h.db };
++    return { r.timeMs, r.db };
++}
++
+ //==============================================================================
+ template <typename FloatType>
+ static void getSumAndDiff (const juce::AudioBuffer<FloatType>& buffer,
+@@ -29,7 +47,8 @@ static void getSumAndDiff (const juce::AudioBuffer<FloatType>& buffer,
  
          for (int i = buffer.getNumChannels(); --i >= 0;)
          {
@@ -2615,7 +3105,69 @@ index 65aa698..c99c468 100644
              s += mag;
              lo = juce::jmin (lo, mag);
              hi = juce::jmax (hi, mag);
-@@ -210,9 +211,11 @@ void LevelMeasurer::processBuffer (juce::AudioBuffer<float>& buffer, int start,
+@@ -88,9 +107,7 @@ bool LevelMeasurer::Client::getAndClearPeak() noexcept
+ DbTimePair LevelMeasurer::Client::getAndClearMidiLevel() noexcept
+ {
+     juce::SpinLock::ScopedLockType sl (mutex);
+-    auto result = midiLevels;
+-    midiLevels.dB = -100.0f;
+-    return result;
++    return takeHighest (midiLevels);
+ }
+ 
+ DbTimePair LevelMeasurer::Client::getAndClearAudioLevel (int chan) noexcept
+@@ -100,9 +117,7 @@ DbTimePair LevelMeasurer::Client::getAndClearAudioLevel (int chan) noexcept
+     if (chan < 0 || chan >= (int) audioLevels.size())
+         return {};
+ 
+-    auto result = audioLevels[(size_t) chan];
+-    audioLevels[(size_t) chan].dB = -100.0f;
+-    return result;
++    return takeHighest (audioLevels[(size_t) chan]);
+ }
+ 
+ void LevelMeasurer::Client::setNumChannelsUsed (int numChannels) noexcept
+@@ -145,16 +160,14 @@ void LevelMeasurer::Client::updateAudioLevel (int channel, DbTimePair newAudioLe
+     juce::SpinLock::ScopedLockType sl (mutex);
+     ensureNumChannels (channel + 1);
+ 
+-    if (newAudioLevel.dB >= audioLevels[(size_t) channel].dB)
+-        audioLevels[(size_t) channel] = newAudioLevel;
++    keepHighest (audioLevels[(size_t) channel], newAudioLevel);
+ }
+ 
+ void LevelMeasurer::Client::updateMidiLevel (DbTimePair newMidiLevel) noexcept
+ {
+     juce::SpinLock::ScopedLockType sl (mutex);
+ 
+-    if (newMidiLevel.dB >= midiLevels.dB)
+-        midiLevels = newMidiLevel;
++    keepHighest (midiLevels, newMidiLevel);
+ }
+ 
+ void LevelMeasurer::Client::updateAllChannels (const ChannelLevel* levels, int numChannels) noexcept
+@@ -165,8 +178,7 @@ void LevelMeasurer::Client::updateAllChannels (const ChannelLevel* levels, int n
+ 
+     for (int i = 0; i < numChannels; ++i)
+     {
+-        if (levels[i].level.dB >= audioLevels[(size_t) i].dB)
+-            audioLevels[(size_t) i] = levels[i].level;
++        keepHighest (audioLevels[(size_t) i], levels[i].level);
+ 
+         if (levels[i].overloaded)
+             overload[(size_t) i] = true;
+@@ -198,8 +210,8 @@ void LevelMeasurer::processBuffer (juce::AudioBuffer<float>& buffer, int start,
+         if ((int) channelLevels.size() < resultNumChans)
+             channelLevels.resize ((size_t) resultNumChans);
+ 
+-        channelLevels[0] = { { now, gainToDb (sum) },  sum  > 0.999f };
+-        channelLevels[1] = { { now, gainToDb (diff) }, diff > 0.999f };
++        channelLevels[0] = { { now, gainToDb (sum) },  sum  > vs::meters::overloadGain };
++        channelLevels[1] = { { now, gainToDb (diff) }, diff > vs::meters::overloadGain };
+     }
+     else
+     {
+@@ -210,11 +222,13 @@ void LevelMeasurer::processBuffer (juce::AudioBuffer<float>& buffer, int start,
  
          for (int i = 0; i < resultNumChans; ++i)
          {
@@ -2627,8 +3179,24 @@ index 65aa698..c99c468 100644
 +                            ? vs::channels::peakOf (ch, 1, numSamples)
 +                            : vs::channels::rmsOf (ch[0], numSamples);
  
-             channelLevels[(size_t) i] = { { now, gainToDb (gain) }, gain > 0.999f };
+-            channelLevels[(size_t) i] = { { now, gainToDb (gain) }, gain > 0.999f };
++            channelLevels[(size_t) i] = { { now, gainToDb (gain) }, gain > vs::meters::overloadGain };
          }
+     }
+ 
+diff --git a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.h b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.h
+index 60e9eca..92e6fa6 100644
+--- a/modules/tracktion_engine/playback/tracktion_LevelMeasurer.h
++++ b/modules/tracktion_engine/playback/tracktion_LevelMeasurer.h
+@@ -13,7 +13,7 @@ namespace tracktion::inline engine {
+ struct DbTimePair
+ {
+     uint32_t time = 0;
+-    float dB = -100.0f;
++    float dB = vs::meters::faderFloorDb; // silence
+ };
+ 
+ //==============================================================================
 diff --git a/modules/tracktion_engine/plugins/effects/tracktion_PatchBay.cpp b/modules/tracktion_engine/plugins/effects/tracktion_PatchBay.cpp
 index 065cbdf..d7aee6d 100644
 --- a/modules/tracktion_engine/plugins/effects/tracktion_PatchBay.cpp
@@ -2992,17 +3560,19 @@ index 26fd3d1..d87fe5d 100644
  
  //==============================================================================
 diff --git a/modules/tracktion_engine/tracktion_engine.h b/modules/tracktion_engine/tracktion_engine.h
-index d15012d..5ff410b 100644
+index d15012d..4274795 100644
 --- a/modules/tracktion_engine/tracktion_engine.h
 +++ b/modules/tracktion_engine/tracktion_engine.h
-@@ -54,6 +54,16 @@
+@@ -54,6 +54,18 @@
  #include <juce_dsp/juce_dsp.h>
  #include <juce_osc/juce_osc.h>
  
 +// ENCORE. Basement Studio: the audio processing Tracktion Engine's playback
-+// calls (fades, gains and pan, the fader law, levels, resampling, clicks) is
++// calls (fades, gains and pan, the fader law, levels, resampling, clicks, the
++// denormal guard) is
 +// ENCORE. Audio Processing's, on the include path as "dsp/..."
 +#include "dsp/Channels.h"
++#include "dsp/Denormals.h"
 +#include "dsp/Meters.h"
 +#include "dsp/Metronome.h"
 +#include "dsp/Mix.h"
@@ -3012,7 +3582,7 @@ index d15012d..5ff410b 100644
  #if __has_include(<choc/audio/choc_SampleBuffers.h>)
   #include <choc/audio/choc_SampleBuffers.h>
   #include <choc/audio/choc_MIDI.h>
-@@ -449,7 +459,6 @@ namespace tracktion::inline engine
+@@ -449,7 +461,6 @@ namespace tracktion::inline engine
  #include "utilities/tracktion_AudioScratchBuffer.h"
  #include "utilities/tracktion_AudioFadeCurve.h"
  #include "utilities/tracktion_Spline.h"
@@ -3020,23 +3590,29 @@ index d15012d..5ff410b 100644
  #include "utilities/tracktion_ExternalPlayheadSynchroniser.h"
  #include "utilities/tracktion_SafeScopedListener.h"  // (needed by tracktion_Selectable.h)
  #include "selection/tracktion_Selectable.h"
-@@ -468,7 +477,6 @@ namespace tracktion::inline engine
+@@ -467,8 +478,6 @@ namespace tracktion::inline engine
+ #include "utilities/tracktion_ScopedListener.h"
  #include "utilities/tracktion_MouseHoverDetector.h"
  #include "utilities/tracktion_CurveEditor.h"
- #include "utilities/tracktion_Envelope.h"
+-#include "utilities/tracktion_Envelope.h"
 -#include "utilities/tracktion_Oscillators.h"
  #include "utilities/tracktion_ScreenSaverDefeater.h"
  #include "utilities/tracktion_ChannelConfiguration.h"
  #include "utilities/tracktion_ChannelMap.h"
-@@ -490,7 +498,6 @@ namespace tracktion::inline engine
+@@ -489,12 +498,6 @@ namespace tracktion::inline engine
+ #include "model/automation/tracktion_MacroParameter.h"
  #include "model/automation/tracktion_Modifier.h"
  #include "model/automation/modifiers/tracktion_ModifierCommon.h"
- #include "model/automation/modifiers/tracktion_BreakpointOscillatorModifier.h"
+-#include "model/automation/modifiers/tracktion_BreakpointOscillatorModifier.h"
 -#include "model/automation/modifiers/tracktion_EnvelopeFollowerModifier.h"
- #include "model/automation/modifiers/tracktion_LFOModifier.h"
- #include "model/automation/modifiers/tracktion_MIDITrackerModifier.h"
- #include "model/automation/modifiers/tracktion_RandomModifier.h"
-@@ -541,7 +548,6 @@ namespace tracktion::inline engine
+-#include "model/automation/modifiers/tracktion_LFOModifier.h"
+-#include "model/automation/modifiers/tracktion_MIDITrackerModifier.h"
+-#include "model/automation/modifiers/tracktion_RandomModifier.h"
+-#include "model/automation/modifiers/tracktion_StepModifier.h"
+ 
+ #include "model/export/tracktion_Exportable.h"
+ 
+@@ -541,7 +544,6 @@ namespace tracktion::inline engine
  #include "plugins/internal/tracktion_RackInstance.h"
  #include "plugins/internal/tracktion_AuxReturn.h"
  #include "plugins/internal/tracktion_AuxSend.h"
@@ -3044,7 +3620,7 @@ index d15012d..5ff410b 100644
  
  #include "model/clips/tracktion_LaunchHandle.h"
  #include "model/edit/tracktion_EditSnapshot.h"
-@@ -588,9 +594,6 @@ namespace tracktion::inline engine
+@@ -588,9 +590,6 @@ namespace tracktion::inline engine
  
  #include "audio_files/tracktion_AudioFormatManager.h"
  #include "audio_files/tracktion_AudioFileUtils.h"
@@ -3054,7 +3630,15 @@ index d15012d..5ff410b 100644
  #include "audio_files/tracktion_AudioFifo.h"
  #include "audio_files/tracktion_RecordingThumbnailManager.h"
  #include "audio_files/formats/tracktion_FFmpegEncoderAudioFormat.h"
-@@ -633,7 +636,6 @@ namespace tracktion::inline engine
+@@ -614,7 +613,6 @@ namespace tracktion::inline engine
+ #include "model/tracks/tracktion_ClipTrack.h"
+ #include "model/tracks/tracktion_AudioTrack.h"
+ 
+-#include "timestretch/tracktion_BeatDetect.h"
+ #include "timestretch/tracktion_TimeStretch.h"
+ #include "timestretch/tracktion_ReadAheadTimeStretcher.h"
+ 
+@@ -633,7 +631,6 @@ namespace tracktion::inline engine
  #include "model/clips/tracktion_ArrangerClip.h"
  #include "model/clips/tracktion_AudioClipBase.h"
  #include "model/clips/tracktion_ChordClip.h"
@@ -3062,7 +3646,7 @@ index d15012d..5ff410b 100644
  #include "model/clips/tracktion_CollectionClip.h"
  #include "model/clips/tracktion_ContainerClip.h"
  #include "model/clips/tracktion_LauncherClipPlaybackHandle.h"
-@@ -695,25 +697,16 @@ namespace tracktion::inline engine
+@@ -695,25 +692,15 @@ namespace tracktion::inline engine
  #include "plugins/internal/tracktion_LevelMeter.h"
  #include "plugins/internal/tracktion_FreezePoint.h"
  #include "plugins/internal/tracktion_InsertPlugin.h"
@@ -3075,11 +3659,11 @@ index d15012d..5ff410b 100644
 -#include "plugins/effects/tracktion_Chorus.h"
 -#include "plugins/effects/tracktion_FourOscPlugin.h"
 -#include "plugins/effects/tracktion_ImpulseResponsePlugin.h"
+-#include "plugins/effects/tracktion_LatencyPlugin.h"
+-#include "plugins/effects/tracktion_LowPass.h"
 +// ENCORE. Basement Studio: Tracktion's own effects and instruments, its oscillators, loudness
 +// meter, file and stereo analysers, envelope follower modifier and ditherer aren't built:
 +// the audio processing is ENCORE. Audio Processing's
- #include "plugins/effects/tracktion_LatencyPlugin.h"
--#include "plugins/effects/tracktion_LowPass.h"
  #include "plugins/effects/tracktion_MidiModifier.h"
  #include "plugins/effects/tracktion_MidiPatchBay.h"
  #include "plugins/effects/tracktion_PatchBay.h"
@@ -3109,18 +3693,31 @@ index a9bf3cb..f4d4a3d 100644
  #include "audio_files/tracktion_BufferedAudioReader.cpp"
  
 diff --git a/modules/tracktion_engine/tracktion_engine_model_1.cpp b/modules/tracktion_engine/tracktion_engine_model_1.cpp
-index 1ced9a8..558612b 100644
+index 1ced9a8..c0af5d1 100644
 --- a/modules/tracktion_engine/tracktion_engine_model_1.cpp
 +++ b/modules/tracktion_engine/tracktion_engine_model_1.cpp
-@@ -58,7 +58,6 @@ using namespace std::literals;
+@@ -29,7 +29,6 @@ using namespace std::literals;
+ 
+ #include "../../modules/tracktion_graph/tracktion_graph/tracktion_TestUtilities.h"
+ 
+-#include "timestretch/tracktion_TempoDetect.h"
+ #include "model/automation/modifiers/tracktion_ModifierInternal.h"
+ 
+ #include "model/edit/tracktion_OldEditConversion.h"
+@@ -57,12 +56,6 @@ using namespace std::literals;
+ #include "model/automation/tracktion_ParameterControlMappings.cpp"
  #include "model/automation/tracktion_Modifier.cpp"
  #include "model/automation/modifiers/tracktion_ModifierCommon.cpp"
- #include "model/automation/modifiers/tracktion_BreakpointOscillatorModifier.cpp"
+-#include "model/automation/modifiers/tracktion_BreakpointOscillatorModifier.cpp"
 -#include "model/automation/modifiers/tracktion_EnvelopeFollowerModifier.cpp"
- #include "model/automation/modifiers/tracktion_LFOModifier.cpp"
- #include "model/automation/modifiers/tracktion_MIDITrackerModifier.cpp"
- #include "model/automation/modifiers/tracktion_RandomModifier.cpp"
-@@ -88,8 +87,6 @@ using namespace std::literals;
+-#include "model/automation/modifiers/tracktion_LFOModifier.cpp"
+-#include "model/automation/modifiers/tracktion_MIDITrackerModifier.cpp"
+-#include "model/automation/modifiers/tracktion_RandomModifier.cpp"
+-#include "model/automation/modifiers/tracktion_StepModifier.cpp"
+ 
+ #include "model/clips/tracktion_ArrangerClip.cpp"
+ #include "model/clips/tracktion_AudioClipBase.cpp"
+@@ -88,8 +81,6 @@ using namespace std::literals;
  #include "model/clips/tracktion_StepClipChannel.cpp"
  #include "model/clips/tracktion_StepClipPattern.cpp"
  #include "model/clips/tracktion_StepClip.cpp"
@@ -3170,7 +3767,7 @@ index 3228281..332179a 100644
  #include "playback/graph/tracktion_HostedMidiInputDeviceNode.cpp"
  #include "playback/graph/tracktion_WaveInputDeviceNode.cpp"
 diff --git a/modules/tracktion_engine/tracktion_engine_plugins.cpp b/modules/tracktion_engine/tracktion_engine_plugins.cpp
-index 5d327f6..33fd194 100644
+index 5d327f6..97aad59 100644
 --- a/modules/tracktion_engine/tracktion_engine_plugins.cpp
 +++ b/modules/tracktion_engine/tracktion_engine_plugins.cpp
 @@ -61,7 +61,6 @@ using namespace std::literals;
@@ -3181,7 +3778,7 @@ index 5d327f6..33fd194 100644
  #include "plugins/internal/tracktion_LevelMeter.cpp"
  #include "plugins/internal/tracktion_LevelMeter.test.cpp"
  #include "plugins/internal/tracktion_RackInstance.cpp"
-@@ -74,23 +73,11 @@ using namespace std::literals;
+@@ -74,23 +73,10 @@ using namespace std::literals;
  #include "plugins/internal/tracktion_VolumeAndPan.test.cpp"
  #include "plugins/internal/tracktion_InternalPlugins.test.cpp"
  
@@ -3189,7 +3786,7 @@ index 5d327f6..33fd194 100644
 -#include "plugins/effects/tracktion_Compressor.cpp"
 -#include "plugins/effects/tracktion_Delay.cpp"
 -#include "plugins/effects/tracktion_FourOscPlugin.cpp"
- #include "plugins/effects/tracktion_LatencyPlugin.cpp"
+-#include "plugins/effects/tracktion_LatencyPlugin.cpp"
 -#include "plugins/effects/tracktion_Equaliser.cpp"
 -#include "plugins/effects/tracktion_ImpulseResponsePlugin.cpp"
 -#include "plugins/effects/tracktion_LowPass.cpp"
@@ -3206,12 +3803,14 @@ index 5d327f6..33fd194 100644
  #include "plugins/ARA/tracktion_ARAFileReader.cpp"
  
 diff --git a/modules/tracktion_engine/tracktion_engine_utils.cpp b/modules/tracktion_engine/tracktion_engine_utils.cpp
-index 5d625d4..fbc2672 100644
+index 5d625d4..16f85ec 100644
 --- a/modules/tracktion_engine/tracktion_engine_utils.cpp
 +++ b/modules/tracktion_engine/tracktion_engine_utils.cpp
-@@ -78,8 +78,6 @@ extern "C" char MacGetMacFSRefForREXDLL (FSRef* fsRef)
+@@ -76,10 +76,7 @@ extern "C" char MacGetMacFSRefForREXDLL (FSRef* fsRef)
+ #include "utilities/tracktion_CrashTracer.cpp"
+ #include "utilities/tracktion_CurveEditor.cpp"
  #include "utilities/tracktion_ExternalPlayheadSynchroniser.cpp"
- #include "utilities/tracktion_Envelope.cpp"
+-#include "utilities/tracktion_Envelope.cpp"
  #include "utilities/tracktion_FileUtilities.cpp"
 -#include "utilities/tracktion_Oscillators.cpp"
 -#include "utilities/tracktion_Oscillators.test.cpp"
@@ -3219,7 +3818,7 @@ index 5d625d4..fbc2672 100644
  #include "utilities/tracktion_ParameterHelpers.cpp"
  #include "utilities/tracktion_UIBehaviour.cpp"
 diff --git a/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h b/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
-index 7da7643..ec57eb1 100644
+index 7da7643..7e9c74d 100644
 --- a/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
 +++ b/modules/tracktion_engine/utilities/tracktion_AudioFadeCurve.h
 @@ -12,36 +12,9 @@ namespace tracktion::inline engine {
@@ -3262,7 +3861,7 @@ index 7da7643..ec57eb1 100644
      enum Type
      {
          linear  = 1,
-@@ -50,65 +23,63 @@ struct AudioFadeCurve
+@@ -50,65 +23,37 @@ struct AudioFadeCurve
          sCurve  = 4
      };
  
@@ -3303,39 +3902,30 @@ index 7da7643..ec57eb1 100644
 -
 -        jassert (type == linear);
 -        return alpha;
-+        return vs::channels::fadeGainFloat (toCurve (type), alpha);
-     }
- 
-     /** Multiplies a block of samples by the curve shape between two alpha-positions.
-         The DestSamplePointer object must be a class that implements an apply() method that
-         gets called with each gain level.
-     */
+-    }
+-
+-    /** Multiplies a block of samples by the curve shape between two alpha-positions.
+-        The DestSamplePointer object must be a class that implements an apply() method that
+-        gets called with each gain level.
+-    */
 -    template <typename CurveClass, typename DestSamplePointer>
 -    static void renderBlock (DestSamplePointer& dest, int numSamples,
 -                             float startAlpha, float endAlpha) noexcept
-+    template <typename DestSamplePointer>
-+    static void renderBlockForType (DestSamplePointer& dest, int numSamples,
-+                                    float startAlpha, float endAlpha, Type type) noexcept
-     {
+-    {
 -        jassert (numSamples > 0); // can only be used on non-empty blocks!
 -
 -        const double a1 = CurveClass::preadjust (startAlpha);
 -        const double a2 = CurveClass::preadjust (endAlpha);
 -        const double delta = (a2 - a1) / numSamples;
 -        double alpha = a1;
-+        jassert (numSamples > 0);
-+        const auto curve = toCurve (type);
-+        const double delta = ((double) endAlpha - (double) startAlpha) / numSamples;
-+        double alpha = startAlpha;
- 
-         while (--numSamples >= 0)
-         {
+-
+-        while (--numSamples >= 0)
+-        {
 -            dest.apply (CurveClass::get ((float) alpha));
-+            dest.apply (vs::channels::fadeGainFloat (curve, alpha));
-             alpha += delta;
-         }
-     }
- 
+-            alpha += delta;
+-        }
+-    }
+-
 -    /** Multiplies a block of samples by the curve shape between two alpha-positions.
 -        The DestSamplePointer object must be a class that implements an apply() method that
 -        gets called with each gain level.
@@ -3343,9 +3933,7 @@ index 7da7643..ec57eb1 100644
 -    template <typename DestSamplePointer>
 -    static void renderBlockForType (DestSamplePointer& dest, int numSamples,
 -                                    float startAlpha, float endAlpha, Type type) noexcept
-+    template <typename CurveClass, typename DestSamplePointer>
-+    static void renderBlock (DestSamplePointer& dest, int numSamples, float startAlpha, float endAlpha) noexcept
-     {
+-    {
 -        jassert (numSamples > 0);
 -
 -        switch (type)
@@ -3356,11 +3944,11 @@ index 7da7643..ec57eb1 100644
 -            case sCurve:    renderBlock<SCurve>  (dest, numSamples, startAlpha, endAlpha); break;
 -            default:        jassertfalse; break;
 -        }
-+        renderBlockForType (dest, numSamples, startAlpha, endAlpha, CurveClass::type);
++        return vs::channels::fadeGainFloat (toCurve (type), alpha);
      }
  
      /** Calculates the two gain multipliers to use for mixing between two sources, given a position
-@@ -124,8 +95,8 @@ struct AudioFadeCurve
+@@ -124,8 +69,8 @@ struct AudioFadeCurve
              and alpha values in-between will be calculated based on a pair of overlapping convex sine curves.
          */
          CrossfadeLevels (float alpha) noexcept
@@ -3372,7 +3960,7 @@ index 7da7643..ec57eb1 100644
          }
  
 diff --git a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
-index 3b8c193..d057651 100644
+index 3b8c193..e424b2d 100644
 --- a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
 +++ b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.cpp
 @@ -13,32 +13,13 @@ namespace tracktion::inline engine {
@@ -3428,7 +4016,7 @@ index 3b8c193..d057651 100644
  float gainToDb (float gain) noexcept
  {
 -    return (gain > 0.0f) ? 20.0f * std::log10 (gain) : -100.0f;
-+    return (gain > 0.0f) ? vs::ampToDb (gain, 0.0f) : vs::meters::faderFloorDb;
++    return vs::meters::levelDb (gain);
  }
  
 -static const float volScaleFactor = 20.0f;
@@ -3543,6 +4131,114 @@ index 3b8c193..d057651 100644
  }
  
  static PanLaw defaultPanLaw = PanLawLinear;
+@@ -329,28 +255,7 @@ void convertFloatsToInts (juce::AudioBuffer<float>& buffer)
+ }
+ 
+ //==============================================================================
+-struct OneChannelDestination
+-{
+-    float* channel0;
+-
+-    inline void apply (float value) noexcept
+-    {
+-        *channel0++ *= value;
+-    }
+-};
+-
+-struct TwoChannelDestination
+-{
+-    float* channel0;
+-    float* channel1;
+-
+-    inline void apply (float value) noexcept
+-    {
+-        *channel0++ *= value;
+-        *channel1++ *= value;
+-    }
+-};
+-
++// A section of a fade, worked out by encore-audio-processing (dsp/Channels.h)
+ void AudioFadeCurve::applyCrossfadeSection (juce::AudioBuffer<float>& buffer,
+                                             int channel, int startSample, int numSamples,
+                                             AudioFadeCurve::Type type, float startAlpha, float endAlpha)
+@@ -359,8 +264,8 @@ void AudioFadeCurve::applyCrossfadeSection (juce::AudioBuffer<float>& buffer,
+ 
+     if (! buffer.hasBeenCleared())
+     {
+-        OneChannelDestination d = { buffer.getWritePointer (channel, startSample) };
+-        AudioFadeCurve::renderBlockForType (d, numSamples, startAlpha, endAlpha, type);
++        float* ch[1] { buffer.getWritePointer (channel, startSample) };
++        vs::channels::fadeSection (ch, 1, numSamples, toCurve (type), startAlpha, endAlpha);
+     }
+ }
+ 
+@@ -372,32 +277,12 @@ void AudioFadeCurve::applyCrossfadeSection (juce::AudioBuffer<float>& buffer,
+ 
+     if (! buffer.hasBeenCleared())
+     {
+-        if (buffer.getNumChannels() == 2)
+-        {
+-            TwoChannelDestination d = { buffer.getWritePointer (0, startSample),
+-                                        buffer.getWritePointer (1, startSample) };
+-
+-            AudioFadeCurve::renderBlockForType (d, numSamples, startAlpha, endAlpha, type);
+-        }
+-        else
+-        {
+-            for (int i = buffer.getNumChannels(); --i >= 0;)
+-                applyCrossfadeSection (buffer, i, startSample, numSamples, type, startAlpha, endAlpha);
+-        }
++        std::vector<float*> ch ((size_t) buffer.getNumChannels());
++        for (int c = 0; c < buffer.getNumChannels(); ++c) ch[(size_t) c] = buffer.getWritePointer (c, startSample);
++        vs::channels::fadeSection (ch.data(), (int) ch.size(), numSamples, toCurve (type), startAlpha, endAlpha);
+     }
+ }
+ 
+-struct AddingFadeApplier
+-{
+-    float* dest;
+-    const float* src;
+-
+-    inline void apply (float value) noexcept
+-    {
+-        *dest++ += *src++ * value;
+-    }
+-};
+-
+ void AudioFadeCurve::addWithCrossfade (juce::AudioBuffer<float>& dest,
+                                        const juce::AudioBuffer<float>& src,
+                                        int destChannel, int destStartIndex,
+@@ -409,16 +294,25 @@ void AudioFadeCurve::addWithCrossfade (juce::AudioBuffer<float>& dest,
+ {
+     if (! src.hasBeenCleared())
+     {
++        const float* from = src.getReadPointer (sourceChannel, sourceStartIndex);
++
+         if (startAlpha == endAlpha)
+         {
+-            dest.addFrom (destChannel, destStartIndex, src, sourceChannel, sourceStartIndex, numSamples, endAlpha);
++            // a steady level: nothing at all at zero, and a cleared buffer takes a copy
++            if (endAlpha == 0.0f || numSamples <= 0)
++                return;
++
++            const bool wasClear = dest.hasBeenCleared();
++            float* to = dest.getWritePointer (destChannel, destStartIndex);
++
++            if (wasClear)
++                vs::mix::copyWithGain (from, to, numSamples, endAlpha);
++            else
++                vs::mix::addWithGain (from, to, numSamples, endAlpha);
+         }
+         else
+         {
+-            AddingFadeApplier d = { dest.getWritePointer (destChannel, destStartIndex),
+-                                    src.getReadPointer (sourceChannel, sourceStartIndex) };
+-
+-            AudioFadeCurve::renderBlockForType (d, numSamples, startAlpha, endAlpha, type);
++            vs::channels::addFadeSection (from, dest.getWritePointer (destChannel, destStartIndex), numSamples, toCurve (type), startAlpha, endAlpha);
+         }
+     }
+ }
 diff --git a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h b/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h
 index 814d5ac..701b1e7 100644
 --- a/modules/tracktion_engine/utilities/tracktion_AudioUtilities.h

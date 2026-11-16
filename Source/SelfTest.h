@@ -270,6 +270,33 @@ namespace selftest
                         mp3Title == mo.tags.title && mp3Encoder == "ENCORE. Basement Studio (LAME 3.100)",
                         "title \"" + mp3Title + "\", encoder \"" + mp3Encoder + "\"");
 
+                // an MP3 of a 96 kHz mix: encore-audio-processing's resampler takes it to 48 kHz
+                // before LAME, keeping its length and its level
+                {
+                    auto hiRes = songDir.getChildFile ("hi-res mix.wav"), hiMp3 = songDir.getChildFile ("hi-res mix.mp3");
+                    const int n = 96000 * 2;
+                    AudioBuffer<float> tone (2, n);
+                    for (int i = 0; i < n; ++i)
+                        tone.setSample (0, i, 0.5f * (float) std::sin (MathConstants<double>::twoPi * 1000.0 * i / 96000.0)), tone.setSample (1, i, tone.getSample (0, i));
+                    {
+                        WavAudioFormat wav;
+                        std::unique_ptr<OutputStream> os (hiRes.createOutputStream().release());
+                        if (auto w = wav.createWriterFor (os, AudioFormatWriterOptions().withSampleRate (96000.0).withNumChannels (2).withBitsPerSample (32)
+                                                                  .withSampleFormat (AudioFormatWriterOptions::SampleFormat::floatingPoint)))
+                            w->writeFromAudioSampleBuffer (tone, 0, n);
+                    }
+                    const auto problem = mp3::encode (hiRes, hiMp3, 192, {});
+                    std::unique_ptr<AudioFormatReader> hr (hiMp3.existsAsFile() ? mp3s.createReaderFor (hiMp3) : nullptr);
+                    Range<float> hl[2];
+                    if (hr) hr->readMaxLevels ((juce::int64) (hr->sampleRate / 2), (juce::int64) hr->sampleRate, hl, 2);
+                    const double seconds = hr ? (double) hr->lengthInSamples / hr->sampleRate : 0.0;
+                    expect ("MP3 of a 96 kHz mix: 48 kHz, same length and level",
+                            problem.isEmpty() && hr != nullptr && hr->sampleRate == 48000.0 && std::abs (seconds - 2.0) < 0.1 && std::abs (hl[0].getEnd() - 0.5f) < 0.03f,
+                            problem + (hr ? " " + String (hr->sampleRate) + " Hz, " + String (seconds, 3) + " s, peak " + String (hl[0].getEnd(), 3) : String (" unreadable")));
+                    hiRes.deleteFile();
+                    hiMp3.deleteFile();
+                }
+
                 // mastered on export (ENCORE. Master, Balanced, Streaming): near -14 LUFS, and the song itself untouched
                 auto masteredFile = songDir.getChildFile ("mastered mix.wav");
                 ExportOptions ma; ma.tail = false; ma.mastering.style = 0; ma.mastering.target = 0;
