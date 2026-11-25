@@ -5,6 +5,55 @@ job puts its section on the GitHub release (see "Release notes" in
 `CLAUDE.md`). Versions 0.4.3 and earlier were published from a different
 repository; their notes are kept below as they were written.
 
+## v0.9.0
+
+ENCORE. Basement Studio now uses ENCORE. VST v0.8.1 and ENCORE. Audio
+Processing v4.0.0, the same versions as the rest of ENCORE. Your songs open as
+before; two small things are different, listed below.
+
+### What's changed
+- **Drum kits:** the 808 kit is now called **Deep**. It's the same kit with the
+  same sounds. A song you saved with the 808 kit opens with Deep in the Kit
+  box, and its drums sound exactly as before.
+- **Synth:** the triangle wave now starts each note without a small offset, so
+  a triangle sound (or a triangle LFO) is slightly different at the start of a
+  note.
+
+### Downloads
+- **Windows** (10 and 11, 64-bit):
+  `ENCORE-Basement-Studio-0.9.0-windows-setup.exe`, the installer (Start menu,
+  desktop shortcut, opens .encore songs, and it can also install ENCORE. VST
+  v0.8.1 for your other DAWs). Or `ENCORE-Basement-Studio-0.9.0-windows-x64.zip`
+  to run it from any folder without installing. If SmartScreen warns you, click
+  **More info**, then **Run anyway**.
+- **Mac** (Apple Silicon and Intel, macOS 11 or newer):
+  `ENCORE-Basement-Studio-0.9.0-macos.dmg`. Open it and drag
+  `ENCORE Basement Studio` to Applications. It isn't signed by Apple yet: the
+  first time, macOS says it was "Not Opened". Click **Done**, go to
+  **System Settings > Privacy & Security**, click **Open Anyway**, then open
+  the app again and click **Open Anyway**. For the ENCORE. plugins in your other
+  music apps, open `ENCORE-VST-0.8.1-macos.pkg` from the same disk image (the
+  same steps the first time).
+- **Linux and Raspberry Pi** (64-bit Raspberry Pi OS Bookworm or newer,
+  Debian 12 or newer, Ubuntu 22.04 or newer):
+  `encore-basement-studio_0.9.0_amd64.deb` and
+  `ENCORE-Basement-Studio-0.9.0-x86_64.AppImage` for PCs,
+  `encore-basement-studio_0.9.0_arm64.deb` and
+  `ENCORE-Basement-Studio-0.9.0-aarch64.AppImage` for Raspberry Pi 4 and 5.
+  Install the .deb with `sudo apt install ./<file>.deb`, or make the AppImage
+  runnable (`chmod +x`) and start it. For the ENCORE. plugins in your other
+  music apps, get ENCORE. VST v0.8.1's Linux download from the encore-vst
+  releases.
+
+Each file has a `.sha256` next to it, to check the download.
+
+### Built on
+ENCORE. VST v0.8.1 (which brings ENCORE. Audio Processing v4.0.0 and JUCE
+9.0.5), and Tracktion Engine at commit `a5e4499` (no Tracktion Engine release
+supports JUCE 9).
+
+Questions or problems: support@encoremusic.studio
+
 ## v0.8.0
 
 ENCORE. Basement Studio now takes the last of its own sound handling from
