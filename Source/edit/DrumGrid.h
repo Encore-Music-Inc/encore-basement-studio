@@ -68,9 +68,11 @@ namespace drums
             return k;
         }
 
-        /** A kit by its name (songs save the name); Studio, the first drum tracks' kit, when unknown */
+        /** A kit by its name (songs save the name); Studio, the first drum tracks' kit, when unknown.
+            Songs saved before the 808 kit was renamed Deep say "808": that is the Deep kit, the same sounds */
         inline int styleIndex (const juce::String& name)
         {
+            if (name == "808") return styleIndex ("Deep");
             int studio = 0;
             for (int i = 0; i < (int) styles().size(); ++i)
             {
