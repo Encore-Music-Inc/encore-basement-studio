@@ -732,14 +732,17 @@ namespace selftest
                     rr ? String (seconds, 2) + " s, " + String (hz, 1) + " Hz" : err);
         }
 
-        // the kits: every one makes all ten drums, and they sound different (the 808 kick booms longer)
+        // the kits: every one makes all ten drums, and they sound different (the Deep kick booms longer)
         {
             bool all = true;
             for (int k = 0; k < (int) drums::kit::styles().size(); ++k)
                 for (auto& l : drums::lanes()) { auto x = drums::kit::make (l.note, k); all = all && x.size() > 1000 && *std::max_element (x.begin(), x.end()) > 0.3f; }
-            const auto studio = drums::kit::make (36, drums::kit::styleIndex ("Studio")), boom = drums::kit::make (36, drums::kit::styleIndex ("808"));
+            const int deep = drums::kit::styleIndex ("Deep");
+            const auto studio = drums::kit::make (36, drums::kit::styleIndex ("Studio")), boom = drums::kit::make (36, deep);
             expect ("every drum kit offered has a drum for all 10 rows", all && drums::kit::styles().size() >= 6, String ((int) drums::kit::styles().size()) + " kits");
-            expect ("the 808 kick is longer than the Studio kick", boom.size() > studio.size() * 1.4, String (boom.size() / 48000.0, 2) + " s");
+            expect ("the Deep kit is offered", String (drums::kit::styles()[(size_t) deep].name) == "Deep");
+            expect ("the Deep kick is longer than the Studio kick", boom.size() > studio.size() * 1.4, String (boom.size() / 48000.0, 2) + " s");
+            expect ("a song saved with the 808 kit opens with the Deep kit", drums::kit::styleIndex ("808") == deep);
         }
 
         // a drum track: the Studio Kit (made in the song folder) plays a kick on beat 1 and a snare on beat 2
